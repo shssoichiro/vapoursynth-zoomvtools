@@ -552,6 +552,7 @@ dependencies = [
 name = "vapoursynth-zoomvtools"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "criterion",
  "quickcheck",
  "quickcheck_macros",

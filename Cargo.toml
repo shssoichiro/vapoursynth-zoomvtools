@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.98"
 vapoursynth = { version = "0.4.0", features = ["vapoursynth-api-36"] }
 
 [dev-dependencies]
@@ -17,3 +18,6 @@ crate-type = ["cdylib"]
 [[bench]]
 name = "bench"
 harness = false
+
+[lints.clippy]
+too_many_arguments = "allow"
