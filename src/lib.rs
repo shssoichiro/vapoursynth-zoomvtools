@@ -1,14 +1,16 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use vapoursynth::{export_vapoursynth_plugin, plugins::Metadata};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub const PLUGIN_IDENTIFIER: &str = "com.soichiro.zoomvtools";
+pub const PLUGIN_NAME: &str = "zoomvtools";
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+export_vapoursynth_plugin! {
+    Metadata {
+        identifier: PLUGIN_IDENTIFIER,
+        namespace: "zoomv",
+        name: "ZooMVTools",
+        read_only: true,
+    },
+    [
+        // TODO: Add functions
+    ]
 }
