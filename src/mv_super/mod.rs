@@ -1,11 +1,15 @@
 #[cfg(test)]
 mod tests;
 
-use anyhow::{Result, bail};
+use anyhow::{Result, anyhow, bail};
+use smallvec::SmallVec;
 use vapoursynth::{
-    format::{ColorFamily, SampleType},
+    format::{ColorFamily, Format, SampleType},
+    frame::FrameRefMut,
     node::Node,
     plugins::Filter,
+    prelude::Property,
+    video_info::Resolution,
 };
 
 use crate::{
@@ -71,6 +75,7 @@ pub struct Super<'core> {
     // Internal fields
     width: usize,
     height: usize,
+    format: Format<'core>,
     super_width: usize,
     super_height: usize,
     x_ratio_uv: usize,
@@ -216,6 +221,7 @@ impl<'core> Super<'core> {
             pelclip: if use_pelclip { pelclip } else { None },
             width,
             height,
+            format,
             super_width,
             super_height,
             x_ratio_uv,
@@ -228,20 +234,29 @@ impl<'core> Super<'core> {
 impl<'core> Filter<'core> for Super<'core> {
     fn video_info(
         &self,
-        api: vapoursynth::prelude::API,
-        core: vapoursynth::core::CoreRef<'core>,
+        _api: vapoursynth::prelude::API,
+        _core: vapoursynth::core::CoreRef<'core>,
     ) -> Vec<vapoursynth::video_info::VideoInfo<'core>> {
-        todo!()
+        let mut info = self.clip.info();
+        info.resolution = Property::Constant(Resolution {
+            width: self.super_width,
+            height: self.super_width,
+        });
+        vec![info]
     }
 
     fn get_frame_initial(
         &self,
-        api: vapoursynth::prelude::API,
-        core: vapoursynth::core::CoreRef<'core>,
+        _api: vapoursynth::prelude::API,
+        _core: vapoursynth::core::CoreRef<'core>,
         context: vapoursynth::plugins::FrameContext,
         n: usize,
     ) -> std::result::Result<Option<vapoursynth::prelude::FrameRef<'core>>, anyhow::Error> {
-        todo!()
+        self.clip.request_frame_filter(context, n);
+        if let Some(ref pelclip) = self.pelclip {
+            pelclip.request_frame_filter(context, n);
+        }
+        Ok(None)
     }
 
     fn get_frame(
@@ -251,6 +266,89 @@ impl<'core> Filter<'core> for Super<'core> {
         context: vapoursynth::plugins::FrameContext,
         n: usize,
     ) -> std::result::Result<vapoursynth::prelude::FrameRef<'core>, anyhow::Error> {
-        todo!()
+        let src = self
+            .clip
+            .get_frame_filter(context, n)
+            .expect("Super: called get_frame_filter before request_frame_filter (clip)");
+
+        let src_pel = self.pelclip.as_ref().map(|pelclip| {
+            pelclip.get_frame_filter(context, n).expect(
+                "Super: called get_frame_filter before request_frame_filter (pelclip), this \
+                 should not happen!",
+            )
+        });
+
+        // SAFETY: We write to the planes before returning
+        let dest = unsafe {
+            let mut dest =
+                FrameRefMut::new_uninitialized(core, Some(&src), self.format, Resolution {
+                    width: self.super_width,
+                    height: self.super_width,
+                });
+            for plane in 0..(self.format.plane_count()) {
+                match self.format.bytes_per_sample() {
+                    1 => {
+                        dest.plane_mut(plane)
+                            .expect("Super: plane should exist but does not")
+                            .fill(0u8);
+                    }
+                    2 => {
+                        dest.plane_mut(plane)
+                            .expect("Super: plane should exist but does not")
+                            .fill(0u8);
+                    }
+                    _ => unreachable!("Super: does not support clips greater than 16 bits"),
+                }
+            }
+            dest
+        };
+
+        // MVGroupOfFrames pSrcGOF;
+        // mvgofInit(&pSrcGOF, d->nLevels, d->nWidth, d->nHeight, d->nPel, d->nHPad,
+        // d->nVPad, d->nModeYUV, d->opt, d->xRatioUV, d->yRatioUV,
+        // d->vi.format.bitsPerSample);
+
+        // mvgofUpdate(&pSrcGOF, pDst, nDstPitch);
+
+        // MVPlaneSet planes[3] = { YPLANE, UPLANE, VPLANE };
+
+        // for (int plane = 0; plane < d->vi.format.numPlanes; plane++)
+        //     mvfFillPlane(pSrcGOF.frames[0], pSrc[plane], nSrcPitch[plane], plane);
+
+        // mvgofReduce(&pSrcGOF, d->nModeYUV, d->rfilter);
+        // mvgofPad(&pSrcGOF, d->nModeYUV);
+
+        // if (d->usePelClip) {
+        //     MVFrame *srcFrames = pSrcGOF.frames[0];
+
+        //     for (int plane = 0; plane < d->vi.format.numPlanes; plane++) {
+        //         pSrcPel[plane] = vsapi->getReadPtr(srcPel, plane);
+        //         nSrcPelPitch[plane] = vsapi->getStride(srcPel, plane);
+
+        //         MVPlane *srcPlane = srcFrames->planes[plane];
+        //         if (d->nModeYUV & planes[plane])
+        //             mvpRefineExt(srcPlane, pSrcPel[plane], nSrcPelPitch[plane],
+        // d->isPelClipPadded);     }
+        // } else
+        //     mvgofRefine(&pSrcGOF, d->nModeYUV, d->sharp);
+
+        // vsapi->freeFrame(src);
+        // if (d->usePelClip)
+        //     vsapi->freeFrame(srcPel);
+
+        // mvgofDeinit(&pSrcGOF);
+
+        // if (n == 0) {
+        //     VSMap *props = vsapi->getFramePropertiesRW(dst);
+
+        //     vsapi->mapSetInt(props, "Super_height", d->nHeight, maReplace);
+        //     vsapi->mapSetInt(props, "Super_hpad", d->nHPad, maReplace);
+        //     vsapi->mapSetInt(props, "Super_vpad", d->nVPad, maReplace);
+        //     vsapi->mapSetInt(props, "Super_pel", d->nPel, maReplace);
+        //     vsapi->mapSetInt(props, "Super_modeyuv", d->nModeYUV, maReplace);
+        //     vsapi->mapSetInt(props, "Super_levels", d->nLevels, maReplace);
+        // }
+
+        Ok(dest.into())
     }
 }
