@@ -4,14 +4,13 @@ use std::num::{NonZeroU8, NonZeroUsize};
 
 use anyhow::Result;
 use smallvec::SmallVec;
-use vapoursynth::{frame::Frame, prelude::Component};
 
 use crate::{
     mv_frame::{MVFrame, plane_height_luma, plane_super_offset, plane_width_luma},
     params::Subpel,
 };
 
-pub struct MVGroupOfFrames<'a, T: Component + Copy> {
+pub struct MVGroupOfFrames {
     level_count: u16,
     width: [NonZeroUsize; 3],
     height: [NonZeroUsize; 3],
@@ -21,11 +20,11 @@ pub struct MVGroupOfFrames<'a, T: Component + Copy> {
     x_ratio_uv: NonZeroUsize,
     y_ratio_uv: NonZeroUsize,
     chroma: bool,
-    pub frames: Box<[MVFrame<'a, T>]>,
+    pub frames: Box<[MVFrame]>,
 }
 
-impl<'a, T: Component + Copy> MVGroupOfFrames<'a, T> {
-    pub fn new<'core>(
+impl MVGroupOfFrames {
+    pub fn new(
         level_count: u16,
         width: NonZeroUsize,
         height: NonZeroUsize,
@@ -82,9 +81,9 @@ impl<'a, T: Component + Copy> MVGroupOfFrames<'a, T> {
     }
 
     // TODO: Merge into `new`
-    pub fn update(&mut self, src: &'a Frame<'a>, pitch: &[NonZeroUsize; 3]) -> Result<()> {
+    pub fn update(&mut self, pitch: &[NonZeroUsize; 3]) -> Result<()> {
         for i in 0..self.level_count {
-            let mut planes: SmallVec<[&'a mut [T]; 3]> = SmallVec::with_capacity(3);
+            let mut planes = SmallVec::with_capacity(3);
             for plane in 0..(if self.chroma { 1 } else { 3 }) {
                 let offset = plane_super_offset(
                     plane > 0,
@@ -95,7 +94,7 @@ impl<'a, T: Component + Copy> MVGroupOfFrames<'a, T> {
                     pitch[plane],
                     self.y_ratio_uv,
                 );
-                planes[plane] = &mut src.plane(plane)?[offset..];
+                planes[plane] = offset;
             }
             self.frames[i as usize].update(&planes, pitch);
         }

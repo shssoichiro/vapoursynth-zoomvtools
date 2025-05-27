@@ -270,7 +270,7 @@ impl<'core> Super<'core> {
         });
 
         // SAFETY: We write to the planes before returning
-        let dest = unsafe {
+        let mut dest = unsafe {
             let mut dest =
                 FrameRefMut::new_uninitialized(core, Some(&src), self.format, Resolution {
                     width: self.super_width.get(),
@@ -310,7 +310,7 @@ impl<'core> Super<'core> {
             ]
         };
 
-        let mut src_gof = MVGroupOfFrames::<T>::new(
+        let mut src_gof = MVGroupOfFrames::new(
             self.levels,
             self.width,
             self.height,
@@ -322,17 +322,19 @@ impl<'core> Super<'core> {
             self.y_ratio_uv,
             NonZeroU8::try_from(self.format.bits_per_sample())?,
         )?;
-        src_gof.update(&dest, &dest_pitch)?;
+        src_gof.update(&dest_pitch)?;
 
         // TODO: Finish me
         let planes = [MVPlaneSet::YPLANE, MVPlaneSet::UPLANE, MVPlaneSet::VPLANE];
 
         for plane in 0..(if self.chroma { 1 } else { 3 }) {
             src_gof.frames[0].planes[plane].fill_plane(
-                src.plane(plane)
+                src.plane::<T>(plane)
                     .expect("Super: source plane should exist but does not"),
                 // SAFETY: stride must be at least width and non-zero
                 unsafe { NonZeroUsize::new_unchecked(src.stride(plane)) },
+                dest.plane_mut(plane)
+                    .expect("Super: destination plane should exist but does not"),
             );
         }
 

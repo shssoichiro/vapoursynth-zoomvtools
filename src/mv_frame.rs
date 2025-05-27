@@ -7,12 +7,12 @@ use vapoursynth::prelude::Component;
 
 use crate::{params::Subpel, util::vs_bitblt};
 
-pub struct MVFrame<'a, T: Component + Copy> {
-    pub planes: SmallVec<[MVPlane<'a, T>; 3]>,
+pub struct MVFrame {
+    pub planes: SmallVec<[MVPlane; 3]>,
     chroma: bool,
 }
 
-impl<'a, T: Component + Copy> MVFrame<'a, T> {
+impl MVFrame {
     pub fn new(
         width: NonZeroUsize,
         height: NonZeroUsize,
@@ -52,15 +52,15 @@ impl<'a, T: Component + Copy> MVFrame<'a, T> {
     }
 
     // TODO: Merge into `new`
-    pub fn update(&mut self, src: &SmallVec<[&'a [T]; 3]>, pitch: &[NonZeroUsize; 3]) {
+    pub fn update(&mut self, plane_offsets: &SmallVec<[usize; 3]>, pitch: &[NonZeroUsize; 3]) {
         for (i, plane) in self.planes.iter_mut().enumerate() {
-            plane.update(&src[i], pitch[i]);
+            plane.update(plane_offsets[i], pitch[i]);
         }
     }
 }
 
-pub struct MVPlane<'a, T: Component + Copy> {
-    plane: SmallVec<[&'a [T]; 16]>,
+pub struct MVPlane {
+    subpel_window_offsets: SmallVec<[usize; 16]>,
     width: NonZeroUsize,
     height: NonZeroUsize,
     padded_width: NonZeroUsize,
@@ -79,7 +79,7 @@ pub struct MVPlane<'a, T: Component + Copy> {
     is_filled: bool,
 }
 
-impl<'a, T: Component + Copy> MVPlane<'a, T> {
+impl MVPlane {
     pub fn new(
         width: NonZeroUsize,
         height: NonZeroUsize,
@@ -109,14 +109,14 @@ impl<'a, T: Component + Copy> MVPlane<'a, T> {
             is_refined: false,
             is_filled: false,
             // Temporary values
-            plane: SmallVec::new(),
+            subpel_window_offsets: SmallVec::new(),
             offset_padding: 0,
             pitch: width,
         })
     }
 
     // TODO: Merge into `new`
-    pub fn update(&mut self, src: &'a [T], pitch: NonZeroUsize) {
+    pub fn update(&mut self, plane_offset: usize, pitch: NonZeroUsize) {
         self.pitch = pitch;
         self.offset_padding =
             pitch.get() * self.vpad + self.hpad * self.bytes_per_sample.get() as usize;
@@ -124,12 +124,12 @@ impl<'a, T: Component + Copy> MVPlane<'a, T> {
         let pel_val = usize::from(self.pel);
         let windows = pel_val * pel_val;
 
-        let mut plane = SmallVec::with_capacity(windows);
+        let mut offsets = SmallVec::with_capacity(windows);
         for i in 0..windows {
             let offset = i * pitch.get() * self.padded_height.get();
-            plane.push(&src[offset..]);
+            offsets.push(plane_offset + offset);
         }
-        self.plane = plane;
+        self.subpel_window_offsets = offsets;
     }
 
     pub fn reset_state(&mut self) {
@@ -138,13 +138,19 @@ impl<'a, T: Component + Copy> MVPlane<'a, T> {
         self.is_filled = false;
     }
 
-    pub fn fill_plane(&mut self, src: &'a [T], src_pitch: NonZeroUsize) {
+    pub fn fill_plane<T: Component + Copy>(
+        &mut self,
+        src: &[T],
+        src_pitch: NonZeroUsize,
+        dest: &mut [T],
+    ) {
         if self.is_filled {
             return;
         }
 
+        let offset = self.subpel_window_offsets[0] + self.offset_padding;
         vs_bitblt(
-            &mut self.plane[0][self.offset_padding..],
+            &mut dest[offset..],
             self.pitch,
             src,
             src_pitch,
