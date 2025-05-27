@@ -3,14 +3,15 @@
 use std::num::{NonZeroU8, NonZeroUsize};
 
 use anyhow::Result;
-use vapoursynth::frame::{Frame, FrameRef, FrameRefMut};
+use smallvec::SmallVec;
+use vapoursynth::frame::Frame;
 
 use crate::{
-    mv_frame::{MVFrame, MVPlane, plane_height_luma, plane_width_luma},
+    mv_frame::{MVFrame, plane_height_luma, plane_super_offset, plane_width_luma},
     params::Subpel,
 };
 
-pub struct MVGroupOfFrames {
+pub struct MVGroupOfFrames<'a> {
     level_count: u16,
     width: [NonZeroUsize; 3],
     height: [NonZeroUsize; 3],
@@ -19,10 +20,10 @@ pub struct MVGroupOfFrames {
     vpad: [usize; 3],
     x_ratio_uv: NonZeroUsize,
     y_ratio_uv: NonZeroUsize,
-    frames: Box<[MVFrame]>,
+    frames: Box<[MVFrame<'a>]>,
 }
 
-impl MVGroupOfFrames {
+impl<'a> MVGroupOfFrames<'a> {
     pub fn new<'core>(
         level_count: u16,
         width: NonZeroUsize,
@@ -34,11 +35,13 @@ impl MVGroupOfFrames {
         x_ratio_uv: NonZeroUsize,
         y_ratio_uv: NonZeroUsize,
         bits_per_sample: NonZeroU8,
-        src: &Frame<'core>,
+        src: &'a Frame<'core>,
         dest: &Frame<'core>,
     ) -> Result<Self> {
-        let chroma_width = NonZeroUsize::try_from(width.get() / x_ratio_uv.get())?;
-        let chroma_height = NonZeroUsize::try_from(height.get() / y_ratio_uv.get())?;
+        // SAFETY: Width must be at least the value of its ratio
+        let chroma_width = unsafe { NonZeroUsize::new_unchecked(width.get() / x_ratio_uv.get()) };
+        // SAFETY: Height must be at least the value of its ratio
+        let chroma_height = unsafe { NonZeroUsize::new_unchecked(height.get() / y_ratio_uv.get()) };
         let chroma_hpad = hpad / x_ratio_uv.get();
         let chroma_vpad = vpad / y_ratio_uv.get();
 
@@ -55,25 +58,36 @@ impl MVGroupOfFrames {
         };
 
         let mut frames = Vec::with_capacity(level_count as usize);
-        frames.push(MVFrame::new(
-            this.width[0],
-            this.height[0],
-            this.pel,
-            this.hpad[0],
-            this.vpad[0],
-            chroma,
-            this.x_ratio_uv,
-            this.y_ratio_uv,
-            bits_per_sample,
-        )?);
 
-        for i in 1..level_count {
+        for i in 0..level_count {
             let width_i = plane_width_luma(this.width[0], i, this.x_ratio_uv, this.hpad[0]);
             let height_i = plane_height_luma(this.height[0], i, this.y_ratio_uv, this.vpad[0]);
 
+            let mut planes: SmallVec<[&[u8]; 3]> = SmallVec::with_capacity(3);
+            // SAFETY: constant is not zero.
+            let mut dest_pitch = [unsafe { NonZeroUsize::new_unchecked(1) }; 3];
+            #[allow(clippy::needless_range_loop)]
+            for plane in 0..(if chroma { 1 } else { 3 }) {
+                // SAFETY: stride must be at least width and non-zero
+                dest_pitch[plane] = unsafe { NonZeroUsize::new_unchecked(dest.stride(plane)) };
+                let plane_src = src
+                    .plane(plane)
+                    .expect("Super: plane should exist but does not");
+                let offset = plane_super_offset(
+                    plane > 0,
+                    this.height[plane],
+                    i,
+                    this.pel,
+                    this.vpad[plane],
+                    dest_pitch[plane],
+                    this.y_ratio_uv,
+                );
+                planes.push(&plane_src[offset..]);
+            }
+
             frames[i as usize] = MVFrame::new(
-                NonZeroUsize::try_from(width_i)?,
-                NonZeroUsize::try_from(height_i)?,
+                width_i,
+                height_i,
                 Subpel::Full,
                 this.hpad[0],
                 this.vpad[0],
@@ -81,11 +95,13 @@ impl MVGroupOfFrames {
                 this.x_ratio_uv,
                 this.y_ratio_uv,
                 bits_per_sample,
+                planes,
+                dest_pitch,
             )?;
         }
 
         this.frames = frames.into_boxed_slice();
-        // TODO: mvgofUpdate(&pSrcGOF, pDst, nDstPitch);
+
         Ok(this)
     }
 }

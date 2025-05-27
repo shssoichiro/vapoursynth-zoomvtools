@@ -5,12 +5,12 @@ use smallvec::SmallVec;
 
 use crate::params::Subpel;
 
-pub struct MVFrame {
-    planes: SmallVec<[MVPlane; 3]>,
+pub struct MVFrame<'a> {
+    planes: SmallVec<[MVPlane<'a>; 3]>,
     chroma: bool,
 }
 
-impl MVFrame {
+impl<'a> MVFrame<'a> {
     pub fn new(
         width: NonZeroUsize,
         height: NonZeroUsize,
@@ -21,9 +21,13 @@ impl MVFrame {
         x_ratio_uv: NonZeroUsize,
         y_ratio_uv: NonZeroUsize,
         bits_per_sample: NonZeroU8,
+        src_planes: SmallVec<[&'a [u8]; 3]>,
+        pitch: [NonZeroUsize; 3],
     ) -> Result<Self> {
-        let chroma_width = NonZeroUsize::try_from(width.get() / x_ratio_uv.get())?;
-        let chroma_height = NonZeroUsize::try_from(height.get() / y_ratio_uv.get())?;
+        // SAFETY: Width must be at least the value of its ratio
+        let chroma_width = unsafe { NonZeroUsize::new_unchecked(width.get() / x_ratio_uv.get()) };
+        // SAFETY: Height must be at least the value of its ratio
+        let chroma_height = unsafe { NonZeroUsize::new_unchecked(height.get() / y_ratio_uv.get()) };
         let chroma_hpad = hpad / x_ratio_uv.get();
         let chroma_vpad = vpad / y_ratio_uv.get();
 
@@ -41,17 +45,17 @@ impl MVFrame {
                 hpad[i],
                 vpad[i],
                 bits_per_sample,
+                src_planes[i],
+                pitch[i],
             )?);
         }
-
-        // TODO: mvfupdate
 
         Ok(Self { planes, chroma })
     }
 }
 
-pub struct MVPlane {
-    plane: SmallVec<[Box<[u8]>; 16]>,
+pub struct MVPlane<'a> {
+    plane: SmallVec<[&'a [u8]; 16]>,
     width: NonZeroUsize,
     height: NonZeroUsize,
     padded_width: NonZeroUsize,
@@ -70,7 +74,7 @@ pub struct MVPlane {
     is_filled: bool,
 }
 
-impl MVPlane {
+impl<'a> MVPlane<'a> {
     pub fn new(
         width: NonZeroUsize,
         height: NonZeroUsize,
@@ -78,14 +82,23 @@ impl MVPlane {
         hpad: usize,
         vpad: usize,
         bits_per_sample: NonZeroU8,
+        src_plane: &'a [u8],
+        pitch: NonZeroUsize,
     ) -> Result<Self> {
         let pel_val = usize::from(pel);
         let padded_width = width.saturating_add(2 * hpad);
         let padded_height = height.saturating_add(2 * vpad);
+        let bytes_per_sample = NonZeroU8::try_from(bits_per_sample.saturating_add(7).get() / 8)?;
+        let offset_padding = pitch.get() * vpad + hpad * bytes_per_sample.get() as usize;
 
-        // TODO: mvpupdate
+        let mut plane = SmallVec::with_capacity(pel_val * pel_val);
+        for i in 0..(pel_val * pel_val) {
+            let offset = i * pitch.get() * padded_height.get();
+            plane.push(&src_plane[offset..]);
+        }
+
         Ok(Self {
-            plane: SmallVec::from_elem(Box::new([]), pel_val * pel_val),
+            plane,
             width,
             height,
             padded_width,
@@ -95,13 +108,13 @@ impl MVPlane {
             hpad_pel: hpad * pel_val,
             vpad_pel: vpad * pel_val,
             bits_per_sample,
-            bytes_per_sample: NonZeroU8::try_from(bits_per_sample.saturating_add(7).get() / 8)?,
+            bytes_per_sample,
             pel,
-            pitch: width,
-            offset_padding: Default::default(),
-            is_padded: Default::default(),
-            is_refined: Default::default(),
-            is_filled: Default::default(),
+            pitch,
+            offset_padding,
+            is_padded: false,
+            is_refined: false,
+            is_filled: false,
         })
     }
 }
@@ -111,9 +124,7 @@ pub fn plane_height_luma(
     level: u16,
     y_ratio_uv: NonZeroUsize,
     vpad: usize,
-) -> usize {
-    // The result should be non-zero because `y_ratio_uv` is between 1 and 4,
-    // but we cannot guarantee that with current APIs.
+) -> NonZeroUsize {
     let mut height = src_height.get();
     let y_ratio_uv_val = y_ratio_uv.get();
 
@@ -125,7 +136,8 @@ pub fn plane_height_luma(
         };
     }
 
-    height
+    // SAFETY: must be non-zero because `height` is at least equal to its ratio
+    unsafe { NonZeroUsize::new_unchecked(height) }
 }
 
 pub fn plane_width_luma(
@@ -133,7 +145,7 @@ pub fn plane_width_luma(
     level: u16,
     x_ratio_uv: NonZeroUsize,
     hpad: usize,
-) -> usize {
+) -> NonZeroUsize {
     // The result should be non-zero because `x_ratio_uv` is between 1 and 4,
     // but we cannot guarantee that with current APIs.
     let mut width = src_width.get();
@@ -147,7 +159,8 @@ pub fn plane_width_luma(
         };
     }
 
-    width
+    // SAFETY: must be non-zero because `width` is at least equal to its ratio
+    unsafe { NonZeroUsize::new_unchecked(width) }
 }
 
 pub fn plane_super_offset(
@@ -160,7 +173,7 @@ pub fn plane_super_offset(
     y_ratio_uv: NonZeroUsize,
 ) -> usize {
     // storing subplanes in superframes may be implemented by various ways
-    let mut height = src_height.get(); // luma or chroma
+    let mut height; // luma or chroma
 
     let mut offset;
 
@@ -181,9 +194,11 @@ pub fn plane_super_offset(
                     i,
                     y_ratio_uv,
                     vpad * y_ratio_uv_val,
-                ) / y_ratio_uv_val
+                )
+                .get()
+                    / y_ratio_uv_val
             } else {
-                plane_height_luma(src_height, i, y_ratio_uv, vpad)
+                plane_height_luma(src_height, i, y_ratio_uv, vpad).get()
             };
 
             offset += plane_pitch_val * (height + vpad * 2);

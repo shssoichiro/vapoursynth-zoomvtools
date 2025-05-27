@@ -116,10 +116,13 @@ impl<'core> Super<'core> {
             vapoursynth::prelude::Property::Variable => {
                 bail!("Super: variable resolution input clips are not supported")
             }
-            vapoursynth::prelude::Property::Constant(resolution) => (
-                NonZeroUsize::try_from(resolution.width)?,
-                NonZeroUsize::try_from(resolution.height)?,
-            ),
+            // SAFETY: width and height must be positive
+            vapoursynth::prelude::Property::Constant(resolution) => unsafe {
+                (
+                    NonZeroUsize::new_unchecked(resolution.width),
+                    NonZeroUsize::new_unchecked(resolution.height),
+                )
+            },
         };
         let format = match video_info.format {
             vapoursynth::prelude::Property::Variable => {
@@ -154,14 +157,15 @@ impl<'core> Super<'core> {
         };
 
         let mut levels_max = 0u16;
-        while plane_height_luma(height, levels_max, y_ratio_uv, vpad) >= y_ratio_uv.get() * 2
-            && plane_width_luma(width, levels_max, x_ratio_uv, hpad) >= x_ratio_uv.get() * 2
+        while plane_height_luma(height, levels_max, y_ratio_uv, vpad).get() >= y_ratio_uv.get() * 2
+            && plane_width_luma(width, levels_max, x_ratio_uv, hpad).get() >= x_ratio_uv.get() * 2
         {
             levels_max += 1;
         }
         if levels == 0 || levels > levels_max {
             levels = levels_max;
         }
+        debug_assert!(levels > 0);
 
         // Validate `pelclip` video info
         let (use_pelclip, is_pelclip_padded) = if let Some(ref pelclip) = pelclip {
@@ -170,10 +174,13 @@ impl<'core> Super<'core> {
                 vapoursynth::prelude::Property::Variable => {
                     bail!("Super: 'pelclip' must be constant resolution")
                 }
-                vapoursynth::prelude::Property::Constant(resolution) => (
-                    NonZeroUsize::try_from(resolution.width)?,
-                    NonZeroUsize::try_from(resolution.height)?,
-                ),
+                // SAFETY: width and height must be positive
+                vapoursynth::prelude::Property::Constant(resolution) => unsafe {
+                    (
+                        NonZeroUsize::new_unchecked(resolution.width),
+                        NonZeroUsize::new_unchecked(resolution.height),
+                    )
+                },
             };
             match pelclip_info.format {
                 vapoursynth::prelude::Property::Variable => {
@@ -209,10 +216,13 @@ impl<'core> Super<'core> {
         };
 
         let mut super_width = width.saturating_add(2 * hpad);
-        let mut super_height = NonZeroUsize::try_from(
-            plane_super_offset(false, height, levels, pel, vpad, super_width, y_ratio_uv)
-                / super_width,
-        )?;
+        // SAFETY: cannot return zero as long as `levels` is positive
+        let mut super_height = unsafe {
+            NonZeroUsize::new_unchecked(
+                plane_super_offset(false, height, levels, pel, vpad, super_width, y_ratio_uv)
+                    / super_width,
+            )
+        };
         if y_ratio_uv.get() == 2 && super_height.get() & 1 > 0 {
             super_height = super_height.saturating_add(1);
         }
@@ -329,6 +339,7 @@ impl<'core> Filter<'core> for Super<'core> {
             &dest,
         )?;
 
+        // TODO: Finish me
         // MVPlaneSet planes[3] = { YPLANE, UPLANE, VPLANE };
 
         // for (int plane = 0; plane < d->vi.format.numPlanes; plane++)
