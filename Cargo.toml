@@ -11,6 +11,11 @@ vapoursynth = { version = "0.4.0", features = ["vapoursynth-api-36"] }
 criterion = "0.6.0"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.1.0"
+vapoursynth = { version = "0.4.0", features = [
+    "vapoursynth-api-36",
+    "vsscript-api-32",
+    "vsscript-functions",
+] }
 
 [lib]
 crate-type = ["cdylib"]

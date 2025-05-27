@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use anyhow::{Result, bail};
 use vapoursynth::{
     format::{ColorFamily, SampleType},

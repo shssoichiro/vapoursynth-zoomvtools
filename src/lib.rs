@@ -15,6 +15,8 @@ mod mv_compensate;
 mod mv_recalculate;
 mod mv_super;
 mod params;
+#[cfg(test)]
+mod tests;
 mod util;
 
 pub const PLUGIN_IDENTIFIER: &str = "com.soichiro.zoomvtools";
