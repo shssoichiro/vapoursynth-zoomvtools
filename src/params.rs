@@ -1,3 +1,5 @@
+use std::num::NonZeroUsize;
+
 use anyhow::{Result, bail};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -27,6 +29,13 @@ impl From<Subpel> for usize {
             Subpel::Half => 2,
             Subpel::Quarter => 4,
         }
+    }
+}
+
+impl From<Subpel> for NonZeroUsize {
+    fn from(value: Subpel) -> Self {
+        // SAFETY: the int value of this enum can never be zero
+        unsafe { NonZeroUsize::new_unchecked(usize::from(value)) }
     }
 }
 

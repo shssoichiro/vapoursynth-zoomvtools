@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests;
 
-use anyhow::{Result, anyhow, bail};
-use smallvec::SmallVec;
+use std::num::{NonZeroU8, NonZeroUsize};
+
+use anyhow::{Result, bail};
 use vapoursynth::{
     format::{ColorFamily, Format, SampleType},
     frame::FrameRefMut,
@@ -13,8 +14,9 @@ use vapoursynth::{
 };
 
 use crate::{
+    mv_frame::{plane_height_luma, plane_super_offset, plane_width_luma},
+    mv_gof::MVGroupOfFrames,
     params::{ReduceFilter, Subpel, SubpelMethod},
-    util::{plane_height_luma, plane_super_offset, plane_width_luma},
 };
 
 /// Get source clip and prepare special "super" clip with multilevel
@@ -73,13 +75,13 @@ pub struct Super<'core> {
     pelclip: Option<Node<'core>>,
 
     // Internal fields
-    width: usize,
-    height: usize,
+    width: NonZeroUsize,
+    height: NonZeroUsize,
     format: Format<'core>,
-    super_width: usize,
-    super_height: usize,
-    x_ratio_uv: usize,
-    y_ratio_uv: usize,
+    super_width: NonZeroUsize,
+    super_height: NonZeroUsize,
+    x_ratio_uv: NonZeroUsize,
+    y_ratio_uv: NonZeroUsize,
     is_pelclip_padded: bool,
 }
 
@@ -114,9 +116,10 @@ impl<'core> Super<'core> {
             vapoursynth::prelude::Property::Variable => {
                 bail!("Super: variable resolution input clips are not supported")
             }
-            vapoursynth::prelude::Property::Constant(resolution) => {
-                (resolution.width, resolution.height)
-            }
+            vapoursynth::prelude::Property::Constant(resolution) => (
+                NonZeroUsize::try_from(resolution.width)?,
+                NonZeroUsize::try_from(resolution.height)?,
+            ),
         };
         let format = match video_info.format {
             vapoursynth::prelude::Property::Variable => {
@@ -142,12 +145,17 @@ impl<'core> Super<'core> {
             chroma = false;
         }
 
-        let x_ratio_uv = 1 << format.sub_sampling_w();
-        let y_ratio_uv = 1 << format.sub_sampling_h();
+        // SAFETY: operation cannot result in zero
+        let (x_ratio_uv, y_ratio_uv) = unsafe {
+            (
+                NonZeroUsize::new_unchecked(1 << format.sub_sampling_w()),
+                NonZeroUsize::new_unchecked(1 << format.sub_sampling_h()),
+            )
+        };
 
         let mut levels_max = 0u16;
-        while plane_height_luma(height, levels_max, y_ratio_uv, vpad) >= y_ratio_uv * 2
-            && plane_width_luma(width, levels_max, x_ratio_uv, hpad) >= x_ratio_uv * 2
+        while plane_height_luma(height, levels_max, y_ratio_uv, vpad) >= y_ratio_uv.get() * 2
+            && plane_width_luma(width, levels_max, x_ratio_uv, hpad) >= x_ratio_uv.get() * 2
         {
             levels_max += 1;
         }
@@ -162,9 +170,10 @@ impl<'core> Super<'core> {
                 vapoursynth::prelude::Property::Variable => {
                     bail!("Super: 'pelclip' must be constant resolution")
                 }
-                vapoursynth::prelude::Property::Constant(resolution) => {
-                    (resolution.width, resolution.height)
-                }
+                vapoursynth::prelude::Property::Constant(resolution) => (
+                    NonZeroUsize::try_from(resolution.width)?,
+                    NonZeroUsize::try_from(resolution.height)?,
+                ),
             };
             match pelclip_info.format {
                 vapoursynth::prelude::Property::Variable => {
@@ -178,11 +187,12 @@ impl<'core> Super<'core> {
             };
 
             if pel >= Subpel::Half {
-                let pel = usize::from(pel);
-                if pelclip_w == width * pel && pelclip_h == height * pel {
+                let pel = NonZeroUsize::from(pel);
+                if pelclip_w == width.saturating_mul(pel) && pelclip_h == height.saturating_mul(pel)
+                {
                     (true, false)
-                } else if pelclip_w == (width + hpad * 2) * pel
-                    && pelclip_h == (height + vpad * 2) * pel
+                } else if pelclip_w == width.saturating_add(hpad * 2).saturating_mul(pel)
+                    && pelclip_h == height.saturating_add(vpad * 2).saturating_mul(pel)
                 {
                     (true, true)
                 } else {
@@ -198,15 +208,16 @@ impl<'core> Super<'core> {
             (false, false)
         };
 
-        let mut super_width = width + 2 * hpad;
-        let mut super_height =
+        let mut super_width = width.saturating_add(2 * hpad);
+        let mut super_height = NonZeroUsize::try_from(
             plane_super_offset(false, height, levels, pel, vpad, super_width, y_ratio_uv)
-                / super_width;
-        if y_ratio_uv == 2 && super_height & 1 > 0 {
-            super_height += 1;
+                / super_width,
+        )?;
+        if y_ratio_uv.get() == 2 && super_height.get() & 1 > 0 {
+            super_height = super_height.saturating_add(1);
         }
-        if x_ratio_uv == 2 && super_width & 1 > 0 {
-            super_width += 1;
+        if x_ratio_uv.get() == 2 && super_width.get() & 1 > 0 {
+            super_width = super_width.saturating_add(1);
         }
 
         Ok(Self {
@@ -239,8 +250,8 @@ impl<'core> Filter<'core> for Super<'core> {
     ) -> Vec<vapoursynth::video_info::VideoInfo<'core>> {
         let mut info = self.clip.info();
         info.resolution = Property::Constant(Resolution {
-            width: self.super_width,
-            height: self.super_width,
+            width: self.super_width.get(),
+            height: self.super_width.get(),
         });
         vec![info]
     }
@@ -261,7 +272,7 @@ impl<'core> Filter<'core> for Super<'core> {
 
     fn get_frame(
         &self,
-        api: vapoursynth::prelude::API,
+        _api: vapoursynth::prelude::API,
         core: vapoursynth::core::CoreRef<'core>,
         context: vapoursynth::plugins::FrameContext,
         n: usize,
@@ -282,8 +293,8 @@ impl<'core> Filter<'core> for Super<'core> {
         let dest = unsafe {
             let mut dest =
                 FrameRefMut::new_uninitialized(core, Some(&src), self.format, Resolution {
-                    width: self.super_width,
-                    height: self.super_width,
+                    width: self.super_width.get(),
+                    height: self.super_width.get(),
                 });
             for plane in 0..(self.format.plane_count()) {
                 match self.format.bytes_per_sample() {
@@ -303,12 +314,20 @@ impl<'core> Filter<'core> for Super<'core> {
             dest
         };
 
-        // MVGroupOfFrames pSrcGOF;
-        // mvgofInit(&pSrcGOF, d->nLevels, d->nWidth, d->nHeight, d->nPel, d->nHPad,
-        // d->nVPad, d->nModeYUV, d->opt, d->xRatioUV, d->yRatioUV,
-        // d->vi.format.bitsPerSample);
-
-        // mvgofUpdate(&pSrcGOF, pDst, nDstPitch);
+        let src_gof = MVGroupOfFrames::new(
+            self.levels,
+            self.width,
+            self.height,
+            self.pel,
+            self.hpad,
+            self.vpad,
+            self.chroma,
+            self.x_ratio_uv,
+            self.y_ratio_uv,
+            NonZeroU8::try_from(self.format.bits_per_sample())?,
+            &src,
+            &dest,
+        )?;
 
         // MVPlaneSet planes[3] = { YPLANE, UPLANE, VPLANE };
 

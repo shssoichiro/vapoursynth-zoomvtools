@@ -12,12 +12,13 @@ use vapoursynth::{
 
 mod mv_analyse;
 mod mv_compensate;
+mod mv_frame;
+mod mv_gof;
 mod mv_recalculate;
 mod mv_super;
 mod params;
 #[cfg(test)]
 mod tests;
-mod util;
 
 pub const PLUGIN_IDENTIFIER: &str = "com.soichiro.zoomvtools";
 pub const PLUGIN_NAME: &str = "zoomvtools";
