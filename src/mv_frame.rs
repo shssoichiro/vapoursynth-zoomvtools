@@ -7,12 +7,12 @@ use vapoursynth::prelude::Component;
 
 use crate::{params::Subpel, util::vs_bitblt};
 
-pub struct MVFrame<'a, T: Component> {
+pub struct MVFrame<'a, T: Component + Copy> {
     pub planes: SmallVec<[MVPlane<'a, T>; 3]>,
     chroma: bool,
 }
 
-impl<'a, T: Component> MVFrame<'a, T> {
+impl<'a, T: Component + Copy> MVFrame<'a, T> {
     pub fn new(
         width: NonZeroUsize,
         height: NonZeroUsize,
@@ -23,8 +23,6 @@ impl<'a, T: Component> MVFrame<'a, T> {
         x_ratio_uv: NonZeroUsize,
         y_ratio_uv: NonZeroUsize,
         bits_per_sample: NonZeroU8,
-        src_planes: SmallVec<[&'a [T]; 3]>,
-        pitch: [NonZeroUsize; 3],
     ) -> Result<Self> {
         // SAFETY: Width must be at least the value of its ratio
         let chroma_width = unsafe { NonZeroUsize::new_unchecked(width.get() / x_ratio_uv.get()) };
@@ -47,16 +45,21 @@ impl<'a, T: Component> MVFrame<'a, T> {
                 hpad[i],
                 vpad[i],
                 bits_per_sample,
-                src_planes[i],
-                pitch[i],
             )?);
         }
 
         Ok(Self { planes, chroma })
     }
+
+    // TODO: Merge into `new`
+    pub fn update(&mut self, src: &SmallVec<[&'a [T]; 3]>, pitch: &[NonZeroUsize; 3]) {
+        for (i, plane) in self.planes.iter_mut().enumerate() {
+            plane.update(&src[i], pitch[i]);
+        }
+    }
 }
 
-pub struct MVPlane<'a, T: Component> {
+pub struct MVPlane<'a, T: Component + Copy> {
     plane: SmallVec<[&'a [T]; 16]>,
     width: NonZeroUsize,
     height: NonZeroUsize,
@@ -76,7 +79,7 @@ pub struct MVPlane<'a, T: Component> {
     is_filled: bool,
 }
 
-impl<'a, T: Component> MVPlane<'a, T> {
+impl<'a, T: Component + Copy> MVPlane<'a, T> {
     pub fn new(
         width: NonZeroUsize,
         height: NonZeroUsize,
@@ -84,23 +87,13 @@ impl<'a, T: Component> MVPlane<'a, T> {
         hpad: usize,
         vpad: usize,
         bits_per_sample: NonZeroU8,
-        src_plane: &'a [T],
-        pitch: NonZeroUsize,
     ) -> Result<Self> {
         let pel_val = usize::from(pel);
         let padded_width = width.saturating_add(2 * hpad);
         let padded_height = height.saturating_add(2 * vpad);
         let bytes_per_sample = NonZeroU8::try_from(bits_per_sample.saturating_add(7).get() / 8)?;
-        let offset_padding = pitch.get() * vpad + hpad * bytes_per_sample.get() as usize;
-
-        let mut plane = SmallVec::with_capacity(pel_val * pel_val);
-        for i in 0..(pel_val * pel_val) {
-            let offset = i * pitch.get() * padded_height.get();
-            plane.push(&src_plane[offset..]);
-        }
 
         Ok(Self {
-            plane,
             width,
             height,
             padded_width,
@@ -112,12 +105,37 @@ impl<'a, T: Component> MVPlane<'a, T> {
             bits_per_sample,
             bytes_per_sample,
             pel,
-            pitch,
-            offset_padding,
             is_padded: false,
             is_refined: false,
             is_filled: false,
+            // Temporary values
+            plane: SmallVec::new(),
+            offset_padding: 0,
+            pitch: width,
         })
+    }
+
+    // TODO: Merge into `new`
+    pub fn update(&mut self, src: &'a [T], pitch: NonZeroUsize) {
+        self.pitch = pitch;
+        self.offset_padding =
+            pitch.get() * self.vpad + self.hpad * self.bytes_per_sample.get() as usize;
+
+        let pel_val = usize::from(self.pel);
+        let windows = pel_val * pel_val;
+
+        let mut plane = SmallVec::with_capacity(windows);
+        for i in 0..windows {
+            let offset = i * pitch.get() * self.padded_height.get();
+            plane.push(&src[offset..]);
+        }
+        self.plane = plane;
+    }
+
+    pub fn reset_state(&mut self) {
+        self.is_padded = false;
+        self.is_refined = false;
+        self.is_filled = false;
     }
 
     pub fn fill_plane(&mut self, src: &'a [T], src_pitch: NonZeroUsize) {
@@ -126,7 +144,7 @@ impl<'a, T: Component> MVPlane<'a, T> {
         }
 
         vs_bitblt(
-            &self.plane[0][self.offset_padding..],
+            &mut self.plane[0][self.offset_padding..],
             self.pitch,
             src,
             src_pitch,

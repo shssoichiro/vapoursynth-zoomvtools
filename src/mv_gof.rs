@@ -11,7 +11,7 @@ use crate::{
     params::Subpel,
 };
 
-pub struct MVGroupOfFrames<'a, T: Component> {
+pub struct MVGroupOfFrames<'a, T: Component + Copy> {
     level_count: u16,
     width: [NonZeroUsize; 3],
     height: [NonZeroUsize; 3],
@@ -20,10 +20,11 @@ pub struct MVGroupOfFrames<'a, T: Component> {
     vpad: [usize; 3],
     x_ratio_uv: NonZeroUsize,
     y_ratio_uv: NonZeroUsize,
+    chroma: bool,
     pub frames: Box<[MVFrame<'a, T>]>,
 }
 
-impl<'a, T: Component> MVGroupOfFrames<'a, T> {
+impl<'a, T: Component + Copy> MVGroupOfFrames<'a, T> {
     pub fn new<'core>(
         level_count: u16,
         width: NonZeroUsize,
@@ -35,8 +36,6 @@ impl<'a, T: Component> MVGroupOfFrames<'a, T> {
         x_ratio_uv: NonZeroUsize,
         y_ratio_uv: NonZeroUsize,
         bits_per_sample: NonZeroU8,
-        src: &'a Frame<'core>,
-        dest: &Frame<'core>,
     ) -> Result<Self> {
         // SAFETY: Width must be at least the value of its ratio
         let chroma_width = unsafe { NonZeroUsize::new_unchecked(width.get() / x_ratio_uv.get()) };
@@ -54,6 +53,7 @@ impl<'a, T: Component> MVGroupOfFrames<'a, T> {
             vpad: [vpad, chroma_vpad, chroma_vpad],
             x_ratio_uv,
             y_ratio_uv,
+            chroma,
             frames: Default::default(),
         };
 
@@ -62,28 +62,6 @@ impl<'a, T: Component> MVGroupOfFrames<'a, T> {
         for i in 0..level_count {
             let width_i = plane_width_luma(this.width[0], i, this.x_ratio_uv, this.hpad[0]);
             let height_i = plane_height_luma(this.height[0], i, this.y_ratio_uv, this.vpad[0]);
-
-            let mut planes: SmallVec<[&[T]; 3]> = SmallVec::with_capacity(3);
-            // SAFETY: constant is not zero.
-            let mut dest_pitch = [unsafe { NonZeroUsize::new_unchecked(1) }; 3];
-            #[allow(clippy::needless_range_loop)]
-            for plane in 0..(if chroma { 1 } else { 3 }) {
-                // SAFETY: stride must be at least width and non-zero
-                dest_pitch[plane] = unsafe { NonZeroUsize::new_unchecked(dest.stride(plane)) };
-                let plane_src = src
-                    .plane(plane)
-                    .expect("Super: plane should exist but does not");
-                let offset = plane_super_offset(
-                    plane > 0,
-                    this.height[plane],
-                    i,
-                    this.pel,
-                    this.vpad[plane],
-                    dest_pitch[plane],
-                    this.y_ratio_uv,
-                );
-                planes.push(&plane_src[offset..]);
-            }
 
             frames[i as usize] = MVFrame::new(
                 width_i,
@@ -95,13 +73,32 @@ impl<'a, T: Component> MVGroupOfFrames<'a, T> {
                 this.x_ratio_uv,
                 this.y_ratio_uv,
                 bits_per_sample,
-                planes,
-                dest_pitch,
             )?;
         }
 
         this.frames = frames.into_boxed_slice();
 
         Ok(this)
+    }
+
+    // TODO: Merge into `new`
+    pub fn update(&mut self, src: &'a Frame<'a>, pitch: &[NonZeroUsize; 3]) -> Result<()> {
+        for i in 0..self.level_count {
+            let mut planes: SmallVec<[&'a mut [T]; 3]> = SmallVec::with_capacity(3);
+            for plane in 0..(if self.chroma { 1 } else { 3 }) {
+                let offset = plane_super_offset(
+                    plane > 0,
+                    self.height[plane],
+                    i,
+                    self.pel,
+                    self.vpad[plane],
+                    pitch[plane],
+                    self.y_ratio_uv,
+                );
+                planes[plane] = &mut src.plane(plane)?[offset..];
+            }
+            self.frames[i as usize].update(&planes, pitch);
+        }
+        Ok(())
     }
 }

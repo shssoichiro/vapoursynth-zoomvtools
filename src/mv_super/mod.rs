@@ -251,7 +251,7 @@ impl<'core> Super<'core> {
         })
     }
 
-    fn get_frame_internal<T: Component>(
+    fn get_frame_internal<T: Component + Copy>(
         &self,
         core: vapoursynth::core::CoreRef<'core>,
         context: vapoursynth::plugins::FrameContext,
@@ -293,6 +293,22 @@ impl<'core> Super<'core> {
             }
             dest
         };
+        // SAFETY: strides must be at least width and non-zero
+        let src_pitch = unsafe {
+            [
+                NonZeroUsize::new_unchecked(src.stride(0)),
+                NonZeroUsize::new_unchecked(src.stride(1)),
+                NonZeroUsize::new_unchecked(src.stride(2)),
+            ]
+        };
+        // SAFETY: strides must be at least width and non-zero
+        let dest_pitch = unsafe {
+            [
+                NonZeroUsize::new_unchecked(dest.stride(0)),
+                NonZeroUsize::new_unchecked(dest.stride(1)),
+                NonZeroUsize::new_unchecked(dest.stride(2)),
+            ]
+        };
 
         let mut src_gof = MVGroupOfFrames::<T>::new(
             self.levels,
@@ -305,9 +321,8 @@ impl<'core> Super<'core> {
             self.x_ratio_uv,
             self.y_ratio_uv,
             NonZeroU8::try_from(self.format.bits_per_sample())?,
-            &src,
-            &dest,
         )?;
+        src_gof.update(&dest, &dest_pitch)?;
 
         // TODO: Finish me
         let planes = [MVPlaneSet::YPLANE, MVPlaneSet::UPLANE, MVPlaneSet::VPLANE];
@@ -320,8 +335,6 @@ impl<'core> Super<'core> {
                 unsafe { NonZeroUsize::new_unchecked(src.stride(plane)) },
             );
         }
-        // for (int plane = 0; plane < d->vi.format.numPlanes; plane++)
-        //     mvfFillPlane(pSrcGOF.frames[0], pSrc[plane], nSrcPitch[plane], plane);
 
         // mvgofReduce(&pSrcGOF, d->nModeYUV, d->rfilter);
         // mvgofPad(&pSrcGOF, d->nModeYUV);
