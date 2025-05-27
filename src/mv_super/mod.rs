@@ -6,15 +6,15 @@ use std::num::{NonZeroU8, NonZeroUsize};
 use anyhow::{Result, bail};
 use vapoursynth::{
     format::{ColorFamily, Format, SampleType},
-    frame::FrameRefMut,
+    frame::{FrameRef, FrameRefMut},
     node::Node,
     plugins::Filter,
-    prelude::Property,
+    prelude::{Component, Property},
     video_info::Resolution,
 };
 
 use crate::{
-    mv_frame::{plane_height_luma, plane_super_offset, plane_width_luma},
+    mv_frame::{MVPlaneSet, plane_height_luma, plane_super_offset, plane_width_luma},
     mv_gof::MVGroupOfFrames,
     params::{ReduceFilter, Subpel, SubpelMethod},
 };
@@ -250,43 +250,13 @@ impl<'core> Super<'core> {
             is_pelclip_padded,
         })
     }
-}
 
-impl<'core> Filter<'core> for Super<'core> {
-    fn video_info(
+    fn get_frame_internal<T: Component>(
         &self,
-        _api: vapoursynth::prelude::API,
-        _core: vapoursynth::core::CoreRef<'core>,
-    ) -> Vec<vapoursynth::video_info::VideoInfo<'core>> {
-        let mut info = self.clip.info();
-        info.resolution = Property::Constant(Resolution {
-            width: self.super_width.get(),
-            height: self.super_width.get(),
-        });
-        vec![info]
-    }
-
-    fn get_frame_initial(
-        &self,
-        _api: vapoursynth::prelude::API,
-        _core: vapoursynth::core::CoreRef<'core>,
-        context: vapoursynth::plugins::FrameContext,
-        n: usize,
-    ) -> std::result::Result<Option<vapoursynth::prelude::FrameRef<'core>>, anyhow::Error> {
-        self.clip.request_frame_filter(context, n);
-        if let Some(ref pelclip) = self.pelclip {
-            pelclip.request_frame_filter(context, n);
-        }
-        Ok(None)
-    }
-
-    fn get_frame(
-        &self,
-        _api: vapoursynth::prelude::API,
         core: vapoursynth::core::CoreRef<'core>,
         context: vapoursynth::plugins::FrameContext,
         n: usize,
-    ) -> std::result::Result<vapoursynth::prelude::FrameRef<'core>, anyhow::Error> {
+    ) -> Result<FrameRef<'core>> {
         let src = self
             .clip
             .get_frame_filter(context, n)
@@ -324,7 +294,7 @@ impl<'core> Filter<'core> for Super<'core> {
             dest
         };
 
-        let src_gof = MVGroupOfFrames::new(
+        let mut src_gof = MVGroupOfFrames::<T>::new(
             self.levels,
             self.width,
             self.height,
@@ -340,8 +310,16 @@ impl<'core> Filter<'core> for Super<'core> {
         )?;
 
         // TODO: Finish me
-        // MVPlaneSet planes[3] = { YPLANE, UPLANE, VPLANE };
+        let planes = [MVPlaneSet::YPLANE, MVPlaneSet::UPLANE, MVPlaneSet::VPLANE];
 
+        for plane in 0..(if self.chroma { 1 } else { 3 }) {
+            src_gof.frames[0].planes[plane].fill_plane(
+                src.plane(plane)
+                    .expect("Super: source plane should exist but does not"),
+                // SAFETY: stride must be at least width and non-zero
+                unsafe { NonZeroUsize::new_unchecked(src.stride(plane)) },
+            );
+        }
         // for (int plane = 0; plane < d->vi.format.numPlanes; plane++)
         //     mvfFillPlane(pSrcGOF.frames[0], pSrc[plane], nSrcPitch[plane], plane);
 
@@ -380,5 +358,48 @@ impl<'core> Filter<'core> for Super<'core> {
         // }
 
         Ok(dest.into())
+    }
+}
+
+impl<'core> Filter<'core> for Super<'core> {
+    fn video_info(
+        &self,
+        _api: vapoursynth::prelude::API,
+        _core: vapoursynth::core::CoreRef<'core>,
+    ) -> Vec<vapoursynth::video_info::VideoInfo<'core>> {
+        let mut info = self.clip.info();
+        info.resolution = Property::Constant(Resolution {
+            width: self.super_width.get(),
+            height: self.super_width.get(),
+        });
+        vec![info]
+    }
+
+    fn get_frame_initial(
+        &self,
+        _api: vapoursynth::prelude::API,
+        _core: vapoursynth::core::CoreRef<'core>,
+        context: vapoursynth::plugins::FrameContext,
+        n: usize,
+    ) -> std::result::Result<Option<vapoursynth::prelude::FrameRef<'core>>, anyhow::Error> {
+        self.clip.request_frame_filter(context, n);
+        if let Some(ref pelclip) = self.pelclip {
+            pelclip.request_frame_filter(context, n);
+        }
+        Ok(None)
+    }
+
+    fn get_frame(
+        &self,
+        _api: vapoursynth::prelude::API,
+        core: vapoursynth::core::CoreRef<'core>,
+        context: vapoursynth::plugins::FrameContext,
+        n: usize,
+    ) -> std::result::Result<vapoursynth::prelude::FrameRef<'core>, anyhow::Error> {
+        match self.format.bytes_per_sample() {
+            1 => self.get_frame_internal::<u8>(core, context, n),
+            2 => self.get_frame_internal::<u16>(core, context, n),
+            _ => bail!("Super: does not support clips greater than 16 bits"),
+        }
     }
 }

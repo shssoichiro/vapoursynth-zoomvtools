@@ -1,16 +1,18 @@
 use std::num::{NonZeroU8, NonZeroUsize};
 
 use anyhow::Result;
+use bitflags::bitflags;
 use smallvec::SmallVec;
+use vapoursynth::prelude::Component;
 
-use crate::params::Subpel;
+use crate::{params::Subpel, util::vs_bitblt};
 
-pub struct MVFrame<'a> {
-    planes: SmallVec<[MVPlane<'a>; 3]>,
+pub struct MVFrame<'a, T: Component> {
+    pub planes: SmallVec<[MVPlane<'a, T>; 3]>,
     chroma: bool,
 }
 
-impl<'a> MVFrame<'a> {
+impl<'a, T: Component> MVFrame<'a, T> {
     pub fn new(
         width: NonZeroUsize,
         height: NonZeroUsize,
@@ -21,7 +23,7 @@ impl<'a> MVFrame<'a> {
         x_ratio_uv: NonZeroUsize,
         y_ratio_uv: NonZeroUsize,
         bits_per_sample: NonZeroU8,
-        src_planes: SmallVec<[&'a [u8]; 3]>,
+        src_planes: SmallVec<[&'a [T]; 3]>,
         pitch: [NonZeroUsize; 3],
     ) -> Result<Self> {
         // SAFETY: Width must be at least the value of its ratio
@@ -54,8 +56,8 @@ impl<'a> MVFrame<'a> {
     }
 }
 
-pub struct MVPlane<'a> {
-    plane: SmallVec<[&'a [u8]; 16]>,
+pub struct MVPlane<'a, T: Component> {
+    plane: SmallVec<[&'a [T]; 16]>,
     width: NonZeroUsize,
     height: NonZeroUsize,
     padded_width: NonZeroUsize,
@@ -74,7 +76,7 @@ pub struct MVPlane<'a> {
     is_filled: bool,
 }
 
-impl<'a> MVPlane<'a> {
+impl<'a, T: Component> MVPlane<'a, T> {
     pub fn new(
         width: NonZeroUsize,
         height: NonZeroUsize,
@@ -82,7 +84,7 @@ impl<'a> MVPlane<'a> {
         hpad: usize,
         vpad: usize,
         bits_per_sample: NonZeroU8,
-        src_plane: &'a [u8],
+        src_plane: &'a [T],
         pitch: NonZeroUsize,
     ) -> Result<Self> {
         let pel_val = usize::from(pel);
@@ -116,6 +118,23 @@ impl<'a> MVPlane<'a> {
             is_refined: false,
             is_filled: false,
         })
+    }
+
+    pub fn fill_plane(&mut self, src: &'a [T], src_pitch: NonZeroUsize) {
+        if self.is_filled {
+            return;
+        }
+
+        vs_bitblt(
+            &self.plane[0][self.offset_padding..],
+            self.pitch,
+            src,
+            src_pitch,
+            self.width,
+            self.height,
+        );
+
+        self.is_filled = true;
     }
 }
 
@@ -206,4 +225,17 @@ pub fn plane_super_offset(
     }
 
     offset
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct MVPlaneSet: u8 {
+        const YPLANE = (1 << 0);
+        const UPLANE = (1 << 1);
+        const VPLANE = (1 << 2);
+        const YUPLANES = Self::YPLANE.bits() | Self::UPLANE.bits();
+        const YVPLANES = Self::YPLANE.bits() | Self::VPLANE.bits();
+        const UVPLANES = Self::UPLANE.bits() | Self::VPLANE.bits();
+        const YUVPLANES = Self::YPLANE.bits() | Self::UPLANE.bits() | Self::VPLANE.bits();
+    }
 }

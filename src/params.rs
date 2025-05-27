@@ -2,7 +2,7 @@ use std::num::NonZeroUsize;
 
 use anyhow::{Result, bail};
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Subpel {
     Full,
     Half,
@@ -39,7 +39,7 @@ impl From<Subpel> for NonZeroUsize {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubpelMethod {
     Bilinear,
     Bicubic,
@@ -59,7 +59,7 @@ impl TryFrom<i64> for SubpelMethod {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReduceFilter {
     Average,
     Triangle,

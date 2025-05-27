@@ -19,6 +19,7 @@ mod mv_super;
 mod params;
 #[cfg(test)]
 mod tests;
+mod util;
 
 pub const PLUGIN_IDENTIFIER: &str = "com.soichiro.zoomvtools";
 pub const PLUGIN_NAME: &str = "zoomvtools";

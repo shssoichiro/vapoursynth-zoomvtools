@@ -4,14 +4,14 @@ use std::num::{NonZeroU8, NonZeroUsize};
 
 use anyhow::Result;
 use smallvec::SmallVec;
-use vapoursynth::frame::Frame;
+use vapoursynth::{frame::Frame, prelude::Component};
 
 use crate::{
     mv_frame::{MVFrame, plane_height_luma, plane_super_offset, plane_width_luma},
     params::Subpel,
 };
 
-pub struct MVGroupOfFrames<'a> {
+pub struct MVGroupOfFrames<'a, T: Component> {
     level_count: u16,
     width: [NonZeroUsize; 3],
     height: [NonZeroUsize; 3],
@@ -20,10 +20,10 @@ pub struct MVGroupOfFrames<'a> {
     vpad: [usize; 3],
     x_ratio_uv: NonZeroUsize,
     y_ratio_uv: NonZeroUsize,
-    frames: Box<[MVFrame<'a>]>,
+    pub frames: Box<[MVFrame<'a, T>]>,
 }
 
-impl<'a> MVGroupOfFrames<'a> {
+impl<'a, T: Component> MVGroupOfFrames<'a, T> {
     pub fn new<'core>(
         level_count: u16,
         width: NonZeroUsize,
@@ -63,7 +63,7 @@ impl<'a> MVGroupOfFrames<'a> {
             let width_i = plane_width_luma(this.width[0], i, this.x_ratio_uv, this.hpad[0]);
             let height_i = plane_height_luma(this.height[0], i, this.y_ratio_uv, this.vpad[0]);
 
-            let mut planes: SmallVec<[&[u8]; 3]> = SmallVec::with_capacity(3);
+            let mut planes: SmallVec<[&[T]; 3]> = SmallVec::with_capacity(3);
             // SAFETY: constant is not zero.
             let mut dest_pitch = [unsafe { NonZeroUsize::new_unchecked(1) }; 3];
             #[allow(clippy::needless_range_loop)]
