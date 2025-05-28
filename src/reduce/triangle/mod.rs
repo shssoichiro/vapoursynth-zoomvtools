@@ -30,31 +30,37 @@ pub fn reduce_triangle<T: Pixel>(
 // Filtered with 1/4, 1/2, 1/4 filter for smoothing and anti-aliasing.
 // height is dest height which is half of source height.
 fn reduce_filtered_vertical<T: Pixel>(
-    mut dest: &mut [T],
-    mut src: &[T],
+    dest: &mut [T],
+    src: &[T],
     dest_pitch: NonZeroUsize,
     src_pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
 ) {
-    for x in 0..width.get() {
+    let width_usize = width.get();
+    let height_usize = height.get();
+    let src_pitch_usize = src_pitch.get();
+    let dest_pitch_usize = dest_pitch.get();
+
+    // Process first output row: average of first two input rows
+    for x in 0..width_usize {
         let a: u32 = src[x].into();
-        let b: u32 = src[x + src_pitch.get()].into();
+        let b: u32 = src[x + src_pitch_usize].into();
         dest[x] = T::from_or_max((a + b).div_ceil(2));
     }
-    dest = &mut dest[dest_pitch.get()..];
-    src = &src[src_pitch.get() * 2..];
 
-    for _y in 1..height.get() {
-        for x in 0..width.get() {
-            let a: u32 = src[x - src_pitch.get()].into();
-            let b: u32 = src[x].into();
-            let c: u32 = src[x + src_pitch.get()].into();
-            dest[x] = T::from_or_max((a + b * 2 + c + 2) / 4);
+    // Process remaining output rows: 1/4, 1/2, 1/4 filter
+    for y in 1..height_usize {
+        let dest_offset = y * dest_pitch_usize;
+        let src_offset = y * 2 * src_pitch_usize; // Each output row corresponds to 2 input rows
+        
+        for x in 0..width_usize {
+            // Access three consecutive input rows for the 1/4, 1/2, 1/4 filter
+            let a: u32 = src[src_offset + x - src_pitch_usize].into(); // Previous row
+            let b: u32 = src[src_offset + x].into();                   // Current row
+            let c: u32 = src[src_offset + x + src_pitch_usize].into(); // Next row
+            dest[dest_offset + x] = T::from_or_max((a + b * 2 + c + 2) / 4);
         }
-
-        dest = &mut dest[dest_pitch.get()..];
-        src = &src[src_pitch.get() * 2..];
     }
 }
 
