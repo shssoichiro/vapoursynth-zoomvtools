@@ -276,7 +276,7 @@ impl<'core> Super<'core> {
                     width: self.super_width.get(),
                     height: self.super_width.get(),
                 });
-            for plane in 0..(self.format.plane_count()) {
+            for plane in 0..self.format.plane_count() {
                 match self.format.bytes_per_sample() {
                     1 => {
                         dest.plane_mut(plane)
@@ -293,14 +293,7 @@ impl<'core> Super<'core> {
             }
             dest
         };
-        // SAFETY: strides must be at least width and non-zero
-        let src_pitch = unsafe {
-            [
-                NonZeroUsize::new_unchecked(src.stride(0)),
-                NonZeroUsize::new_unchecked(src.stride(1)),
-                NonZeroUsize::new_unchecked(src.stride(2)),
-            ]
-        };
+
         // SAFETY: strides must be at least width and non-zero
         let dest_pitch = unsafe {
             [
@@ -309,7 +302,6 @@ impl<'core> Super<'core> {
                 NonZeroUsize::new_unchecked(dest.stride(2)),
             ]
         };
-
         let mut src_gof = MVGroupOfFrames::new(
             self.levels,
             self.width,
@@ -324,53 +316,58 @@ impl<'core> Super<'core> {
             &dest_pitch,
         )?;
 
-        // TODO: Finish me
-        let planes = [MVPlaneSet::YPLANE, MVPlaneSet::UPLANE, MVPlaneSet::VPLANE];
-
-        for plane in 0..(if self.chroma { 1 } else { 3 }) {
-            src_gof.frames[0].planes[plane].fill_plane(
-                src.plane::<T>(plane)
-                    .expect("Super: source plane should exist but does not"),
-                // SAFETY: stride must be at least width and non-zero
-                unsafe { NonZeroUsize::new_unchecked(src.stride(plane)) },
-                dest.plane_mut(plane)
-                    .expect("Super: destination plane should exist but does not"),
-            );
+        for plane in 0..self.format.plane_count() {
+            if let Some(plane_ref) = src_gof.frames[0].planes.get_mut(plane) {
+                plane_ref.fill_plane(
+                    src.plane::<T>(plane)
+                        .expect("Super: source plane should exist but does not"),
+                    // SAFETY: stride must be at least width and non-zero
+                    unsafe { NonZeroUsize::new_unchecked(src.stride(plane)) },
+                    dest.plane_mut(plane)
+                        .expect("Super: destination plane should exist but does not"),
+                );
+            }
         }
 
-        // mvgofReduce(&pSrcGOF, d->nModeYUV, d->rfilter);
-        // mvgofPad(&pSrcGOF, d->nModeYUV);
+        src_gof.reduce(self.rfilter);
+        src_gof.pad();
 
-        // if (d->usePelClip) {
-        //     MVFrame *srcFrames = pSrcGOF.frames[0];
+        if let Some(pel_clip) = src_pel.as_ref() {
+            let src_frames = &mut src_gof.frames[0];
 
-        //     for (int plane = 0; plane < d->vi.format.numPlanes; plane++) {
-        //         pSrcPel[plane] = vsapi->getReadPtr(srcPel, plane);
-        //         nSrcPelPitch[plane] = vsapi->getStride(srcPel, plane);
+            for plane in 0..self.format.plane_count() {
+                let src_pel = pel_clip
+                    .plane::<T>(plane)
+                    .expect("Super: pelclip plane should exist but does not");
+                // SAFETY: stride must be at least width and non-zero
+                let src_pel_pitch = unsafe { NonZeroUsize::new_unchecked(pel_clip.stride(plane)) };
+                let src_plane = &mut src_frames.planes[plane];
+                if self.chroma && plane > 0 {
+                    src_plane.refine_ext(src_pel, src_pel_pitch, self.is_pelclip_padded);
+                }
+            }
+        } else {
+            src_gof.refine(self.sharp);
+        }
 
-        //         MVPlane *srcPlane = srcFrames->planes[plane];
-        //         if (d->nModeYUV & planes[plane])
-        //             mvpRefineExt(srcPlane, pSrcPel[plane], nSrcPelPitch[plane],
-        // d->isPelClipPadded);     }
-        // } else
-        //     mvgofRefine(&pSrcGOF, d->nModeYUV, d->sharp);
-
-        // vsapi->freeFrame(src);
-        // if (d->usePelClip)
-        //     vsapi->freeFrame(srcPel);
-
-        // mvgofDeinit(&pSrcGOF);
-
-        // if (n == 0) {
-        //     VSMap *props = vsapi->getFramePropertiesRW(dst);
-
-        //     vsapi->mapSetInt(props, "Super_height", d->nHeight, maReplace);
-        //     vsapi->mapSetInt(props, "Super_hpad", d->nHPad, maReplace);
-        //     vsapi->mapSetInt(props, "Super_vpad", d->nVPad, maReplace);
-        //     vsapi->mapSetInt(props, "Super_pel", d->nPel, maReplace);
-        //     vsapi->mapSetInt(props, "Super_modeyuv", d->nModeYUV, maReplace);
-        //     vsapi->mapSetInt(props, "Super_levels", d->nLevels, maReplace);
-        // }
+        if n == 0 {
+            // Set properties for the first frame
+            let mut props = dest.props_mut();
+            props.set_int("Super_height", self.super_height.get() as i64)?;
+            props.set_int("Super_hpad", self.hpad as i64)?;
+            props.set_int("Super_vpad", self.vpad as i64)?;
+            props.set_int("Super_pel", usize::from(self.pel) as i64)?;
+            props.set_int(
+                "Super_modeyuv",
+                if self.chroma {
+                    MVPlaneSet::YUVPLANES
+                } else {
+                    MVPlaneSet::YPLANE
+                }
+                .bits() as i64,
+            )?;
+            props.set_int("Super_levels", self.levels as i64)?;
+        }
 
         Ok(dest.into())
     }

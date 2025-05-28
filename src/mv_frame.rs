@@ -144,6 +144,15 @@ impl MVPlane {
 
         self.is_filled = true;
     }
+
+    pub fn refine_ext<T: Component>(
+        &mut self,
+        src_2x: &[T],
+        src_2x_pitch: NonZeroUsize,
+        is_ext_padded: bool,
+    ) {
+        todo!()
+    }
 }
 
 pub fn plane_height_luma(
@@ -245,5 +254,11 @@ bitflags! {
         const YVPLANES = Self::YPLANE.bits() | Self::VPLANE.bits();
         const UVPLANES = Self::UPLANE.bits() | Self::VPLANE.bits();
         const YUVPLANES = Self::YPLANE.bits() | Self::UPLANE.bits() | Self::VPLANE.bits();
+    }
+}
+
+impl MVPlaneSet {
+    pub fn has_chroma(&self) -> bool {
+        self.bits() & Self::UPLANE.bits() > 0 || self.bits() & Self::VPLANE.bits() > 0
     }
 }

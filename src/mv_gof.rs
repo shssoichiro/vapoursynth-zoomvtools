@@ -7,7 +7,7 @@ use smallvec::SmallVec;
 
 use crate::{
     mv_frame::{MVFrame, plane_height_luma, plane_super_offset, plane_width_luma},
-    params::Subpel,
+    params::{ReduceFilter, Subpel, SubpelMethod},
 };
 
 pub struct MVGroupOfFrames {
@@ -94,5 +94,17 @@ impl MVGroupOfFrames {
         this.frames = frames.into_boxed_slice();
 
         Ok(this)
+    }
+
+    pub fn reduce(&mut self, filter: ReduceFilter) {
+        todo!()
+    }
+
+    pub fn pad(&mut self) {
+        todo!()
+    }
+
+    pub fn refine(&mut self, subpel: SubpelMethod) {
+        todo!()
     }
 }
