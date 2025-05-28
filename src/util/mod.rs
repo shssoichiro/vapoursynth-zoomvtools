@@ -28,10 +28,13 @@ pub trait Pixel:
     + TryFrom<u16>
     + TryFrom<u32>
     + TryFrom<u64>
+    + MaxValue
 {
+    fn from_or_max(value: u32) -> Self;
 }
 
-impl<T> Pixel for T where
+impl<T> Pixel for T
+where
     T: Component
         + Clone
         + Copy
@@ -50,7 +53,30 @@ impl<T> Pixel for T where
         + TryFrom<u16>
         + TryFrom<u32>
         + TryFrom<u64>
+        + MaxValue,
 {
+    fn from_or_max(value: u32) -> Self {
+        Self::try_from(value).unwrap_or_else(|_| {
+            // If conversion fails (shouldn't happen with our inputs), fallback to max
+            Self::max_value()
+        })
+    }
+}
+
+pub trait MaxValue {
+    fn max_value() -> Self;
+}
+
+impl MaxValue for u8 {
+    fn max_value() -> Self {
+        u8::MAX
+    }
+}
+
+impl MaxValue for u16 {
+    fn max_value() -> Self {
+        u16::MAX
+    }
 }
 
 pub fn vs_bitblt<T: Pixel>(

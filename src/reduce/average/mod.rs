@@ -22,15 +22,7 @@ pub fn reduce_average<T: Pixel>(
             let d: u32 = src[x * 2 + src_pitch.get() + 1].into();
 
             // Calculate average with proper rounding: (a + b + c + d + 2) / 4
-            let sum = a + b + c + d + 2;
-            let average = sum / 4;
-
-            // Convert back to original type
-            dest[x] = T::try_from(average).unwrap_or_else(|_| {
-                // If conversion fails (shouldn't happen with our inputs), fallback to u8::MAX
-                // conversion
-                T::from(u8::MAX)
-            });
+            dest[x] = T::from_or_max((a + b + c + d + 2) / 4);
         }
         dest = &mut dest[dest_pitch.get()..];
         src = &src[src_pitch.get() * 2..];
