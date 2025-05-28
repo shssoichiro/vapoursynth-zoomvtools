@@ -3,7 +3,7 @@ use std::num::{NonZeroU8, NonZeroUsize};
 use anyhow::Result;
 use bitflags::bitflags;
 use smallvec::SmallVec;
-use vapoursynth::{frame::Frame, prelude::Component};
+use vapoursynth::frame::Frame;
 
 use crate::{
     params::{ReduceFilter, Subpel},
@@ -15,7 +15,7 @@ use crate::{
         reduce_quadratic,
         reduce_triangle,
     },
-    util::vs_bitblt,
+    util::{Pixel, vs_bitblt},
 };
 
 #[derive(Debug, Clone)]
@@ -72,7 +72,7 @@ impl MVFrame {
         Ok(Self { planes, yuv_mode })
     }
 
-    pub(crate) fn reduce_to<T: Component + Clone>(
+    pub(crate) fn reduce_to<T: Pixel>(
         &self,
         reduced_frame: &mut MVFrame,
         mode: MVPlaneSet,
@@ -184,12 +184,7 @@ impl MVPlane {
         })
     }
 
-    pub fn fill_plane<T: Component + Copy>(
-        &mut self,
-        src: &[T],
-        src_pitch: NonZeroUsize,
-        dest: &mut [T],
-    ) {
+    pub fn fill_plane<T: Pixel>(&mut self, src: &[T], src_pitch: NonZeroUsize, dest: &mut [T]) {
         if self.is_filled {
             return;
         }
@@ -207,7 +202,7 @@ impl MVPlane {
         self.is_filled = true;
     }
 
-    pub fn refine_ext<T: Component>(
+    pub fn refine_ext<T: Pixel>(
         &mut self,
         src_2x: &[T],
         src_2x_pitch: NonZeroUsize,
@@ -216,7 +211,7 @@ impl MVPlane {
         todo!()
     }
 
-    fn reduce_to<T: Component>(
+    fn reduce_to<T: Pixel>(
         &self,
         reduced_plane: &mut MVPlane,
         filter: ReduceFilter,

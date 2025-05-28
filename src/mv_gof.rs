@@ -4,11 +4,12 @@ use std::num::{NonZeroU8, NonZeroUsize};
 
 use anyhow::Result;
 use smallvec::SmallVec;
-use vapoursynth::{format::Format, frame::Frame, prelude::Component};
+use vapoursynth::{format::Format, frame::Frame};
 
 use crate::{
     mv_frame::{MVFrame, MVPlaneSet, plane_height_luma, plane_super_offset, plane_width_luma},
     params::{ReduceFilter, Subpel, SubpelMethod},
+    util::Pixel,
 };
 
 #[derive(Debug, Clone)]
@@ -99,12 +100,7 @@ impl MVGroupOfFrames {
         Ok(this)
     }
 
-    pub fn reduce<T: Component + Clone>(
-        &mut self,
-        mode: MVPlaneSet,
-        filter: ReduceFilter,
-        frame: &mut Frame,
-    ) {
+    pub fn reduce<T: Pixel>(&mut self, mode: MVPlaneSet, filter: ReduceFilter, frame: &mut Frame) {
         for i in 0..(self.level_count as usize - 1) {
             self.frames[i]
                 .clone()

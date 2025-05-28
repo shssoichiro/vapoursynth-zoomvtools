@@ -9,7 +9,7 @@ use vapoursynth::{
     frame::{FrameRef, FrameRefMut},
     node::Node,
     plugins::Filter,
-    prelude::{Component, Property},
+    prelude::Property,
     video_info::Resolution,
 };
 
@@ -17,6 +17,7 @@ use crate::{
     mv_frame::{MVPlaneSet, plane_height_luma, plane_super_offset, plane_width_luma},
     mv_gof::MVGroupOfFrames,
     params::{ReduceFilter, Subpel, SubpelMethod},
+    util::Pixel,
 };
 
 /// Get source clip and prepare special "super" clip with multilevel
@@ -251,7 +252,7 @@ impl<'core> Super<'core> {
         })
     }
 
-    fn get_frame_internal<T: Component + Copy>(
+    fn get_frame_internal<T: Pixel>(
         &self,
         core: vapoursynth::core::CoreRef<'core>,
         context: vapoursynth::plugins::FrameContext,
