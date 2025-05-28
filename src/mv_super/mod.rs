@@ -294,6 +294,11 @@ impl<'core> Super<'core> {
             dest
         };
 
+        let yuv_mode = if self.chroma {
+            MVPlaneSet::YUVPLANES
+        } else {
+            MVPlaneSet::YPLANE
+        };
         // SAFETY: strides must be at least width and non-zero
         let dest_pitch = unsafe {
             [
@@ -309,13 +314,16 @@ impl<'core> Super<'core> {
             self.pel,
             self.hpad,
             self.vpad,
-            self.chroma,
+            yuv_mode,
             self.x_ratio_uv,
             self.y_ratio_uv,
             NonZeroU8::try_from(self.format.bits_per_sample())?,
             &dest_pitch,
+            self.format,
         )?;
 
+        // FIXME: Do we need to be filling in all these planes
+        // if chroma is disabled?
         for plane in 0..self.format.plane_count() {
             if let Some(plane_ref) = src_gof.frames[0].planes.get_mut(plane) {
                 plane_ref.fill_plane(
@@ -329,12 +337,14 @@ impl<'core> Super<'core> {
             }
         }
 
-        src_gof.reduce(self.rfilter);
-        src_gof.pad();
+        let planes = [MVPlaneSet::YPLANE, MVPlaneSet::UPLANE, MVPlaneSet::VPLANE];
+        src_gof.reduce::<T>(yuv_mode, self.rfilter, &mut dest);
+        src_gof.pad(yuv_mode);
 
         if let Some(pel_clip) = src_pel.as_ref() {
             let src_frames = &mut src_gof.frames[0];
 
+            #[allow(clippy::needless_range_loop)]
             for plane in 0..self.format.plane_count() {
                 let src_pel = pel_clip
                     .plane::<T>(plane)
@@ -342,12 +352,12 @@ impl<'core> Super<'core> {
                 // SAFETY: stride must be at least width and non-zero
                 let src_pel_pitch = unsafe { NonZeroUsize::new_unchecked(pel_clip.stride(plane)) };
                 let src_plane = &mut src_frames.planes[plane];
-                if self.chroma && plane > 0 {
+                if (yuv_mode & planes[plane]).bits() > 0 {
                     src_plane.refine_ext(src_pel, src_pel_pitch, self.is_pelclip_padded);
                 }
             }
         } else {
-            src_gof.refine(self.sharp);
+            src_gof.refine(yuv_mode, self.sharp);
         }
 
         if n == 0 {
@@ -357,15 +367,7 @@ impl<'core> Super<'core> {
             props.set_int("Super_hpad", self.hpad as i64)?;
             props.set_int("Super_vpad", self.vpad as i64)?;
             props.set_int("Super_pel", usize::from(self.pel) as i64)?;
-            props.set_int(
-                "Super_modeyuv",
-                if self.chroma {
-                    MVPlaneSet::YUVPLANES
-                } else {
-                    MVPlaneSet::YPLANE
-                }
-                .bits() as i64,
-            )?;
+            props.set_int("Super_modeyuv", yuv_mode.bits() as i64)?;
             props.set_int("Super_levels", self.levels as i64)?;
         }
 

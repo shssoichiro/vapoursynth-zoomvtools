@@ -17,6 +17,7 @@ mod mv_gof;
 mod mv_recalculate;
 mod mv_super;
 mod params;
+mod reduce;
 #[cfg(test)]
 mod tests;
 mod util;

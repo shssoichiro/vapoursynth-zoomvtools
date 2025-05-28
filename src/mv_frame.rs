@@ -3,13 +3,25 @@ use std::num::{NonZeroU8, NonZeroUsize};
 use anyhow::Result;
 use bitflags::bitflags;
 use smallvec::SmallVec;
-use vapoursynth::prelude::Component;
+use vapoursynth::{frame::Frame, prelude::Component};
 
-use crate::{params::Subpel, util::vs_bitblt};
+use crate::{
+    params::{ReduceFilter, Subpel},
+    reduce::{
+        ReduceFn,
+        reduce_average,
+        reduce_bilinear,
+        reduce_cubic,
+        reduce_quadratic,
+        reduce_triangle,
+    },
+    util::vs_bitblt,
+};
 
+#[derive(Debug, Clone)]
 pub struct MVFrame {
     pub planes: SmallVec<[MVPlane; 3]>,
-    chroma: bool,
+    yuv_mode: MVPlaneSet,
 }
 
 impl MVFrame {
@@ -19,7 +31,7 @@ impl MVFrame {
         pel: Subpel,
         hpad: usize,
         vpad: usize,
-        chroma: bool,
+        yuv_mode: MVPlaneSet,
         x_ratio_uv: NonZeroUsize,
         y_ratio_uv: NonZeroUsize,
         bits_per_sample: NonZeroU8,
@@ -39,7 +51,11 @@ impl MVFrame {
         let vpad = [vpad, chroma_vpad, chroma_vpad];
 
         let mut planes = SmallVec::new();
-        for i in 0..(if chroma { 3 } else { 1 }) {
+        for i in 0..3 {
+            if (yuv_mode.bits() & (1 << i)) == 0 {
+                continue;
+            }
+
             let plane = MVPlane::new(
                 width[i],
                 height[i],
@@ -53,10 +69,56 @@ impl MVFrame {
             planes.push(plane);
         }
 
-        Ok(Self { planes, chroma })
+        Ok(Self { planes, yuv_mode })
+    }
+
+    pub(crate) fn reduce_to<T: Component + Clone>(
+        &self,
+        reduced_frame: &mut MVFrame,
+        mode: MVPlaneSet,
+        filter: ReduceFilter,
+        frame: &mut Frame,
+    ) {
+        for i in 0..3 {
+            if let Some(plane) = self.planes.get(i)
+                && (mode.bits() & (1 << i)) > 0
+            {
+                let reduced_pitch = reduced_frame.planes[i].pitch;
+                let (width, height) = (
+                    reduced_frame.planes[i].width,
+                    reduced_frame.planes[i].height,
+                );
+                let dest_offset = reduced_frame.planes[i].subpel_window_offsets[0]
+                    + reduced_frame.planes[i].offset_padding;
+                let src_offset = plane.subpel_window_offsets[0] + plane.offset_padding;
+                // FIXME: Having to clone the source data is not ideal.
+                let src = &frame
+                    .plane(i)
+                    .expect("Super: source plane should exist but does not")[src_offset..]
+                    .to_vec();
+                let dest = &mut frame
+                    .plane_mut(i)
+                    .expect("Super: dest plane should exist but does not")[dest_offset..];
+                plane.reduce_to::<T>(
+                    &mut reduced_frame.planes[i],
+                    filter,
+                    dest,
+                    src,
+                    reduced_pitch,
+                    self.planes[i].pitch,
+                    width,
+                    height,
+                );
+            }
+        }
+    }
+
+    pub(crate) fn pad(&self, mode: MVPlaneSet) {
+        todo!()
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct MVPlane {
     subpel_window_offsets: SmallVec<[usize; 16]>,
     width: NonZeroUsize,
@@ -152,6 +214,37 @@ impl MVPlane {
         is_ext_padded: bool,
     ) {
         todo!()
+    }
+
+    fn reduce_to<T: Component>(
+        &self,
+        reduced_plane: &mut MVPlane,
+        filter: ReduceFilter,
+        dest: &mut [T],
+        src: &[T],
+        dest_pitch: NonZeroUsize,
+        src_pitch: NonZeroUsize,
+        dest_width: NonZeroUsize,
+        dest_height: NonZeroUsize,
+    ) {
+        if self.is_filled {
+            return;
+        }
+
+        let dest =
+            &mut dest[reduced_plane.subpel_window_offsets[0] + reduced_plane.offset_padding..];
+        let src = &src[self.subpel_window_offsets[0] + self.offset_padding..];
+        let reduce: ReduceFn<T> = match filter {
+            ReduceFilter::Average => reduce_average,
+            ReduceFilter::Triangle => reduce_triangle,
+            ReduceFilter::Bilinear => reduce_bilinear,
+            ReduceFilter::Quadratic => reduce_quadratic,
+            ReduceFilter::Cubic => reduce_cubic,
+        };
+
+        reduce(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
+
+        reduced_plane.is_filled = true;
     }
 }
 
@@ -254,11 +347,5 @@ bitflags! {
         const YVPLANES = Self::YPLANE.bits() | Self::VPLANE.bits();
         const UVPLANES = Self::UPLANE.bits() | Self::VPLANE.bits();
         const YUVPLANES = Self::YPLANE.bits() | Self::UPLANE.bits() | Self::VPLANE.bits();
-    }
-}
-
-impl MVPlaneSet {
-    pub fn has_chroma(&self) -> bool {
-        self.bits() & Self::UPLANE.bits() > 0 || self.bits() & Self::VPLANE.bits() > 0
     }
 }
