@@ -5,13 +5,98 @@ use crate::util::Pixel;
 #[cfg(test)]
 mod tests;
 
+// Downscale the height and width of `src` by 2 and write the output into `dest`
 pub fn reduce_bilinear<T: Pixel>(
-    _dest: &mut [T],
-    _src: &[T],
-    _dest_pitch: NonZeroUsize,
-    _src_pitch: NonZeroUsize,
-    _width: NonZeroUsize,
-    _height: NonZeroUsize,
+    dest: &mut [T],
+    src: &[T],
+    dest_pitch: NonZeroUsize,
+    src_pitch: NonZeroUsize,
+    width: NonZeroUsize,
+    height: NonZeroUsize,
 ) {
-    todo!()
+    reduce_bilinear_vertical(
+        dest,
+        src,
+        dest_pitch,
+        src_pitch,
+        // SAFETY: non-zero constant
+        width.saturating_mul(unsafe { NonZeroUsize::new_unchecked(2) }),
+        height,
+    );
+    reduce_bilinear_horizontal_inplace(dest, dest_pitch, width, height);
+}
+
+pub fn reduce_bilinear_vertical<T: Pixel>(
+    mut dest: &mut [T],
+    mut src: &[T],
+    dest_pitch: NonZeroUsize,
+    src_pitch: NonZeroUsize,
+    width: NonZeroUsize,
+    height: NonZeroUsize,
+) {
+    // Special case for first line
+    for x in 0..width.get() {
+        let a: u32 = src[x].into();
+        let b: u32 = src[x + src_pitch.get()].into();
+        dest[x] = T::from_or_max((a + b).div_ceil(2));
+    }
+    dest = &mut dest[dest_pitch.get()..];
+    src = &src[src_pitch.get() * 2..];
+
+    // Middle lines
+    for _y in 1..(height.get() - 1) {
+        for x in 0..width.get() {
+            let a: u32 = src[x - src_pitch.get()].into();
+            let b: u32 = src[x].into();
+            let c: u32 = src[x + src_pitch.get()].into();
+            let d: u32 = src[x + src_pitch.get() * 2].into();
+            dest[x] = T::from_or_max((a + (b + c) * 3 + d + 4) / 8);
+        }
+        dest = &mut dest[dest_pitch.get()..];
+        src = &src[src_pitch.get() * 2..];
+    }
+
+    // Special case for last line
+    if height.get() > 1 {
+        for x in 0..width.get() {
+            let a: u32 = src[x].into();
+            let b: u32 = src[x + src_pitch.get()].into();
+            dest[x] = T::from_or_max((a + b).div_ceil(2));
+        }
+    }
+}
+
+pub fn reduce_bilinear_horizontal_inplace<T: Pixel>(
+    mut dest: &mut [T],
+    dest_pitch: NonZeroUsize,
+    width: NonZeroUsize,
+    height: NonZeroUsize,
+) {
+    for _y in 0..height.get() {
+        // Special case start of line
+        let a: u32 = dest[0].into();
+        let b: u32 = dest[1].into();
+        let src0 = (a + b).div_ceil(2);
+
+        // Middle of line
+        for x in 1..(width.get() - 1) {
+            let a: u32 = dest[x * 2 - 1].into();
+            let b: u32 = dest[x * 2].into();
+            let c: u32 = dest[x * 2 + 1].into();
+            let d: u32 = dest[x * 2 + 2].into();
+            dest[x] = T::from_or_max((a + (b + c) * 3 + d + 4) / 8);
+        }
+
+        dest[0] = T::from_or_max(src0);
+
+        // Special case end of line
+        if width.get() > 1 {
+            let x = width.get() - 1;
+            let a: u32 = dest[x * 2].into();
+            let b: u32 = dest[x * 2 + 1].into();
+            dest[x] = T::from_or_max((a + b).div_ceil(2));
+        }
+
+        dest = &mut dest[dest_pitch.get()..];
+    }
 }
