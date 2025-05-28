@@ -35,6 +35,7 @@ impl MVGroupOfFrames {
         x_ratio_uv: NonZeroUsize,
         y_ratio_uv: NonZeroUsize,
         bits_per_sample: NonZeroU8,
+        pitch: &[NonZeroUsize; 3],
     ) -> Result<Self> {
         // SAFETY: Width must be at least the value of its ratio
         let chroma_width = unsafe { NonZeroUsize::new_unchecked(width.get() / x_ratio_uv.get()) };
@@ -61,6 +62,19 @@ impl MVGroupOfFrames {
         for i in 0..level_count {
             let width_i = plane_width_luma(this.width[0], i, this.x_ratio_uv, this.hpad[0]);
             let height_i = plane_height_luma(this.height[0], i, this.y_ratio_uv, this.vpad[0]);
+            let mut plane_offsets = SmallVec::with_capacity(3);
+            for plane in 0..(if this.chroma { 1 } else { 3 }) {
+                let offset = plane_super_offset(
+                    plane > 0,
+                    this.height[plane],
+                    i,
+                    this.pel,
+                    this.vpad[plane],
+                    pitch[plane],
+                    this.y_ratio_uv,
+                );
+                plane_offsets[plane] = offset;
+            }
 
             frames[i as usize] = MVFrame::new(
                 width_i,
@@ -72,32 +86,13 @@ impl MVGroupOfFrames {
                 this.x_ratio_uv,
                 this.y_ratio_uv,
                 bits_per_sample,
+                &plane_offsets,
+                pitch,
             )?;
         }
 
         this.frames = frames.into_boxed_slice();
 
         Ok(this)
-    }
-
-    // TODO: Merge into `new`
-    pub fn update(&mut self, pitch: &[NonZeroUsize; 3]) -> Result<()> {
-        for i in 0..self.level_count {
-            let mut planes = SmallVec::with_capacity(3);
-            for plane in 0..(if self.chroma { 1 } else { 3 }) {
-                let offset = plane_super_offset(
-                    plane > 0,
-                    self.height[plane],
-                    i,
-                    self.pel,
-                    self.vpad[plane],
-                    pitch[plane],
-                    self.y_ratio_uv,
-                );
-                planes[plane] = offset;
-            }
-            self.frames[i as usize].update(&planes, pitch);
-        }
-        Ok(())
     }
 }

@@ -44,11 +44,6 @@ make_filter_function! {
         // `opt` exists for compatibility purposes, but will not be used.
         let mvsuper = Super::new(clip, hpad, vpad, pel, levels, chroma, sharp, rfilter, pelclip)?;
 
-        // TODO: wtf is this
-        // VSFilterDependency deps[1] = {
-        //     {data->node, rpStrictSpatial}
-        // };
-
         Ok(Some(Box::new(mvsuper)))
     }
 }

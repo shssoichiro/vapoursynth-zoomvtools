@@ -23,6 +23,8 @@ impl MVFrame {
         x_ratio_uv: NonZeroUsize,
         y_ratio_uv: NonZeroUsize,
         bits_per_sample: NonZeroU8,
+        plane_offsets: &SmallVec<[usize; 3]>,
+        pitch: &[NonZeroUsize; 3],
     ) -> Result<Self> {
         // SAFETY: Width must be at least the value of its ratio
         let chroma_width = unsafe { NonZeroUsize::new_unchecked(width.get() / x_ratio_uv.get()) };
@@ -38,24 +40,20 @@ impl MVFrame {
 
         let mut planes = SmallVec::new();
         for i in 0..(if chroma { 3 } else { 1 }) {
-            planes.push(MVPlane::new(
+            let plane = MVPlane::new(
                 width[i],
                 height[i],
                 pel,
                 hpad[i],
                 vpad[i],
                 bits_per_sample,
-            )?);
+                plane_offsets[i],
+                pitch[i],
+            )?;
+            planes.push(plane);
         }
 
         Ok(Self { planes, chroma })
-    }
-
-    // TODO: Merge into `new`
-    pub fn update(&mut self, plane_offsets: &SmallVec<[usize; 3]>, pitch: &[NonZeroUsize; 3]) {
-        for (i, plane) in self.planes.iter_mut().enumerate() {
-            plane.update(plane_offsets[i], pitch[i]);
-        }
     }
 }
 
@@ -87,11 +85,21 @@ impl MVPlane {
         hpad: usize,
         vpad: usize,
         bits_per_sample: NonZeroU8,
+        plane_offset: usize,
+        pitch: NonZeroUsize,
     ) -> Result<Self> {
         let pel_val = usize::from(pel);
         let padded_width = width.saturating_add(2 * hpad);
         let padded_height = height.saturating_add(2 * vpad);
         let bytes_per_sample = NonZeroU8::try_from(bits_per_sample.saturating_add(7).get() / 8)?;
+        let offset_padding = pitch.get() * vpad + hpad * bytes_per_sample.get() as usize;
+
+        let windows = pel_val * pel_val;
+        let mut offsets = SmallVec::with_capacity(windows);
+        for i in 0..windows {
+            let offset = i * pitch.get() * padded_height.get();
+            offsets.push(plane_offset + offset);
+        }
 
         Ok(Self {
             width,
@@ -102,40 +110,16 @@ impl MVPlane {
             vpad,
             hpad_pel: hpad * pel_val,
             vpad_pel: vpad * pel_val,
+            subpel_window_offsets: offsets,
+            offset_padding,
+            pitch,
             bits_per_sample,
             bytes_per_sample,
             pel,
             is_padded: false,
             is_refined: false,
             is_filled: false,
-            // Temporary values
-            subpel_window_offsets: SmallVec::new(),
-            offset_padding: 0,
-            pitch: width,
         })
-    }
-
-    // TODO: Merge into `new`
-    pub fn update(&mut self, plane_offset: usize, pitch: NonZeroUsize) {
-        self.pitch = pitch;
-        self.offset_padding =
-            pitch.get() * self.vpad + self.hpad * self.bytes_per_sample.get() as usize;
-
-        let pel_val = usize::from(self.pel);
-        let windows = pel_val * pel_val;
-
-        let mut offsets = SmallVec::with_capacity(windows);
-        for i in 0..windows {
-            let offset = i * pitch.get() * self.padded_height.get();
-            offsets.push(plane_offset + offset);
-        }
-        self.subpel_window_offsets = offsets;
-    }
-
-    pub fn reset_state(&mut self) {
-        self.is_padded = false;
-        self.is_refined = false;
-        self.is_filled = false;
     }
 
     pub fn fill_plane<T: Component + Copy>(

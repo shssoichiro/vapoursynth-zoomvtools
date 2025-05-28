@@ -321,8 +321,8 @@ impl<'core> Super<'core> {
             self.x_ratio_uv,
             self.y_ratio_uv,
             NonZeroU8::try_from(self.format.bits_per_sample())?,
+            &dest_pitch,
         )?;
-        src_gof.update(&dest_pitch)?;
 
         // TODO: Finish me
         let planes = [MVPlaneSet::YPLANE, MVPlaneSet::UPLANE, MVPlaneSet::VPLANE];
