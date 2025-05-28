@@ -11,8 +11,8 @@ pub fn reduce_bilinear<T: Pixel>(
     src: &[T],
     dest_pitch: NonZeroUsize,
     src_pitch: NonZeroUsize,
-    width: NonZeroUsize,
-    height: NonZeroUsize,
+    dest_width: NonZeroUsize,
+    dest_height: NonZeroUsize,
 ) {
     reduce_bilinear_vertical(
         dest,
@@ -20,10 +20,10 @@ pub fn reduce_bilinear<T: Pixel>(
         dest_pitch,
         src_pitch,
         // SAFETY: non-zero constant
-        width.saturating_mul(unsafe { NonZeroUsize::new_unchecked(2) }),
-        height,
+        dest_width.saturating_mul(unsafe { NonZeroUsize::new_unchecked(2) }),
+        dest_height,
     );
-    reduce_bilinear_horizontal_inplace(dest, dest_pitch, width, height);
+    reduce_bilinear_horizontal_inplace(dest, dest_pitch, dest_width, dest_height);
 }
 
 pub fn reduce_bilinear_vertical<T: Pixel>(
@@ -31,11 +31,11 @@ pub fn reduce_bilinear_vertical<T: Pixel>(
     mut src: &[T],
     dest_pitch: NonZeroUsize,
     src_pitch: NonZeroUsize,
-    width: NonZeroUsize,
-    height: NonZeroUsize,
+    dest_width: NonZeroUsize,
+    dest_height: NonZeroUsize,
 ) {
     // Special case for first line
-    for x in 0..width.get() {
+    for x in 0..dest_width.get() {
         let a: u32 = src[x].into();
         let b: u32 = src[x + src_pitch.get()].into();
         dest[x] = T::from_or_max((a + b).div_ceil(2));
@@ -44,8 +44,8 @@ pub fn reduce_bilinear_vertical<T: Pixel>(
     src = &src[src_pitch.get() * 2..];
 
     // Middle lines
-    for _y in 1..(height.get() - 1) {
-        for x in 0..width.get() {
+    for _y in 1..(dest_height.get() - 1) {
+        for x in 0..dest_width.get() {
             let a: u32 = src[x - src_pitch.get()].into();
             let b: u32 = src[x].into();
             let c: u32 = src[x + src_pitch.get()].into();
@@ -57,8 +57,8 @@ pub fn reduce_bilinear_vertical<T: Pixel>(
     }
 
     // Special case for last line
-    if height.get() > 1 {
-        for x in 0..width.get() {
+    if dest_height.get() > 1 {
+        for x in 0..dest_width.get() {
             let a: u32 = src[x].into();
             let b: u32 = src[x + src_pitch.get()].into();
             dest[x] = T::from_or_max((a + b).div_ceil(2));
@@ -69,17 +69,17 @@ pub fn reduce_bilinear_vertical<T: Pixel>(
 pub fn reduce_bilinear_horizontal_inplace<T: Pixel>(
     mut dest: &mut [T],
     dest_pitch: NonZeroUsize,
-    width: NonZeroUsize,
-    height: NonZeroUsize,
+    dest_width: NonZeroUsize,
+    dest_height: NonZeroUsize,
 ) {
-    for _y in 0..height.get() {
+    for _y in 0..dest_height.get() {
         // Special case start of line
         let a: u32 = dest[0].into();
         let b: u32 = dest[1].into();
         let src0 = (a + b).div_ceil(2);
 
         // Middle of line
-        for x in 1..(width.get() - 1) {
+        for x in 1..(dest_width.get() - 1) {
             let a: u32 = dest[x * 2 - 1].into();
             let b: u32 = dest[x * 2].into();
             let c: u32 = dest[x * 2 + 1].into();
@@ -90,8 +90,8 @@ pub fn reduce_bilinear_horizontal_inplace<T: Pixel>(
         dest[0] = T::from_or_max(src0);
 
         // Special case end of line
-        if width.get() > 1 {
-            let x = width.get() - 1;
+        if dest_width.get() > 1 {
+            let x = dest_width.get() - 1;
             let a: u32 = dest[x * 2].into();
             let b: u32 = dest[x * 2 + 1].into();
             dest[x] = T::from_or_max((a + b).div_ceil(2));

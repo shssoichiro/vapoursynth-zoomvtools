@@ -5,16 +5,17 @@ use crate::util::Pixel;
 #[cfg(test)]
 mod tests;
 
+// Downscale the height and width of `src` by 2 and write the output into `dest`
 pub fn reduce_average<T: Pixel>(
     mut dest: &mut [T],
     mut src: &[T],
     dest_pitch: NonZeroUsize,
     src_pitch: NonZeroUsize,
-    width: NonZeroUsize,
-    height: NonZeroUsize,
+    dest_width: NonZeroUsize,
+    dest_height: NonZeroUsize,
 ) {
-    for _y in 0..height.get() {
-        for x in 0..width.get() {
+    for _y in 0..dest_height.get() {
+        for x in 0..dest_width.get() {
             // Convert to u32 for intermediate calculation to prevent overflow
             let a: u32 = src[x * 2].into();
             let b: u32 = src[x * 2 + 1].into();
