@@ -354,7 +354,13 @@ impl<'core> Super<'core> {
                 let src_pel_pitch = unsafe { NonZeroUsize::new_unchecked(pel_clip.stride(plane)) };
                 let src_plane = &mut src_frames.planes[plane];
                 if (yuv_mode & planes[plane]).bits() > 0 {
-                    src_plane.refine_ext(src_pel, src_pel_pitch, self.is_pelclip_padded);
+                    src_plane.refine_ext(
+                        src_pel,
+                        src_pel_pitch,
+                        self.is_pelclip_padded,
+                        dest.plane_mut(plane)
+                            .expect("Super: destination plane should exist but does not"),
+                    );
                 }
             }
         } else {

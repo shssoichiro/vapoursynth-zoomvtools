@@ -106,8 +106,22 @@ impl MVPlane {
         src_2x: &[T],
         src_2x_pitch: NonZeroUsize,
         is_ext_padded: bool,
+        dest: &mut [T],
     ) {
-        todo!()
+        if !self.is_refined {
+            match self.pel {
+                Subpel::Full => {
+                    // No refinement needed
+                }
+                Subpel::Half => {
+                    self.refine_ext_pel2(src_2x, src_2x_pitch, is_ext_padded, dest);
+                }
+                Subpel::Quarter => {
+                    self.refine_ext_pel4(src_2x, src_2x_pitch, is_ext_padded, dest);
+                }
+            }
+        }
+        self.is_refined = true;
     }
 
     pub fn reduce_to<T: Pixel>(
