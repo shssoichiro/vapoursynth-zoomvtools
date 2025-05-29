@@ -26,7 +26,7 @@ pub fn reduce_bilinear<T: Pixel>(
     reduce_bilinear_horizontal_inplace(dest, dest_pitch, dest_width, dest_height);
 }
 
-pub fn reduce_bilinear_vertical<T: Pixel>(
+fn reduce_bilinear_vertical<T: Pixel>(
     mut dest: &mut [T],
     mut src: &[T],
     dest_pitch: NonZeroUsize,
@@ -66,7 +66,7 @@ pub fn reduce_bilinear_vertical<T: Pixel>(
     }
 }
 
-pub fn reduce_bilinear_horizontal_inplace<T: Pixel>(
+fn reduce_bilinear_horizontal_inplace<T: Pixel>(
     mut dest: &mut [T],
     dest_pitch: NonZeroUsize,
     dest_width: NonZeroUsize,
