@@ -7,7 +7,8 @@ use smallvec::SmallVec;
 use vapoursynth::{format::Format, frame::Frame};
 
 use crate::{
-    mv_frame::{MVFrame, MVPlaneSet, plane_height_luma, plane_super_offset, plane_width_luma},
+    mv_frame::MVFrame,
+    mv_plane::{MVPlaneSet, plane_height_luma, plane_super_offset, plane_width_luma},
     params::{ReduceFilter, Subpel, SubpelMethod},
     util::Pixel,
 };

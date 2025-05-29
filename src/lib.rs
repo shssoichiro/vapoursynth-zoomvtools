@@ -14,6 +14,7 @@ mod mv_analyse;
 mod mv_compensate;
 mod mv_frame;
 mod mv_gof;
+mod mv_plane;
 mod mv_recalculate;
 mod mv_super;
 mod params;

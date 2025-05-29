@@ -14,8 +14,8 @@ use vapoursynth::{
 };
 
 use crate::{
-    mv_frame::{MVPlaneSet, plane_height_luma, plane_super_offset, plane_width_luma},
     mv_gof::MVGroupOfFrames,
+    mv_plane::{MVPlaneSet, plane_height_luma, plane_super_offset, plane_width_luma},
     params::{ReduceFilter, Subpel, SubpelMethod},
     util::Pixel,
 };
