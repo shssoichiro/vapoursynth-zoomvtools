@@ -27,21 +27,92 @@ pub fn reduce_quadratic<T: Pixel>(
 }
 
 fn reduce_quadratic_vertical<T: Pixel>(
-    dest: &mut [T],
-    src: &[T],
+    mut dest: &mut [T],
+    mut src: &[T],
     dest_pitch: NonZeroUsize,
     src_pitch: NonZeroUsize,
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
-    todo!()
+    // Special case for first line
+    for x in 0..dest_width.get() {
+        let a: u32 = src[x].into();
+        let b: u32 = src[x + src_pitch.get()].into();
+        dest[x] = T::from_or_max((a + b).div_ceil(2));
+    }
+    dest = &mut dest[dest_pitch.get()..];
+    src = &src[src_pitch.get() * 2..];
+
+    // Middle lines
+    for _y in 1..(dest_height.get() - 1) {
+        for x in 0..dest_width.get() {
+            let mut m0: u32 = src[x - src_pitch.get() * 2].into();
+            let mut m1: u32 = src[x - src_pitch.get()].into();
+            let mut m2: u32 = src[x].into();
+            let m3: u32 = src[x + src_pitch.get()].into();
+            let m4: u32 = src[x + src_pitch.get() * 2].into();
+            let m5: u32 = src[x + src_pitch.get() * 3].into();
+
+            m2 = (m2 + m3) * 22;
+            m1 = (m1 + m4) * 9;
+            m0 += m5 + m2 + m1 + 32;
+            m0 >>= 6;
+
+            dest[x] = T::from_or_max(m0);
+        }
+        dest = &mut dest[dest_pitch.get()..];
+        src = &src[src_pitch.get() * 2..];
+    }
+
+    // Special case for last line
+    if dest_height.get() > 1 {
+        for x in 0..dest_width.get() {
+            let a: u32 = src[x].into();
+            let b: u32 = src[x + src_pitch.get()].into();
+            dest[x] = T::from_or_max((a + b).div_ceil(2));
+        }
+    }
 }
 
 fn reduce_quadratic_horizontal_inplace<T: Pixel>(
-    dest: &mut [T],
+    mut dest: &mut [T],
     dest_pitch: NonZeroUsize,
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
-    todo!()
+    for _y in 0..dest_height.get() {
+        // Special case start of line
+        let a: u32 = dest[0].into();
+        let b: u32 = dest[1].into();
+        let src0 = (a + b).div_ceil(2);
+
+        // Middle of line
+        for x in 1..(dest_width.get() - 1) {
+            let mut m0: u32 = dest[x * 2 - 2].into();
+            let mut m1: u32 = dest[x * 2 - 1].into();
+            let mut m2: u32 = dest[x * 2].into();
+            let m3: u32 = dest[x * 2 + 1].into();
+            let m4: u32 = dest[x * 2 + 2].into();
+            let m5: u32 = dest[x * 2 + 3].into();
+
+            m2 = (m2 + m3) * 22;
+            m1 = (m1 + m4) * 9;
+            m0 += m5 + m2 + m1 + 32;
+            m0 >>= 6;
+
+            dest[x] = T::from_or_max(m0);
+        }
+
+        dest[0] = T::from_or_max(src0);
+
+        // Special case end of line
+        if dest_width.get() > 1 {
+            let x = dest_width.get() - 1;
+            let a: u32 = dest[x * 2].into();
+            let b: u32 = dest[x * 2 + 1].into();
+            dest[x] = T::from_or_max((a + b).div_ceil(2));
+        }
+
+        dest = &mut dest[dest_pitch.get()..];
+    }
 }
