@@ -1,9 +1,23 @@
 #[cfg(test)]
 mod tests;
 
-use std::num::NonZeroUsize;
+mod bicubic;
+mod bilinear;
+mod wiener;
+
+use std::num::{NonZeroU8, NonZeroUsize};
+
+pub use bicubic::{refine_horizontal_bicubic, refine_vertical_bicubic};
+pub use bilinear::{
+    refine_diagonal_bilinear,
+    refine_horizontal_bilinear,
+    refine_vertical_bilinear,
+};
+pub use wiener::{refine_horizontal_wiener, refine_vertical_wiener};
 
 use crate::{mv_plane::MVPlane, pad::pad_reference_frame, util::Pixel};
+
+pub type RefineFn<T> = fn(&[T], &mut [T], NonZeroUsize, NonZeroUsize, NonZeroUsize, NonZeroU8);
 
 impl MVPlane {
     pub fn refine_ext_pel2<T: Pixel>(

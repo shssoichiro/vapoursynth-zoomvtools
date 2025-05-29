@@ -10,6 +10,7 @@ use vapoursynth::{
     plugins::{Filter, FilterArgument, Metadata},
 };
 
+mod average;
 mod mv_analyse;
 mod mv_compensate;
 mod mv_frame;

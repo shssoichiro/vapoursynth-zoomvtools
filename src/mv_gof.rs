@@ -106,15 +106,15 @@ impl MVGroupOfFrames {
             self.frames[i]
                 .clone()
                 .reduce_to::<T>(&mut self.frames[i + 1], mode, filter, frame);
-            self.frames[i + 1].pad(MVPlaneSet::YUVPLANES);
+            self.frames[i + 1].pad::<T>(MVPlaneSet::YUVPLANES, frame);
         }
     }
 
-    pub fn pad(&mut self, mode: MVPlaneSet) {
-        todo!()
+    pub fn pad<T: Pixel>(&mut self, mode: MVPlaneSet, frame: &mut Frame) {
+        self.frames[0].pad::<T>(mode, frame);
     }
 
-    pub fn refine(&mut self, mode: MVPlaneSet, subpel: SubpelMethod) {
-        todo!()
+    pub fn refine<T: Pixel>(&mut self, mode: MVPlaneSet, subpel: SubpelMethod, frame: &mut Frame) {
+        self.frames[0].refine::<T>(mode, subpel, frame);
     }
 }

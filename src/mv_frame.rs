@@ -6,7 +6,7 @@ use vapoursynth::frame::Frame;
 
 use crate::{
     mv_plane::{MVPlane, MVPlaneSet},
-    params::{ReduceFilter, Subpel},
+    params::{ReduceFilter, Subpel, SubpelMethod},
     util::Pixel,
 };
 
@@ -105,7 +105,37 @@ impl MVFrame {
         }
     }
 
-    pub(crate) fn pad(&self, mode: MVPlaneSet) {
-        todo!()
+    pub(crate) fn pad<T: Pixel>(&mut self, mode: MVPlaneSet, frame: &mut Frame) {
+        for i in 0..3 {
+            if let Some(plane) = self.planes.get_mut(i)
+                && (mode.bits() & (1 << i)) > 0
+            {
+                plane.pad(
+                    frame
+                        .plane_mut::<T>(i)
+                        .expect("Super: source plane should exist but does not"),
+                );
+            }
+        }
+    }
+
+    pub(crate) fn refine<T: Pixel>(
+        &mut self,
+        mode: MVPlaneSet,
+        subpel: SubpelMethod,
+        frame: &mut Frame,
+    ) {
+        for i in 0..3 {
+            if let Some(plane) = self.planes.get_mut(i)
+                && (mode.bits() & (1 << i)) > 0
+            {
+                plane.refine::<T>(
+                    subpel,
+                    frame
+                        .plane_mut::<T>(i)
+                        .expect("Super: source plane should exist but does not"),
+                );
+            }
+        }
     }
 }

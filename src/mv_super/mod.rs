@@ -340,7 +340,7 @@ impl<'core> Super<'core> {
 
         let planes = [MVPlaneSet::YPLANE, MVPlaneSet::UPLANE, MVPlaneSet::VPLANE];
         src_gof.reduce::<T>(yuv_mode, self.rfilter, &mut dest);
-        src_gof.pad(yuv_mode);
+        src_gof.pad::<T>(yuv_mode, &mut dest);
 
         if let Some(pel_clip) = src_pel.as_ref() {
             let src_frames = &mut src_gof.frames[0];
@@ -364,7 +364,7 @@ impl<'core> Super<'core> {
                 }
             }
         } else {
-            src_gof.refine(yuv_mode, self.sharp);
+            src_gof.refine::<T>(yuv_mode, self.sharp, &mut dest);
         }
 
         if n == 0 {

@@ -3,9 +3,12 @@ use std::num::{NonZeroU8, NonZeroUsize};
 use anyhow::Result;
 use bitflags::bitflags;
 use smallvec::SmallVec;
+use vapoursynth::frame::Frame;
 
 use crate::{
-    params::{ReduceFilter, Subpel},
+    average::average2,
+    pad::pad_reference_frame,
+    params::{ReduceFilter, Subpel, SubpelMethod},
     reduce::{
         ReduceFn,
         reduce_average,
@@ -13,6 +16,16 @@ use crate::{
         reduce_cubic,
         reduce_quadratic,
         reduce_triangle,
+    },
+    refine::{
+        RefineFn,
+        refine_diagonal_bilinear,
+        refine_horizontal_bicubic,
+        refine_horizontal_bilinear,
+        refine_horizontal_wiener,
+        refine_vertical_bicubic,
+        refine_vertical_bilinear,
+        refine_vertical_wiener,
     },
     util::{Pixel, vs_bitblt},
 };
@@ -153,6 +166,201 @@ impl MVPlane {
         reduce(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
 
         reduced_plane.is_filled = true;
+    }
+
+    pub fn pad<T: Pixel>(&mut self, src: &mut [T]) {
+        if !self.is_padded {
+            pad_reference_frame(
+                self.subpel_window_offsets[0],
+                self.pitch,
+                self.hpad,
+                self.vpad,
+                self.width,
+                self.height,
+                src,
+            );
+            self.is_padded = true;
+        }
+    }
+
+    pub fn refine<T: Pixel>(&mut self, subpel: SubpelMethod, plane: &mut [T]) {
+        if self.is_refined {
+            return;
+        }
+
+        if self.pel == Subpel::Full {
+            self.is_refined = true;
+            return;
+        }
+
+        let refine: [RefineFn<T>; 3] = match subpel {
+            SubpelMethod::Bilinear => [
+                refine_horizontal_bilinear,
+                refine_vertical_bilinear,
+                refine_diagonal_bilinear,
+            ],
+            SubpelMethod::Bicubic => [
+                refine_horizontal_bicubic,
+                refine_vertical_bicubic,
+                refine_horizontal_bicubic,
+            ],
+            SubpelMethod::Wiener => [
+                refine_horizontal_wiener,
+                refine_vertical_wiener,
+                refine_horizontal_wiener,
+            ],
+        };
+
+        let mut src_offsets = [0; 3];
+        let mut dest_offsets = [0; 3];
+        match self.pel {
+            Subpel::Full => unreachable!(),
+            Subpel::Half => {
+                dest_offsets[0] = self.subpel_window_offsets[1];
+                dest_offsets[1] = self.subpel_window_offsets[2];
+                dest_offsets[2] = self.subpel_window_offsets[3];
+                src_offsets[0] = self.subpel_window_offsets[0];
+                src_offsets[1] = self.subpel_window_offsets[0];
+                if subpel == SubpelMethod::Bilinear {
+                    src_offsets[2] = self.subpel_window_offsets[0];
+                } else {
+                    src_offsets[2] = self.subpel_window_offsets[2];
+                }
+            }
+            Subpel::Quarter => {
+                dest_offsets[0] = self.subpel_window_offsets[2];
+                dest_offsets[1] = self.subpel_window_offsets[8];
+                dest_offsets[2] = self.subpel_window_offsets[10];
+                src_offsets[0] = self.subpel_window_offsets[0];
+                src_offsets[1] = self.subpel_window_offsets[0];
+                if subpel == SubpelMethod::Bilinear {
+                    src_offsets[2] = self.subpel_window_offsets[0];
+                } else {
+                    src_offsets[2] = self.subpel_window_offsets[8];
+                }
+            }
+        }
+
+        // FIXME: Avoid these clones
+        for i in 0..3 {
+            refine[i](
+                &plane[src_offsets[i]..].to_vec(),
+                &mut plane[dest_offsets[i]..],
+                self.pitch,
+                self.padded_width,
+                self.padded_height,
+                self.bits_per_sample,
+            );
+        }
+
+        // FIXME: Avoid all of these clones
+        if self.pel == Subpel::Quarter {
+            average2(
+                &plane[self.subpel_window_offsets[0]..].to_vec(),
+                &plane[self.subpel_window_offsets[2]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[1]..],
+                self.pitch,
+                self.padded_width,
+                self.padded_height,
+            );
+            average2(
+                &plane[self.subpel_window_offsets[8]..].to_vec(),
+                &plane[self.subpel_window_offsets[10]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[9]..],
+                self.pitch,
+                self.padded_width,
+                self.padded_height,
+            );
+            average2(
+                &plane[self.subpel_window_offsets[0]..].to_vec(),
+                &plane[self.subpel_window_offsets[8]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[4]..],
+                self.pitch,
+                self.padded_width,
+                self.padded_height,
+            );
+            average2(
+                &plane[self.subpel_window_offsets[2]..].to_vec(),
+                &plane[self.subpel_window_offsets[10]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[6]..],
+                self.pitch,
+                self.padded_width,
+                self.padded_height,
+            );
+            average2(
+                &plane[self.subpel_window_offsets[4]..].to_vec(),
+                &plane[self.subpel_window_offsets[6]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[5]..],
+                self.pitch,
+                self.padded_width,
+                self.padded_height,
+            );
+
+            average2(
+                &plane[self.subpel_window_offsets[0] + 1..].to_vec(),
+                &plane[self.subpel_window_offsets[2]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[3]..],
+                self.pitch,
+                // SAFETY: Since we are doing qpel refinement, we know res is at least 4x4
+                unsafe { NonZeroUsize::new_unchecked(self.padded_width.get() - 1) },
+                self.padded_height,
+            );
+            average2(
+                &plane[self.subpel_window_offsets[8] + 1..].to_vec(),
+                &plane[self.subpel_window_offsets[10]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[11]..],
+                self.pitch,
+                // SAFETY: Since we are doing qpel refinement, we know res is at least 4x4
+                unsafe { NonZeroUsize::new_unchecked(self.padded_width.get() - 1) },
+                self.padded_height,
+            );
+            average2(
+                &plane[self.subpel_window_offsets[0] + self.pitch.get()..].to_vec(),
+                &plane[self.subpel_window_offsets[8]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[12]..],
+                self.pitch,
+                self.padded_width,
+                // SAFETY: Since we are doing qpel refinement, we know res is at least 4x4
+                unsafe { NonZeroUsize::new_unchecked(self.padded_height.get() - 1) },
+            );
+            average2(
+                &plane[self.subpel_window_offsets[2] + self.pitch.get()..].to_vec(),
+                &plane[self.subpel_window_offsets[10]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[14]..],
+                self.pitch,
+                self.padded_width,
+                // SAFETY: Since we are doing qpel refinement, we know res is at least 4x4
+                unsafe { NonZeroUsize::new_unchecked(self.padded_height.get() - 1) },
+            );
+            average2(
+                &plane[self.subpel_window_offsets[12]..].to_vec(),
+                &plane[self.subpel_window_offsets[14]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[13]..],
+                self.pitch,
+                self.padded_width,
+                self.padded_height,
+            );
+            average2(
+                &plane[self.subpel_window_offsets[4] + 1..].to_vec(),
+                &plane[self.subpel_window_offsets[6]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[7]..],
+                self.pitch,
+                // SAFETY: Since we are doing qpel refinement, we know res is at least 4x4
+                unsafe { NonZeroUsize::new_unchecked(self.padded_width.get() - 1) },
+                self.padded_height,
+            );
+            average2(
+                &plane[self.subpel_window_offsets[12] + 1..].to_vec(),
+                &plane[self.subpel_window_offsets[14]..].to_vec(),
+                &mut plane[self.subpel_window_offsets[15]..],
+                self.pitch,
+                // SAFETY: Since we are doing qpel refinement, we know res is at least 4x4
+                unsafe { NonZeroUsize::new_unchecked(self.padded_width.get() - 1) },
+                self.padded_height,
+            );
+        }
+
+        self.is_refined = true;
     }
 }
 
