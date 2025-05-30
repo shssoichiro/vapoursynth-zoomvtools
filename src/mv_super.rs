@@ -275,7 +275,7 @@ impl<'core> Super<'core> {
                 self.format,
                 Resolution {
                     width: self.super_width.get(),
-                    height: self.super_width.get(),
+                    height: self.super_height.get(),
                 },
             );
             for plane in 0..self.format.plane_count() {
@@ -392,7 +392,7 @@ impl<'core> Filter<'core> for Super<'core> {
         let mut info = self.clip.info();
         info.resolution = Property::Constant(Resolution {
             width: self.super_width.get(),
-            height: self.super_width.get(),
+            height: self.super_height.get(),
         });
         vec![info]
     }
