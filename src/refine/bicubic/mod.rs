@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::{
     cmp::{max, min},
     num::{NonZeroU8, NonZeroUsize},
@@ -69,7 +72,7 @@ pub fn refine_vertical_bicubic<T: Pixel>(
             let d: i32 = src[offset + i + pitch.get() * 2].into();
             dest[offset + i] = T::from_or_max(min(
                 pixel_max,
-                max(0, (-(a - d) + (b + c) * 9 + 8) >> 4) as u32,
+                max(0, (-(a + d) + (b + c) * 9 + 8) >> 4) as u32,
             ));
         }
         offset += pitch.get();
