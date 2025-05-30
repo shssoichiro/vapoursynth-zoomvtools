@@ -17,7 +17,7 @@ pub fn bench_refine_ext_pel2_8bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let resolution = NonZeroUsize::new(256).unwrap();
         let src_2x_resolution = resolution.saturating_mul(NonZeroUsize::new(2).unwrap());
-        let mut dest = vec![0u8; resolution.get() * resolution.get()];
+        let mut dest = vec![0u8; 4 * resolution.get() * resolution.get()];
         let mut src = vec![0u8; src_2x_resolution.get() * src_2x_resolution.get()];
         let mut mvp = MVPlane::new(
             black_box(resolution),
@@ -51,7 +51,7 @@ pub fn bench_refine_ext_pel2_8bit_padded(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let resolution = NonZeroUsize::new(256).unwrap();
         let src_2x_resolution = resolution.saturating_mul(NonZeroUsize::new(2).unwrap());
-        let mut dest = vec![0u8; resolution.get() * resolution.get()];
+        let mut dest = vec![0u8; 4 * resolution.get() * resolution.get()];
         let mut src = vec![0u8; src_2x_resolution.get() * src_2x_resolution.get()];
         let mut mvp = MVPlane::new(
             black_box(resolution),
@@ -85,7 +85,7 @@ pub fn bench_refine_ext_pel2_16bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let resolution = NonZeroUsize::new(256).unwrap();
         let src_2x_resolution = resolution.saturating_mul(NonZeroUsize::new(2).unwrap());
-        let mut dest = vec![0u16; resolution.get() * resolution.get()];
+        let mut dest = vec![0u16; 4 * resolution.get() * resolution.get()];
         let mut src = vec![0u16; src_2x_resolution.get() * src_2x_resolution.get()];
         let mut mvp = MVPlane::new(
             black_box(resolution),
@@ -119,7 +119,7 @@ pub fn bench_refine_ext_pel2_16bit_padded(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let resolution = NonZeroUsize::new(256).unwrap();
         let src_2x_resolution = resolution.saturating_mul(NonZeroUsize::new(2).unwrap());
-        let mut dest = vec![0u16; resolution.get() * resolution.get()];
+        let mut dest = vec![0u16; 4 * resolution.get() * resolution.get()];
         let mut src = vec![0u16; src_2x_resolution.get() * src_2x_resolution.get()];
         let mut mvp = MVPlane::new(
             black_box(resolution),
@@ -153,7 +153,7 @@ pub fn bench_refine_ext_pel4_8bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let resolution = NonZeroUsize::new(256).unwrap();
         let src_4x_resolution = resolution.saturating_mul(NonZeroUsize::new(4).unwrap());
-        let mut dest = vec![0u8; resolution.get() * resolution.get()];
+        let mut dest = vec![0u8; 16 * resolution.get() * resolution.get()];
         let mut src = vec![0u8; src_4x_resolution.get() * src_4x_resolution.get()];
         let mut mvp = MVPlane::new(
             black_box(resolution),
@@ -187,7 +187,7 @@ pub fn bench_refine_ext_pel4_8bit_padded(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let resolution = NonZeroUsize::new(256).unwrap();
         let src_4x_resolution = resolution.saturating_mul(NonZeroUsize::new(4).unwrap());
-        let mut dest = vec![0u8; resolution.get() * resolution.get()];
+        let mut dest = vec![0u8; 16 * resolution.get() * resolution.get()];
         let mut src = vec![0u8; src_4x_resolution.get() * src_4x_resolution.get()];
         let mut mvp = MVPlane::new(
             black_box(resolution),
@@ -221,7 +221,7 @@ pub fn bench_refine_ext_pel4_16bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let resolution = NonZeroUsize::new(256).unwrap();
         let src_4x_resolution = resolution.saturating_mul(NonZeroUsize::new(4).unwrap());
-        let mut dest = vec![0u16; resolution.get() * resolution.get()];
+        let mut dest = vec![0u16; 16 * resolution.get() * resolution.get()];
         let mut src = vec![0u16; src_4x_resolution.get() * src_4x_resolution.get()];
         let mut mvp = MVPlane::new(
             black_box(resolution),
@@ -255,7 +255,7 @@ pub fn bench_refine_ext_pel4_16bit_padded(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let resolution = NonZeroUsize::new(256).unwrap();
         let src_4x_resolution = resolution.saturating_mul(NonZeroUsize::new(4).unwrap());
-        let mut dest = vec![0u16; resolution.get() * resolution.get()];
+        let mut dest = vec![0u16; 16 * resolution.get() * resolution.get()];
         let mut src = vec![0u16; src_4x_resolution.get() * src_4x_resolution.get()];
         let mut mvp = MVPlane::new(
             black_box(resolution),
@@ -384,8 +384,10 @@ pub fn bench_refine_diagonal_bilinear_8bit(c: &mut Criterion) {
     c.bench_function("refine_diagonal_bilinear 8-bit", |b| {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let resolution = NonZeroUsize::new(256).unwrap();
-        let mut dest = vec![0u8; resolution.get() * resolution.get()];
-        let mut src = vec![0u8; resolution.get() * resolution.get()];
+        let padded_width = resolution.get() + 1;
+        let padded_height = resolution.get() + 1;
+        let mut dest = vec![0u8; padded_width * (resolution.get() + 1)];
+        let mut src = vec![0u8; padded_width * padded_height];
 
         for p in src.iter_mut() {
             *p = rng.random();
@@ -395,7 +397,7 @@ pub fn bench_refine_diagonal_bilinear_8bit(c: &mut Criterion) {
             refine_diagonal_bilinear(
                 black_box(&src),
                 black_box(&mut dest),
-                black_box(resolution),
+                black_box(NonZeroUsize::new(padded_width).unwrap()),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(NonZeroU8::new(8).unwrap()),
@@ -408,8 +410,10 @@ pub fn bench_refine_diagonal_bilinear_16bit(c: &mut Criterion) {
     c.bench_function("refine_diagonal_bilinear 16-bit", |b| {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let resolution = NonZeroUsize::new(256).unwrap();
-        let mut dest = vec![0u16; resolution.get() * resolution.get()];
-        let mut src = vec![0u16; resolution.get() * resolution.get()];
+        let padded_width = resolution.get() + 1;
+        let padded_height = resolution.get() + 1;
+        let mut dest = vec![0u16; padded_width * (resolution.get() + 1)];
+        let mut src = vec![0u16; padded_width * padded_height];
 
         for p in src.iter_mut() {
             *p = rng.random();
@@ -419,7 +423,7 @@ pub fn bench_refine_diagonal_bilinear_16bit(c: &mut Criterion) {
             refine_diagonal_bilinear(
                 black_box(&src),
                 black_box(&mut dest),
-                black_box(resolution),
+                black_box(NonZeroUsize::new(padded_width).unwrap()),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(NonZeroU8::new(16).unwrap()),
