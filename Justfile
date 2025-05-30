@@ -9,3 +9,12 @@ install:
 
 install-debug:
     cargo build && sudo cp target/debug/libvapoursynth_zoomvtools.so /usr/lib/vapoursynth/
+
+bench:
+    cargo bench --features bench
+
+bench-build:
+    cargo bench --features bench --no-run
+
+precommit:
+    cargo fmt && cargo clippy && just lcov && just bench-build
