@@ -3,7 +3,6 @@ use std::num::{NonZeroU8, NonZeroUsize};
 use anyhow::Result;
 use bitflags::bitflags;
 use smallvec::SmallVec;
-use vapoursynth::frame::Frame;
 
 use crate::{
     average::average2,

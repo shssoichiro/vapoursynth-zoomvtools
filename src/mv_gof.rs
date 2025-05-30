@@ -23,7 +23,6 @@ pub struct MVGroupOfFrames {
     vpad: [usize; 3],
     x_ratio_uv: NonZeroUsize,
     y_ratio_uv: NonZeroUsize,
-    yuv_mode: MVPlaneSet,
     pub frames: Box<[MVFrame]>,
 }
 
@@ -58,7 +57,6 @@ impl MVGroupOfFrames {
             vpad: [vpad, chroma_vpad, chroma_vpad],
             x_ratio_uv,
             y_ratio_uv,
-            yuv_mode,
             frames: Default::default(),
         };
 

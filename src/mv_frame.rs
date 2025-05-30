@@ -13,7 +13,6 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct MVFrame {
     pub planes: SmallVec<[MVPlane; 3]>,
-    yuv_mode: MVPlaneSet,
 }
 
 impl MVFrame {
@@ -61,7 +60,7 @@ impl MVFrame {
             planes.push(plane);
         }
 
-        Ok(Self { planes, yuv_mode })
+        Ok(Self { planes })
     }
 
     pub(crate) fn reduce_to<T: Pixel>(
