@@ -472,8 +472,8 @@ fn test_pad_corner_with_offset() {
     );
 
     // Verify the area before offset is unchanged
-    for i in 0..offset {
-        assert_eq!(dest[i], 0, "Data before offset was modified");
+    for (i, &value) in dest.iter().take(offset).enumerate() {
+        assert_eq!(value, 0, "Data before offset was modified at index {}", i);
     }
 
     // Verify corner padding
