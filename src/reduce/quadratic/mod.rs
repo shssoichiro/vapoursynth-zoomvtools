@@ -52,7 +52,7 @@ pub fn reduce_quadratic<T: Pixel>(
 /// neighbors with quadratic-weighted coefficients.
 fn reduce_quadratic_vertical<T: Pixel>(
     mut dest: &mut [T],
-    mut src: &[T],
+    src: &[T],
     dest_pitch: NonZeroUsize,
     src_pitch: NonZeroUsize,
     dest_width: NonZeroUsize,
@@ -65,17 +65,17 @@ fn reduce_quadratic_vertical<T: Pixel>(
         dest[x] = T::from_or_max((a + b).div_ceil(2));
     }
     dest = &mut dest[dest_pitch.get()..];
-    src = &src[src_pitch.get() * 2..];
 
     // Middle lines
-    for _y in 1..(dest_height.get() - 1) {
+    for y in 1..(dest_height.get() - 1) {
+        let src_row_offset = y * 2 * src_pitch.get();
         for x in 0..dest_width.get() {
-            let mut m0: u32 = src[x - src_pitch.get() * 2].into();
-            let mut m1: u32 = src[x - src_pitch.get()].into();
-            let mut m2: u32 = src[x].into();
-            let m3: u32 = src[x + src_pitch.get()].into();
-            let m4: u32 = src[x + src_pitch.get() * 2].into();
-            let m5: u32 = src[x + src_pitch.get() * 3].into();
+            let mut m0: u32 = src[src_row_offset + x - src_pitch.get() * 2].into();
+            let mut m1: u32 = src[src_row_offset + x - src_pitch.get()].into();
+            let mut m2: u32 = src[src_row_offset + x].into();
+            let m3: u32 = src[src_row_offset + x + src_pitch.get()].into();
+            let m4: u32 = src[src_row_offset + x + src_pitch.get() * 2].into();
+            let m5: u32 = src[src_row_offset + x + src_pitch.get() * 3].into();
 
             m2 = (m2 + m3) * 22;
             m1 = (m1 + m4) * 9;
@@ -85,14 +85,14 @@ fn reduce_quadratic_vertical<T: Pixel>(
             dest[x] = T::from_or_max(m0);
         }
         dest = &mut dest[dest_pitch.get()..];
-        src = &src[src_pitch.get() * 2..];
     }
 
     // Special case for last line
     if dest_height.get() > 1 {
+        let src_row_offset = (dest_height.get() - 1) * 2 * src_pitch.get();
         for x in 0..dest_width.get() {
-            let a: u32 = src[x].into();
-            let b: u32 = src[x + src_pitch.get()].into();
+            let a: u32 = src[src_row_offset + x].into();
+            let b: u32 = src[src_row_offset + x + src_pitch.get()].into();
             dest[x] = T::from_or_max((a + b).div_ceil(2));
         }
     }

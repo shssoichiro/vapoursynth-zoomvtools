@@ -408,3 +408,38 @@ fn test_reduce_bilinear_gradient() {
     // All values should be reasonable - no need to check u8 range as it's
     // guaranteed by type
 }
+
+#[test]
+fn test_reduce_bilinear_large_height() {
+    // Test 4x6 -> 2x3 reduction to exercise the middle lines loop
+    let src = vec![
+        10u8, 20, 30, 40, // row 0
+        50, 60, 70, 80, // row 1
+        90, 100, 110, 120, // row 2
+        130, 140, 150, 160, // row 3
+        170, 180, 190, 200, // row 4
+        210, 220, 230, 240, // row 5
+    ];
+    // Destination buffer needs to accommodate intermediate width of 4
+    // (dest_width*2) and height of 3
+    let mut dest = vec![0u8; 12]; // 4 width * 3 height
+    let src_pitch = NonZeroUsize::new(4).unwrap();
+    let dest_pitch = NonZeroUsize::new(4).unwrap(); // Must accommodate intermediate width
+    let dest_width = NonZeroUsize::new(2).unwrap();
+    let dest_height = NonZeroUsize::new(3).unwrap();
+
+    reduce_bilinear(
+        &mut dest,
+        &src,
+        dest_pitch,
+        src_pitch,
+        dest_width,
+        dest_height,
+    );
+
+    // This test primarily ensures the middle lines loop doesn't crash
+    // The exact values are less important than ensuring no index out of bounds
+    assert_ne!(dest[0], 0); // Should have been modified
+    assert_ne!(dest[4], 0); // Second row should have been modified
+    assert_ne!(dest[8], 0); // Third row should have been modified
+}

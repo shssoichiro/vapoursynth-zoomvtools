@@ -62,7 +62,7 @@ pub fn bench_reduce_bilinear_8bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let src_resolution = NonZeroUsize::new(256).unwrap();
         let dest_resolution = NonZeroUsize::new(src_resolution.get() / 2).unwrap();
-        let mut dest = vec![0u8; dest_resolution.get() * dest_resolution.get()];
+        let mut dest = vec![0u8; src_resolution.get() * dest_resolution.get()];
         let mut src = vec![0u8; src_resolution.get() * src_resolution.get()];
 
         for p in src.iter_mut() {
@@ -73,7 +73,7 @@ pub fn bench_reduce_bilinear_8bit(c: &mut Criterion) {
             reduce_bilinear(
                 black_box(&mut dest),
                 black_box(&src),
-                black_box(dest_resolution),
+                black_box(src_resolution),
                 black_box(src_resolution),
                 black_box(dest_resolution),
                 black_box(dest_resolution),
@@ -87,7 +87,7 @@ pub fn bench_reduce_bilinear_16bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let src_resolution = NonZeroUsize::new(256).unwrap();
         let dest_resolution = NonZeroUsize::new(src_resolution.get() / 2).unwrap();
-        let mut dest = vec![0u16; dest_resolution.get() * dest_resolution.get()];
+        let mut dest = vec![0u16; src_resolution.get() * dest_resolution.get()];
         let mut src = vec![0u16; src_resolution.get() * src_resolution.get()];
 
         for p in src.iter_mut() {
@@ -98,7 +98,7 @@ pub fn bench_reduce_bilinear_16bit(c: &mut Criterion) {
             reduce_bilinear(
                 black_box(&mut dest),
                 black_box(&src),
-                black_box(dest_resolution),
+                black_box(src_resolution),
                 black_box(src_resolution),
                 black_box(dest_resolution),
                 black_box(dest_resolution),
@@ -112,7 +112,7 @@ pub fn bench_reduce_cubic_8bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let src_resolution = NonZeroUsize::new(256).unwrap();
         let dest_resolution = NonZeroUsize::new(src_resolution.get() / 2).unwrap();
-        let mut dest = vec![0u8; dest_resolution.get() * dest_resolution.get()];
+        let mut dest = vec![0u8; src_resolution.get() * dest_resolution.get()];
         let mut src = vec![0u8; src_resolution.get() * src_resolution.get()];
 
         for p in src.iter_mut() {
@@ -123,7 +123,7 @@ pub fn bench_reduce_cubic_8bit(c: &mut Criterion) {
             reduce_cubic(
                 black_box(&mut dest),
                 black_box(&src),
-                black_box(dest_resolution),
+                black_box(src_resolution),
                 black_box(src_resolution),
                 black_box(dest_resolution),
                 black_box(dest_resolution),
@@ -137,7 +137,7 @@ pub fn bench_reduce_cubic_16bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let src_resolution = NonZeroUsize::new(256).unwrap();
         let dest_resolution = NonZeroUsize::new(src_resolution.get() / 2).unwrap();
-        let mut dest = vec![0u16; dest_resolution.get() * dest_resolution.get()];
+        let mut dest = vec![0u16; src_resolution.get() * dest_resolution.get()];
         let mut src = vec![0u16; src_resolution.get() * src_resolution.get()];
 
         for p in src.iter_mut() {
@@ -148,7 +148,7 @@ pub fn bench_reduce_cubic_16bit(c: &mut Criterion) {
             reduce_cubic(
                 black_box(&mut dest),
                 black_box(&src),
-                black_box(dest_resolution),
+                black_box(src_resolution),
                 black_box(src_resolution),
                 black_box(dest_resolution),
                 black_box(dest_resolution),
@@ -162,7 +162,7 @@ pub fn bench_reduce_quadratic_8bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let src_resolution = NonZeroUsize::new(256).unwrap();
         let dest_resolution = NonZeroUsize::new(src_resolution.get() / 2).unwrap();
-        let mut dest = vec![0u8; dest_resolution.get() * dest_resolution.get()];
+        let mut dest = vec![0u8; src_resolution.get() * dest_resolution.get()];
         let mut src = vec![0u8; src_resolution.get() * src_resolution.get()];
 
         for p in src.iter_mut() {
@@ -173,7 +173,7 @@ pub fn bench_reduce_quadratic_8bit(c: &mut Criterion) {
             reduce_quadratic(
                 black_box(&mut dest),
                 black_box(&src),
-                black_box(dest_resolution),
+                black_box(src_resolution),
                 black_box(src_resolution),
                 black_box(dest_resolution),
                 black_box(dest_resolution),
@@ -187,7 +187,7 @@ pub fn bench_reduce_quadratic_16bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let src_resolution = NonZeroUsize::new(256).unwrap();
         let dest_resolution = NonZeroUsize::new(src_resolution.get() / 2).unwrap();
-        let mut dest = vec![0u16; dest_resolution.get() * dest_resolution.get()];
+        let mut dest = vec![0u16; src_resolution.get() * dest_resolution.get()];
         let mut src = vec![0u16; src_resolution.get() * src_resolution.get()];
 
         for p in src.iter_mut() {
@@ -198,7 +198,7 @@ pub fn bench_reduce_quadratic_16bit(c: &mut Criterion) {
             reduce_quadratic(
                 black_box(&mut dest),
                 black_box(&src),
-                black_box(dest_resolution),
+                black_box(src_resolution),
                 black_box(src_resolution),
                 black_box(dest_resolution),
                 black_box(dest_resolution),
@@ -212,7 +212,7 @@ pub fn bench_reduce_triangle_8bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let src_resolution = NonZeroUsize::new(256).unwrap();
         let dest_resolution = NonZeroUsize::new(src_resolution.get() / 2).unwrap();
-        let mut dest = vec![0u8; dest_resolution.get() * dest_resolution.get()];
+        let mut dest = vec![0u8; src_resolution.get() * dest_resolution.get()];
         let mut src = vec![0u8; src_resolution.get() * src_resolution.get()];
 
         for p in src.iter_mut() {
@@ -223,7 +223,7 @@ pub fn bench_reduce_triangle_8bit(c: &mut Criterion) {
             reduce_triangle(
                 black_box(&mut dest),
                 black_box(&src),
-                black_box(dest_resolution),
+                black_box(src_resolution),
                 black_box(src_resolution),
                 black_box(dest_resolution),
                 black_box(dest_resolution),
@@ -237,7 +237,7 @@ pub fn bench_reduce_triangle_16bit(c: &mut Criterion) {
         let mut rng = Xoshiro128StarStar::from_seed(*b"deadbeeflolcakes");
         let src_resolution = NonZeroUsize::new(256).unwrap();
         let dest_resolution = NonZeroUsize::new(src_resolution.get() / 2).unwrap();
-        let mut dest = vec![0u16; dest_resolution.get() * dest_resolution.get()];
+        let mut dest = vec![0u16; src_resolution.get() * dest_resolution.get()];
         let mut src = vec![0u16; src_resolution.get() * src_resolution.get()];
 
         for p in src.iter_mut() {
@@ -248,7 +248,7 @@ pub fn bench_reduce_triangle_16bit(c: &mut Criterion) {
             reduce_triangle(
                 black_box(&mut dest),
                 black_box(&src),
-                black_box(dest_resolution),
+                black_box(src_resolution),
                 black_box(src_resolution),
                 black_box(dest_resolution),
                 black_box(dest_resolution),
