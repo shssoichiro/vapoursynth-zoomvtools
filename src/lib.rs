@@ -9,21 +9,62 @@ use vapoursynth::{
     plugins::{Filter, FilterArgument, Metadata},
 };
 
+#[cfg(feature = "bench")]
+pub mod average;
+#[cfg(feature = "bench")]
+pub mod mv_analyse;
+#[cfg(feature = "bench")]
+pub mod mv_compensate;
+#[cfg(feature = "bench")]
+pub mod mv_frame;
+#[cfg(feature = "bench")]
+pub mod mv_gof;
+#[cfg(feature = "bench")]
+pub mod mv_plane;
+#[cfg(feature = "bench")]
+pub mod mv_recalculate;
+#[cfg(feature = "bench")]
+pub mod mv_super;
+#[cfg(feature = "bench")]
+pub mod pad;
+#[cfg(feature = "bench")]
+pub mod params;
+#[cfg(feature = "bench")]
+pub mod reduce;
+#[cfg(feature = "bench")]
+pub mod refine;
+#[cfg(feature = "bench")]
+pub mod util;
+
+#[cfg(not(feature = "bench"))]
 mod average;
+#[cfg(not(feature = "bench"))]
 mod mv_analyse;
+#[cfg(not(feature = "bench"))]
 mod mv_compensate;
+#[cfg(not(feature = "bench"))]
 mod mv_frame;
+#[cfg(not(feature = "bench"))]
 mod mv_gof;
+#[cfg(not(feature = "bench"))]
 mod mv_plane;
+#[cfg(not(feature = "bench"))]
 mod mv_recalculate;
+#[cfg(not(feature = "bench"))]
 mod mv_super;
+#[cfg(not(feature = "bench"))]
 mod pad;
+#[cfg(not(feature = "bench"))]
 mod params;
+#[cfg(not(feature = "bench"))]
 mod reduce;
+#[cfg(not(feature = "bench"))]
 mod refine;
+#[cfg(not(feature = "bench"))]
+mod util;
+
 #[cfg(test)]
 mod tests;
-mod util;
 
 pub const PLUGIN_IDENTIFIER: &str = "com.soichiro.zoomvtools";
 pub const PLUGIN_NAME: &str = "zoomvtools";

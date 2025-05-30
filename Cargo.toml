@@ -10,9 +10,11 @@ smallvec = "1.15.0"
 vapoursynth = { version = "0.4.0", features = ["vapoursynth-api-36"] }
 
 [dev-dependencies]
-criterion = "0.6.0"
+criterion = { version = "0.6.0", features = ["html_reports"] }
 quickcheck = "1.0.3"
 quickcheck_macros = "1.1.0"
+rand = "0.9.1"
+rand_xoshiro = "0.7.0"
 vapoursynth = { version = "0.4.0", features = [
     "vapoursynth-api-36",
     "vsscript-api-32",
@@ -20,11 +22,35 @@ vapoursynth = { version = "0.4.0", features = [
 ] }
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [[bench]]
-name = "bench"
+name = "average"
 harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "pad"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "reduce"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "refine"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "util"
+harness = false
+required-features = ["bench"]
+
+[features]
+bench = []
 
 [lints.clippy]
 too_many_arguments = "allow"
