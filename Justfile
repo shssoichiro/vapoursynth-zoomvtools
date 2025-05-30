@@ -1,8 +1,8 @@
 coverage:
-    cargo llvm-cov --ignore-filename-regex tests\.rs
+    cargo llvm-cov
 
 lcov:
-    cargo llvm-cov --lcov --output-path=lcov.info --ignore-filename-regex tests\.rs
+    cargo llvm-cov --lcov --output-path=lcov.info
 
 install:
     cargo build --release && sudo cp target/release/libvapoursynth_zoomvtools.so /usr/lib/vapoursynth/
