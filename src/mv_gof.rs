@@ -76,10 +76,10 @@ impl MVGroupOfFrames {
                     pitch[plane],
                     this.y_ratio_uv,
                 );
-                plane_offsets[plane] = offset;
+                plane_offsets.push(offset);
             }
 
-            frames[i as usize] = MVFrame::new(
+            frames.push(MVFrame::new(
                 width_i,
                 height_i,
                 Subpel::Full,
@@ -91,7 +91,7 @@ impl MVGroupOfFrames {
                 bits_per_sample,
                 &plane_offsets,
                 pitch,
-            )?;
+            )?);
         }
 
         this.frames = frames.into_boxed_slice();

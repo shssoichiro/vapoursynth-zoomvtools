@@ -53,6 +53,7 @@ required-features = ["bench"]
 bench = []
 
 [lints.clippy]
+needless_range_loop = "allow"
 too_many_arguments = "allow"
 undocumented_unsafe_blocks = "warn"
 uninlined_format_args = "allow"

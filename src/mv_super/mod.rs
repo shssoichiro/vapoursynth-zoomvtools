@@ -291,7 +291,7 @@ impl<'core> Super<'core> {
                     2 => {
                         dest.plane_mut(plane)
                             .expect("Super: plane should exist but does not")
-                            .fill(0u8);
+                            .fill(0u16);
                     }
                     _ => unreachable!("Super: does not support clips greater than 16 bits"),
                 }
