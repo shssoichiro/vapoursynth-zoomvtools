@@ -22,6 +22,7 @@ pub trait Pixel:
     + Div<Self>
     + DivAssign<Self>
     + Into<u16>
+    + Into<i32>
     + Into<u32>
     + Into<u64>
     + From<u8>
@@ -29,6 +30,10 @@ pub trait Pixel:
     + TryFrom<u32>
     + TryFrom<u64>
     + MaxValue
+    + PartialOrd
+    + Ord
+    + PartialEq
+    + Eq
 {
     fn from_or_max(value: u32) -> Self;
 }
@@ -47,13 +52,18 @@ where
         + Div<Self>
         + DivAssign<Self>
         + Into<u16>
+        + Into<i32>
         + Into<u32>
         + Into<u64>
         + From<u8>
         + TryFrom<u16>
         + TryFrom<u32>
         + TryFrom<u64>
-        + MaxValue,
+        + MaxValue
+        + PartialOrd
+        + Ord
+        + PartialEq
+        + Eq,
 {
     fn from_or_max(value: u32) -> Self {
         Self::try_from(value).unwrap_or_else(|_| {
