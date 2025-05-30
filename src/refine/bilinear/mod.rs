@@ -79,7 +79,7 @@ pub fn refine_diagonal_bilinear<T: Pixel>(
     // last row
     for i in 0..width.get() - 1 {
         let a: u32 = src[offset + i].into();
-        let b: u32 = src[offset + i + pitch.get()].into();
+        let b: u32 = src[offset + i + 1].into();
         dest[offset + i] = T::from_or_max((a + b).div_ceil(2));
     }
     // last pixel
