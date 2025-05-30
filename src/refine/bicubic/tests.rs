@@ -256,3 +256,47 @@ fn test_zero_input() {
         assert_eq!(pixel, 0);
     }
 }
+
+#[test]
+fn test_vertical_bicubic_large_height() {
+    // Test with height = 6 to exercise the middle bicubic loop
+    // The loop `for _j in 1..(height.get() - 3)` executes when height > 4
+    let src = vec![
+        10u8, 20, // row 0
+        30, 40, // row 1
+        50, 60, // row 2
+        70, 80, // row 3
+        90, 100, // row 4
+        110, 120, // row 5
+    ];
+    let mut dest = vec![0u8; 12]; // 2 width * 6 height
+    let pitch = NonZeroUsize::new(2).unwrap();
+    let width = NonZeroUsize::new(2).unwrap();
+    let height = NonZeroUsize::new(6).unwrap();
+    let bits_per_sample = NonZeroU8::new(8).unwrap();
+
+    refine_vertical_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample);
+
+    // First row: linear interpolation of rows 0 and 1
+    assert_eq!(dest[0], 20); // (10 + 30 + 1) / 2 = 20
+    assert_eq!(dest[1], 30); // (20 + 40 + 1) / 2 = 30
+
+    // Row 1 (index 2-3): This exercises the middle bicubic loop!
+    // For pixel [1,0]: a=10 (row 0), b=30 (row 1), c=50 (row 2), d=70 (row 3)
+    // Bicubic formula: (-(a+d) + (b+c)*9 + 8) >> 4
+    // (-(10+70) + (30+50)*9 + 8) >> 4 = (-80 + 720 + 8) >> 4 = 648 >> 4 = 40
+    assert_eq!(dest[2], 40);
+
+    // For pixel [1,1]: a=20, b=40, c=60, d=80
+    // (-(20+80) + (40+60)*9 + 8) >> 4 = (-100 + 900 + 8) >> 4 = 808 >> 4 = 50
+    assert_eq!(dest[3], 50);
+
+    // Row 2 (index 4-5): Also exercises the middle bicubic loop!
+    // For pixel [2,0]: a=30, b=50, c=70, d=90
+    // (-(30+90) + (50+70)*9 + 8) >> 4 = (-120 + 1080 + 8) >> 4 = 968 >> 4 = 60
+    assert_eq!(dest[4], 60);
+
+    // Last row should be copied directly
+    assert_eq!(dest[10], 110);
+    assert_eq!(dest[11], 120);
+}
