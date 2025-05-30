@@ -5,7 +5,21 @@ use crate::util::Pixel;
 #[cfg(test)]
 mod tests;
 
-// Downscale the height and width of `src` by 2 and write the output into `dest`
+/// Downscales an image by 2x using bilinear interpolation.
+///
+/// This function reduces both the width and height of the source image by half
+/// using a two-pass bilinear filtering approach. First, vertical filtering is
+/// applied to reduce the height, then horizontal filtering is applied in-place
+/// to reduce the width. This produces higher quality results than simple averaging
+/// by using weighted interpolation that considers neighboring pixels.
+///
+/// # Parameters
+/// - `dest`: Destination buffer to store the downscaled image
+/// - `src`: Source image buffer to downscale
+/// - `dest_pitch`: Number of pixels per row in the destination buffer
+/// - `src_pitch`: Number of pixels per row in the source buffer
+/// - `dest_width`: Width of the destination image (half of source width)
+/// - `dest_height`: Height of the destination image (half of source height)
 pub fn reduce_bilinear<T: Pixel>(
     dest: &mut [T],
     src: &[T],
@@ -26,6 +40,12 @@ pub fn reduce_bilinear<T: Pixel>(
     reduce_bilinear_horizontal_inplace(dest, dest_pitch, dest_width, dest_height);
 }
 
+/// Applies vertical bilinear filtering to reduce image height by 2x.
+///
+/// This function performs the first pass of bilinear downscaling by filtering
+/// vertically. It uses different weights for edge pixels versus middle pixels
+/// to maintain image quality. Edge lines use simple averaging, while middle
+/// lines use a weighted filter that considers 4 vertical neighbors.
 fn reduce_bilinear_vertical<T: Pixel>(
     mut dest: &mut [T],
     mut src: &[T],
@@ -66,6 +86,12 @@ fn reduce_bilinear_vertical<T: Pixel>(
     }
 }
 
+/// Applies horizontal bilinear filtering in-place to reduce image width by 2x.
+///
+/// This function performs the second pass of bilinear downscaling by filtering
+/// horizontally on the already vertically-filtered data. It modifies the buffer
+/// in-place, using different weights for edge pixels versus middle pixels.
+/// Edge columns use simple averaging, while middle columns use a weighted filter.
 fn reduce_bilinear_horizontal_inplace<T: Pixel>(
     mut dest: &mut [T],
     dest_pitch: NonZeroUsize,

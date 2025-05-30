@@ -5,6 +5,19 @@ use std::num::NonZeroUsize;
 
 use crate::util::Pixel;
 
+/// Averages two images pixel by pixel, blending them together.
+///
+/// This function takes two source images and computes the average of corresponding
+/// pixels, storing the result in the destination buffer. The averaging uses ceiling
+/// division to ensure proper rounding for integer pixel values.
+///
+/// # Parameters
+/// - `src1`: First source image buffer
+/// - `src2`: Second source image buffer  
+/// - `dest`: Destination buffer to store the averaged result
+/// - `pitch`: Number of pixels per row (including any padding)
+/// - `width`: Width of the image in pixels
+/// - `height`: Height of the image in pixels
 pub fn average2<T: Pixel>(
     src1: &[T],
     src2: &[T],

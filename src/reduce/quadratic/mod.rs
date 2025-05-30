@@ -5,7 +5,25 @@ use crate::util::Pixel;
 #[cfg(test)]
 mod tests;
 
-// Downscale the height and width of `src` by 2 and write the output into `dest`
+/// Downscales an image by 2x using quadratic interpolation.
+///
+/// This function reduces both the width and height of the source image by half
+/// using a two-pass quadratic filtering approach. First, vertical filtering is
+/// applied to reduce the height, then horizontal filtering is applied in-place
+/// to reduce the width. Quadratic interpolation provides a balance between
+/// computational efficiency and image quality, using a 6-tap kernel with
+/// quadratic weighting functions.
+///
+/// The quadratic filter uses different weights than cubic interpolation,
+/// optimized for smooth gradients while maintaining sharpness in details.
+///
+/// # Parameters
+/// - `dest`: Destination buffer to store the downscaled image
+/// - `src`: Source image buffer to downscale
+/// - `dest_pitch`: Number of pixels per row in the destination buffer
+/// - `src_pitch`: Number of pixels per row in the source buffer
+/// - `dest_width`: Width of the destination image (half of source width)
+/// - `dest_height`: Height of the destination image (half of source height)
 pub fn reduce_quadratic<T: Pixel>(
     dest: &mut [T],
     src: &[T],
@@ -26,6 +44,12 @@ pub fn reduce_quadratic<T: Pixel>(
     reduce_quadratic_horizontal_inplace(dest, dest_pitch, dest_width, dest_height);
 }
 
+/// Applies vertical quadratic filtering to reduce image height by 2x.
+///
+/// This function performs the first pass of quadratic downscaling by filtering
+/// vertically using a 6-tap filter kernel. Edge lines use simple averaging,
+/// while middle lines use the full quadratic filter that considers 6 vertical
+/// neighbors with quadratic-weighted coefficients.
 fn reduce_quadratic_vertical<T: Pixel>(
     mut dest: &mut [T],
     mut src: &[T],
@@ -74,6 +98,12 @@ fn reduce_quadratic_vertical<T: Pixel>(
     }
 }
 
+/// Applies horizontal quadratic filtering in-place to reduce image width by 2x.
+///
+/// This function performs the second pass of quadratic downscaling by filtering
+/// horizontally on the already vertically-filtered data. It modifies the buffer
+/// in-place, using the same 6-tap quadratic filter kernel horizontally.
+/// Edge columns use simple averaging, while middle columns use the full filter.
 fn reduce_quadratic_horizontal_inplace<T: Pixel>(
     mut dest: &mut [T],
     dest_pitch: NonZeroUsize,

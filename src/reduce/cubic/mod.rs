@@ -5,7 +5,24 @@ use crate::util::Pixel;
 #[cfg(test)]
 mod tests;
 
-// Downscale the height and width of `src` by 2 and write the output into `dest`
+/// Downscales an image by 2x using cubic interpolation.
+///
+/// This function reduces both the width and height of the source image by half
+/// using a two-pass cubic filtering approach. First, vertical filtering is
+/// applied to reduce the height, then horizontal filtering is applied in-place
+/// to reduce the width. Cubic interpolation provides higher quality than bilinear
+/// by using a wider kernel that considers more neighboring pixels for smoother results.
+///
+/// The cubic filter uses a 6-tap kernel with specific weights optimized for
+/// downscaling while preserving image details and reducing artifacts.
+///
+/// # Parameters
+/// - `dest`: Destination buffer to store the downscaled image
+/// - `src`: Source image buffer to downscale
+/// - `dest_pitch`: Number of pixels per row in the destination buffer
+/// - `src_pitch`: Number of pixels per row in the source buffer
+/// - `dest_width`: Width of the destination image (half of source width)
+/// - `dest_height`: Height of the destination image (half of source height)
 pub fn reduce_cubic<T: Pixel>(
     dest: &mut [T],
     src: &[T],
@@ -26,6 +43,12 @@ pub fn reduce_cubic<T: Pixel>(
     reduce_cubic_horizontal_inplace(dest, dest_pitch, dest_width, dest_height);
 }
 
+/// Applies vertical cubic filtering to reduce image height by 2x.
+///
+/// This function performs the first pass of cubic downscaling by filtering
+/// vertically using a 6-tap filter kernel. Edge lines use simple averaging,
+/// while middle lines use the full cubic filter that considers 6 vertical
+/// neighbors with optimized weights for high-quality downscaling.
 fn reduce_cubic_vertical<T: Pixel>(
     mut dest: &mut [T],
     mut src: &[T],
@@ -74,6 +97,12 @@ fn reduce_cubic_vertical<T: Pixel>(
     }
 }
 
+/// Applies horizontal cubic filtering in-place to reduce image width by 2x.
+///
+/// This function performs the second pass of cubic downscaling by filtering
+/// horizontally on the already vertically-filtered data. It modifies the buffer
+/// in-place, using the same 6-tap cubic filter kernel horizontally.
+/// Edge columns use simple averaging, while middle columns use the full filter.
 fn reduce_cubic_horizontal_inplace<T: Pixel>(
     mut dest: &mut [T],
     dest_pitch: NonZeroUsize,

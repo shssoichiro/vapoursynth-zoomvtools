@@ -5,7 +5,25 @@ use crate::util::Pixel;
 #[cfg(test)]
 mod tests;
 
-// Downscale the height and width of `src` by 2 and write the output into `dest`
+/// Downscales an image by 2x using triangle (linear) filtering.
+///
+/// This function reduces both the width and height of the source image by half
+/// using a two-pass triangle filtering approach. First, vertical filtering is
+/// applied to reduce the height, then horizontal filtering is applied in-place
+/// to reduce the width. Triangle filtering uses a simple linear weighting
+/// scheme (1/4, 1/2, 1/4) that provides good anti-aliasing while being
+/// computationally efficient.
+///
+/// The triangle filter is particularly effective at reducing aliasing artifacts
+/// when downscaling images with fine details or high-frequency content.
+///
+/// # Parameters
+/// - `dest`: Destination buffer to store the downscaled image
+/// - `src`: Source image buffer to downscale
+/// - `dest_pitch`: Number of pixels per row in the destination buffer
+/// - `src_pitch`: Number of pixels per row in the source buffer
+/// - `dest_width`: Width of the destination image (half of source width)
+/// - `dest_height`: Height of the destination image (half of source height)
 pub fn reduce_triangle<T: Pixel>(
     dest: &mut [T],
     src: &[T],
@@ -26,6 +44,12 @@ pub fn reduce_triangle<T: Pixel>(
     reduce_filtered_horizontal_inplace(dest, dest_pitch, dest_width, dest_height);
 }
 
+/// Applies vertical triangle filtering to reduce image height by 2x.
+///
+/// This function performs the first pass of triangle downscaling by filtering
+/// vertically. The first row uses simple averaging of two rows, while subsequent
+/// rows use a 3-tap triangle filter with weights (1/4, 1/2, 1/4) applied to
+/// three consecutive source rows.
 fn reduce_filtered_vertical<T: Pixel>(
     dest: &mut [T],
     src: &[T],
@@ -61,6 +85,12 @@ fn reduce_filtered_vertical<T: Pixel>(
     }
 }
 
+/// Applies horizontal triangle filtering in-place to reduce image width by 2x.
+///
+/// This function performs the second pass of triangle downscaling by filtering
+/// horizontally on the already vertically-filtered data. It modifies the buffer
+/// in-place, using a 3-tap triangle filter with weights (1/4, 1/2, 1/4).
+/// The first column uses simple averaging of two pixels.
 fn reduce_filtered_horizontal_inplace<T: Pixel>(
     mut dest: &mut [T],
     dest_pitch: NonZeroUsize,

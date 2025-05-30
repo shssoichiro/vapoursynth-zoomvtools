@@ -71,49 +71,49 @@ impl MVFrame {
         frame: &mut Frame,
     ) {
         for i in 0..3 {
-            if let Some(plane) = self.planes.get(i)
-                && (mode.bits() & (1 << i)) > 0
-            {
-                let reduced_pitch = reduced_frame.planes[i].pitch;
-                let (width, height) = (
-                    reduced_frame.planes[i].width,
-                    reduced_frame.planes[i].height,
-                );
-                let dest_offset = reduced_frame.planes[i].subpel_window_offsets[0]
-                    + reduced_frame.planes[i].offset_padding;
-                let src_offset = plane.subpel_window_offsets[0] + plane.offset_padding;
-                // FIXME: Having to clone the source data is not ideal.
-                let src = &frame
-                    .plane(i)
-                    .expect("Super: source plane should exist but does not")[src_offset..]
-                    .to_vec();
-                let dest = &mut frame
-                    .plane_mut(i)
-                    .expect("Super: dest plane should exist but does not")[dest_offset..];
-                plane.reduce_to::<T>(
-                    &mut reduced_frame.planes[i],
-                    filter,
-                    dest,
-                    src,
-                    reduced_pitch,
-                    self.planes[i].pitch,
-                    width,
-                    height,
-                );
+            if let Some(plane) = self.planes.get(i) {
+                if (mode.bits() & (1 << i)) > 0 {
+                    let reduced_pitch = reduced_frame.planes[i].pitch;
+                    let (width, height) = (
+                        reduced_frame.planes[i].width,
+                        reduced_frame.planes[i].height,
+                    );
+                    let dest_offset = reduced_frame.planes[i].subpel_window_offsets[0]
+                        + reduced_frame.planes[i].offset_padding;
+                    let src_offset = plane.subpel_window_offsets[0] + plane.offset_padding;
+                    // FIXME: Having to clone the source data is not ideal.
+                    let src = &frame
+                        .plane(i)
+                        .expect("Super: source plane should exist but does not")[src_offset..]
+                        .to_vec();
+                    let dest = &mut frame
+                        .plane_mut(i)
+                        .expect("Super: dest plane should exist but does not")[dest_offset..];
+                    plane.reduce_to::<T>(
+                        &mut reduced_frame.planes[i],
+                        filter,
+                        dest,
+                        src,
+                        reduced_pitch,
+                        self.planes[i].pitch,
+                        width,
+                        height,
+                    );
+                }
             }
         }
     }
 
     pub(crate) fn pad<T: Pixel>(&mut self, mode: MVPlaneSet, frame: &mut Frame) {
         for i in 0..3 {
-            if let Some(plane) = self.planes.get_mut(i)
-                && (mode.bits() & (1 << i)) > 0
-            {
-                plane.pad(
-                    frame
-                        .plane_mut::<T>(i)
-                        .expect("Super: source plane should exist but does not"),
-                );
+            if let Some(plane) = self.planes.get_mut(i) {
+                if (mode.bits() & (1 << i)) > 0 {
+                    plane.pad(
+                        frame
+                            .plane_mut::<T>(i)
+                            .expect("Super: source plane should exist but does not"),
+                    );
+                }
             }
         }
     }
@@ -125,15 +125,15 @@ impl MVFrame {
         frame: &mut Frame,
     ) {
         for i in 0..3 {
-            if let Some(plane) = self.planes.get_mut(i)
-                && (mode.bits() & (1 << i)) > 0
-            {
-                plane.refine::<T>(
-                    subpel,
-                    frame
-                        .plane_mut::<T>(i)
-                        .expect("Super: source plane should exist but does not"),
-                );
+            if let Some(plane) = self.planes.get_mut(i) {
+                if (mode.bits() & (1 << i)) > 0 {
+                    plane.refine::<T>(
+                        subpel,
+                        frame
+                            .plane_mut::<T>(i)
+                            .expect("Super: source plane should exist but does not"),
+                    );
+                }
             }
         }
     }

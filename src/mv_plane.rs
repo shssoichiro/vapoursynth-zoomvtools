@@ -353,6 +353,24 @@ impl MVPlane {
     }
 }
 
+/// Calculates the height of a luma plane at a specific hierarchical level.
+///
+/// This function computes the height of a luma plane after downscaling through
+/// multiple hierarchical levels in a motion estimation pyramid. At each level,
+/// the height is divided by the UV ratio and then by 2, creating progressively
+/// smaller reference frames for coarse-to-fine motion estimation.
+///
+/// The function accounts for chroma subsampling ratios and padding requirements
+/// to ensure proper alignment at each level of the hierarchy.
+///
+/// # Parameters
+/// - `src_height`: Original source image height
+/// - `level`: Hierarchical level (0 = original size, higher = more downscaled)
+/// - `y_ratio_uv`: Vertical chroma subsampling ratio (1 for 4:4:4, 2 for 4:2:0, etc.)
+/// - `vpad`: Vertical padding amount in pixels
+///
+/// # Returns
+/// The calculated height for the luma plane at the specified level
 pub fn plane_height_luma(
     src_height: NonZeroUsize,
     level: u16,
@@ -374,6 +392,24 @@ pub fn plane_height_luma(
     unsafe { NonZeroUsize::new_unchecked(height) }
 }
 
+/// Calculates the width of a luma plane at a specific hierarchical level.
+///
+/// This function computes the width of a luma plane after downscaling through
+/// multiple hierarchical levels in a motion estimation pyramid. At each level,
+/// the width is divided by the UV ratio and then by 2, creating progressively
+/// smaller reference frames for coarse-to-fine motion estimation.
+///
+/// The function accounts for chroma subsampling ratios and padding requirements
+/// to ensure proper alignment at each level of the hierarchy.
+///
+/// # Parameters
+/// - `src_width`: Original source image width
+/// - `level`: Hierarchical level (0 = original size, higher = more downscaled)
+/// - `x_ratio_uv`: Horizontal chroma subsampling ratio (1 for 4:4:4, 2 for 4:2:0, etc.)
+/// - `hpad`: Horizontal padding amount in pixels
+///
+/// # Returns
+/// The calculated width for the luma plane at the specified level
 pub fn plane_width_luma(
     src_width: NonZeroUsize,
     level: u16,
@@ -397,6 +433,30 @@ pub fn plane_width_luma(
     unsafe { NonZeroUsize::new_unchecked(width) }
 }
 
+/// Calculates the memory offset for a plane within a hierarchical superframe structure.
+///
+/// This function computes the byte offset where a specific plane begins within
+/// a superframe that contains multiple hierarchical levels and sub-pixel refinements.
+/// Superframes store multiple downscaled versions of the same image along with
+/// sub-pixel interpolated versions for efficient hierarchical motion estimation.
+///
+/// The offset calculation accounts for:
+/// - Sub-pixel precision levels (pel parameter)
+/// - Multiple hierarchical levels with different dimensions
+/// - Chroma vs luma plane differences
+/// - Padding requirements at each level
+///
+/// # Parameters
+/// - `chroma`: Whether this is a chroma plane (affects subsampling calculations)
+/// - `src_height`: Original source image height
+/// - `level`: Target hierarchical level for the offset calculation
+/// - `pel`: Sub-pixel precision level (1=integer, 2=half-pixel, 4=quarter-pixel)
+/// - `vpad`: Vertical padding amount in pixels
+/// - `plane_pitch`: Number of pixels per row in the plane buffer
+/// - `y_ratio_uv`: Vertical chroma subsampling ratio
+///
+/// # Returns
+/// The byte offset where the specified plane begins in the superframe
 pub fn plane_super_offset(
     chroma: bool,
     src_height: NonZeroUsize,

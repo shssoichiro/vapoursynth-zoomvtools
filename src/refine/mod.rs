@@ -15,9 +15,31 @@ pub use wiener::{refine_horizontal_wiener, refine_vertical_wiener};
 
 use crate::{mv_plane::MVPlane, pad::pad_reference_frame, util::Pixel};
 
+/// Function pointer type for sub-pixel refinement functions.
+///
+/// This type alias defines the signature for all refinement functions that perform
+/// sub-pixel interpolation for motion estimation. All refinement functions follow
+/// this common interface for consistency and interchangeability.
 pub type RefineFn<T> = fn(&[T], &mut [T], NonZeroUsize, NonZeroUsize, NonZeroUsize, NonZeroU8);
 
 impl MVPlane {
+    /// Refines motion vector plane to half-pixel precision using 2x upsampled reference.
+    ///
+    /// This method creates sub-pixel samples at half-pixel positions (0.5 horizontal,
+    /// 0.5 vertical, and 0.5 diagonal) by extracting every other pixel from a 2x
+    /// upsampled reference frame. This is used in hierarchical motion estimation
+    /// where higher resolution references provide sub-pixel accuracy.
+    ///
+    /// The method populates three sub-pixel windows:
+    /// - Window 1: (0.5, 0) - horizontal half-pixel positions
+    /// - Window 2: (0, 0.5) - vertical half-pixel positions  
+    /// - Window 3: (0.5, 0.5) - diagonal half-pixel positions
+    ///
+    /// # Parameters
+    /// - `src_2x`: Source buffer containing 2x upsampled reference frame
+    /// - `src_2x_pitch`: Number of pixels per row in the upsampled source
+    /// - `is_ext_padded`: Whether external padding has already been applied
+    /// - `dest`: Destination buffer to store sub-pixel samples
     pub fn refine_ext_pel2<T: Pixel>(
         &mut self,
         mut src_2x: &[T],
@@ -65,6 +87,23 @@ impl MVPlane {
         self.is_padded = true;
     }
 
+    /// Refines motion vector plane to quarter-pixel precision using 4x upsampled reference.
+    ///
+    /// This method creates sub-pixel samples at quarter-pixel positions by extracting
+    /// appropriately spaced pixels from a 4x upsampled reference frame. This provides
+    /// the highest sub-pixel precision for motion estimation, creating 15 additional
+    /// sub-pixel windows beyond the original integer positions.
+    ///
+    /// The method populates 15 sub-pixel windows covering all quarter-pixel positions:
+    /// - (0.25, 0), (0.5, 0), (0.75, 0) - horizontal quarter-pixel positions
+    /// - (0, 0.25), (0, 0.5), (0, 0.75) - vertical quarter-pixel positions
+    /// - All diagonal combinations of the above positions
+    ///
+    /// # Parameters
+    /// - `src_2x`: Source buffer containing 4x upsampled reference frame
+    /// - `src_2x_pitch`: Number of pixels per row in the upsampled source
+    /// - `is_ext_padded`: Whether external padding has already been applied
+    /// - `dest`: Destination buffer to store sub-pixel samples
     pub fn refine_ext_pel4<T: Pixel>(
         &mut self,
         mut src_2x: &[T],

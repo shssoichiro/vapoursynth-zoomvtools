@@ -5,6 +5,26 @@ use std::num::NonZeroUsize;
 
 use crate::util::Pixel;
 
+/// Pads a reference frame by extending edge pixels to fill the padding areas.
+///
+/// This function takes a frame and extends its borders by replicating edge pixels
+/// to create padding around the original image. This is commonly used in video
+/// processing for motion estimation and filtering operations where algorithms
+/// need to access pixels beyond the frame boundaries.
+///
+/// The padding is applied in all directions:
+/// - Corners are filled with the nearest corner pixel value
+/// - Top/bottom edges are filled by extending the first/last row
+/// - Left/right edges are filled by extending the first/last column
+///
+/// # Parameters
+/// - `offset`: Starting byte offset in the destination buffer where the padded frame begins
+/// - `ref_pitch`: Number of pixels per row in the destination buffer (including padding)
+/// - `hpad`: Horizontal padding amount (pixels to add on left and right sides)
+/// - `vpad`: Vertical padding amount (pixels to add on top and bottom)
+/// - `width`: Width of the original frame in pixels (excluding padding)
+/// - `height`: Height of the original frame in pixels (excluding padding)
+/// - `dest`: Destination buffer containing the frame data to be padded
 pub fn pad_reference_frame<T: Pixel>(
     offset: usize,
     ref_pitch: NonZeroUsize,
