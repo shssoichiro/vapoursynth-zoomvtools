@@ -8,30 +8,6 @@ use crate::{
     tests::create_test_env,
 };
 
-const VALID_PRESETS: &[PresetFormat] = &[
-    PresetFormat::Gray8,
-    PresetFormat::Gray16,
-    PresetFormat::YUV420P8,
-    PresetFormat::YUV422P8,
-    PresetFormat::YUV444P8,
-    PresetFormat::YUV440P8,
-    PresetFormat::YUV420P9,
-    PresetFormat::YUV422P9,
-    PresetFormat::YUV444P9,
-    PresetFormat::YUV420P10,
-    PresetFormat::YUV422P10,
-    PresetFormat::YUV444P10,
-    PresetFormat::YUV420P16,
-    PresetFormat::YUV422P16,
-    PresetFormat::YUV444P16,
-    PresetFormat::YUV420P12,
-    PresetFormat::YUV422P12,
-    PresetFormat::YUV444P12,
-    PresetFormat::YUV420P14,
-    PresetFormat::YUV422P14,
-    PresetFormat::YUV444P14,
-];
-
 #[test]
 fn test_new_with_default_args() {
     let env = create_test_env(640, 480, PresetFormat::YUV420P8, 10).unwrap();

@@ -4,7 +4,7 @@ use vapoursynth::{
     prelude::Environment,
 };
 
-pub fn create_test_env<'a>(
+pub fn create_test_env(
     width: usize,
     height: usize,
     format: PresetFormat,

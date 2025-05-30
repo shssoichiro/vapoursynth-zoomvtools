@@ -30,3 +30,5 @@ harness = false
 too_many_arguments = "allow"
 undocumented_unsafe_blocks = "warn"
 uninlined_format_args = "allow"
+# false positive: https://github.com/rust-lang/rust-clippy/issues/14918
+unnecessary_to_owned = "allow"
