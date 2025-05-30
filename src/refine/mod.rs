@@ -9,9 +9,7 @@ use std::num::{NonZeroU8, NonZeroUsize};
 
 pub use bicubic::{refine_horizontal_bicubic, refine_vertical_bicubic};
 pub use bilinear::{
-    refine_diagonal_bilinear,
-    refine_horizontal_bilinear,
-    refine_vertical_bilinear,
+    refine_diagonal_bilinear, refine_horizontal_bilinear, refine_vertical_bilinear,
 };
 pub use wiener::{refine_horizontal_wiener, refine_vertical_wiener};
 

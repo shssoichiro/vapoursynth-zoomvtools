@@ -272,11 +272,15 @@ impl<'core> Super<'core> {
 
         // SAFETY: We write to the planes before returning
         let mut dest = unsafe {
-            let mut dest =
-                FrameRefMut::new_uninitialized(core, Some(&src), self.format, Resolution {
+            let mut dest = FrameRefMut::new_uninitialized(
+                core,
+                Some(&src),
+                self.format,
+                Resolution {
                     width: self.super_width.get(),
                     height: self.super_width.get(),
-                });
+                },
+            );
             for plane in 0..self.format.plane_count() {
                 match self.format.bytes_per_sample() {
                     1 => {
