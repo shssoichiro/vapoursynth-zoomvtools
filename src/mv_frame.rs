@@ -7,7 +7,7 @@ use vapoursynth::frame::Frame;
 use crate::{
     mv_plane::{MVPlane, MVPlaneSet},
     params::{ReduceFilter, Subpel, SubpelMethod},
-    util::{Pixel, plane_with_padding, plane_with_padding_mut},
+    util::{Pixel, plane_with_padding_mut, plane_with_padding_split},
 };
 
 #[derive(Debug, Clone)]
@@ -78,22 +78,22 @@ impl MVFrame {
                         reduced_frame.planes[i].width,
                         reduced_frame.planes[i].height,
                     );
-                    // FIXME: Having to clone the source data is not ideal.
-                    let src = plane_with_padding::<T>(frame, i)
-                        .expect("Super: source plane should exist but does not")
-                        .to_vec();
-                    let dest = plane_with_padding_mut::<T>(frame, i)
-                        .expect("Super: dest plane should exist but does not");
-                    plane.reduce_to::<T>(
-                        &mut reduced_frame.planes[i],
-                        filter,
-                        dest,
-                        &src,
-                        reduced_pitch,
-                        self.planes[i].pitch,
-                        width,
-                        height,
-                    );
+                    // Use the new helper function to avoid cloning the source data
+                    // SAFETY: The windows inside each plane are set up so that they do not overlap.
+                    unsafe {
+                        let (src, dest) = plane_with_padding_split::<T>(frame, i)
+                            .expect("Super: plane should exist but does not");
+                        plane.reduce_to::<T>(
+                            &mut reduced_frame.planes[i],
+                            filter,
+                            dest,
+                            src,
+                            reduced_pitch,
+                            self.planes[i].pitch,
+                            width,
+                            height,
+                        );
+                    }
                 }
             }
         }
