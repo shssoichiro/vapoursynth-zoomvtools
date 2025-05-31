@@ -319,6 +319,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
 
 [[package]]
+name = "pastey"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3a8cb46bdc156b1c90460339ae6bfd45ba0394e5effbaa640badb4987fdc261"
+
+[[package]]
 name = "plotters"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -642,6 +648,7 @@ dependencies = [
  "bitflags 2.9.1",
  "cpufeatures",
  "criterion",
+ "pastey",
  "quickcheck",
  "quickcheck_macros",
  "rand 0.9.1",
