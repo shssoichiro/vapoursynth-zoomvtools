@@ -1,10 +1,13 @@
+use anyhow::{Result, bail};
+use core::slice;
 use std::{
     convert::TryFrom,
+    mem::transmute,
     num::NonZeroUsize,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
-use vapoursynth::prelude::Component;
+use vapoursynth::{frame::Frame, prelude::Component};
 
 pub trait Pixel:
     Component
@@ -133,6 +136,53 @@ pub fn vs_bitblt<T: Pixel>(
                 .copy_from_slice(&src[src_start..src_start + row_size]);
         }
     }
+}
+
+/// Gets a slice to the plane's data including its padding.
+/// The `plane` function in Vapoursynth fails if a plane has padding,
+/// but we need access to the padding, so we use this function to do so.
+pub fn plane_with_padding<'a, T: Pixel>(frame: &'a Frame, plane: usize) -> Result<&'a [T]> {
+    if frame.format().plane_count() < plane + 1 {
+        bail!("Tried to get plane not present in frame");
+    }
+
+    let data_ptr = frame.data_ptr(plane);
+    let stride = frame.stride(plane);
+    let height = frame.height(plane);
+    let bytes_per_pixel = size_of::<T>();
+
+    // SAFETY: We know the layout of the plane
+    Ok(unsafe {
+        slice::from_raw_parts(
+            transmute::<*const u8, *const T>(data_ptr),
+            stride * height / bytes_per_pixel,
+        )
+    })
+}
+
+/// Gets a slice to the plane's data including its padding.
+/// The `plane` function in Vapoursynth fails if a plane has padding,
+/// but we need access to the padding, so we use this function to do so.
+pub fn plane_with_padding_mut<'a, T: Pixel>(
+    frame: &'a mut Frame,
+    plane: usize,
+) -> Result<&'a mut [T]> {
+    if frame.format().plane_count() < plane + 1 {
+        bail!("Tried to get plane not present in frame");
+    }
+
+    let data_ptr = frame.data_ptr_mut(plane);
+    let stride = frame.stride(plane);
+    let height = frame.height(plane);
+    let bytes_per_pixel = size_of::<T>();
+
+    // SAFETY: We know the layout of the plane
+    Ok(unsafe {
+        slice::from_raw_parts_mut(
+            transmute::<*mut u8, *mut T>(data_ptr),
+            stride * height / bytes_per_pixel,
+        )
+    })
 }
 
 #[cfg(test)]

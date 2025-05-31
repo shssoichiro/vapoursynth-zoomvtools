@@ -296,6 +296,7 @@ impl<'core> Super<'core> {
             dest
         };
 
+        let bytes_per_sample = size_of::<T>();
         let yuv_mode = if self.chroma {
             MVPlaneSet::YUVPLANES
         } else {
@@ -304,9 +305,9 @@ impl<'core> Super<'core> {
         // SAFETY: strides must be at least width and non-zero
         let dest_pitch = unsafe {
             [
-                NonZeroUsize::new_unchecked(dest.stride(0)),
-                NonZeroUsize::new_unchecked(dest.stride(1)),
-                NonZeroUsize::new_unchecked(dest.stride(2)),
+                NonZeroUsize::new_unchecked(dest.stride(0) / bytes_per_sample),
+                NonZeroUsize::new_unchecked(dest.stride(1) / bytes_per_sample),
+                NonZeroUsize::new_unchecked(dest.stride(2) / bytes_per_sample),
             ]
         };
         let mut src_gof = MVGroupOfFrames::new(
@@ -332,7 +333,7 @@ impl<'core> Super<'core> {
                     src.plane::<T>(plane)
                         .expect("Super: source plane should exist but does not"),
                     // SAFETY: stride must be at least width and non-zero
-                    unsafe { NonZeroUsize::new_unchecked(src.stride(plane)) },
+                    unsafe { NonZeroUsize::new_unchecked(src.stride(plane) / bytes_per_sample) },
                     dest.plane_mut(plane)
                         .expect("Super: destination plane should exist but does not"),
                 );
@@ -352,7 +353,9 @@ impl<'core> Super<'core> {
                     .plane::<T>(plane)
                     .expect("Super: pelclip plane should exist but does not");
                 // SAFETY: stride must be at least width and non-zero
-                let src_pel_pitch = unsafe { NonZeroUsize::new_unchecked(pel_clip.stride(plane)) };
+                let src_pel_pitch = unsafe {
+                    NonZeroUsize::new_unchecked(pel_clip.stride(plane) / bytes_per_sample)
+                };
                 let src_plane = &mut src_frames.planes[plane];
                 if (yuv_mode & planes[plane]).bits() > 0 {
                     src_plane.refine_ext(
