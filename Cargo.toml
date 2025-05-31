@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.98"
 bitflags = "2.9.1"
+cpufeatures = "0.2.17"
 smallvec = "1.15.0"
 vapoursynth = { version = "0.4.0", features = ["vapoursynth-api-36"] }
 
@@ -59,3 +60,5 @@ undocumented_unsafe_blocks = "warn"
 uninlined_format_args = "allow"
 # false positive: https://github.com/rust-lang/rust-clippy/issues/14918
 unnecessary_to_owned = "allow"
+
+# TODO: top hotspots: reduce and refine

@@ -9,6 +9,10 @@ use std::{
 
 use vapoursynth::{frame::Frame, prelude::Component};
 
+cpufeatures::new!(cpuid_avx2, "avx2");
+
+pub use cpuid_avx2::get as has_avx2;
+
 pub trait Pixel:
     Component
     + Clone
