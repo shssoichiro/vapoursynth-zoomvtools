@@ -137,7 +137,7 @@ impl MVPlane {
         dest_width: NonZeroUsize,
         dest_height: NonZeroUsize,
     ) {
-        if self.is_filled {
+        if reduced_plane.is_filled {
             return;
         }
 
@@ -767,14 +767,13 @@ mod tests {
         let mut reduced_plane = create_test_mvplane(4, 4, Subpel::Full, 1, 1, 8, 0, 6);
 
         // Mark the source plane as filled
-        let mut filled_plane = plane;
-        filled_plane.is_filled = true;
+        reduced_plane.is_filled = true;
 
         let src = vec![0u8; 144]; // 12 * 12
         let mut dest = vec![0u8; 36]; // 6 * 6
+        let dest_copy = dest.clone();
 
-        assert!(!reduced_plane.is_filled);
-        filled_plane.reduce_to(
+        plane.reduce_to(
             &mut reduced_plane,
             ReduceFilter::Average,
             &mut dest,
@@ -786,7 +785,8 @@ mod tests {
         );
 
         // Should be a no-op since source is already filled
-        assert!(!reduced_plane.is_filled);
+        assert!(reduced_plane.is_filled);
+        assert!(dest == dest_copy);
     }
 
     #[test]

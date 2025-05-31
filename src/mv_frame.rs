@@ -78,15 +78,12 @@ impl MVFrame {
                         reduced_frame.planes[i].width,
                         reduced_frame.planes[i].height,
                     );
-                    let dest_offset = reduced_frame.planes[i].subpel_window_offsets[0]
-                        + reduced_frame.planes[i].offset_padding;
-                    let src_offset = plane.subpel_window_offsets[0] + plane.offset_padding;
                     // FIXME: Having to clone the source data is not ideal.
                     let src = plane_with_padding::<T>(frame, i)
-                        .expect("Super: source plane should exist but does not")[src_offset..]
+                        .expect("Super: source plane should exist but does not")
                         .to_vec();
                     let dest = &mut plane_with_padding_mut::<T>(frame, i)
-                        .expect("Super: dest plane should exist but does not")[dest_offset..];
+                        .expect("Super: dest plane should exist but does not");
                     plane.reduce_to::<T>(
                         &mut reduced_frame.planes[i],
                         filter,
