@@ -345,7 +345,6 @@ impl<'core> Super<'core> {
         if let Some(pel_clip) = src_pel.as_ref() {
             let src_frames = &mut src_gof.frames[0];
 
-            #[allow(clippy::needless_range_loop)]
             for plane in 0..self.format.plane_count() {
                 let src_pel = plane_with_padding::<T>(pel_clip, plane)
                     .expect("Super: pelclip plane should exist but does not");
@@ -371,7 +370,7 @@ impl<'core> Super<'core> {
         if n == 0 {
             // Set properties for the first frame
             let mut props = dest.props_mut();
-            props.set_int("Super_height", self.super_height.get() as i64)?;
+            props.set_int("Super_height", self.height.get() as i64)?;
             props.set_int("Super_hpad", self.hpad as i64)?;
             props.set_int("Super_vpad", self.vpad as i64)?;
             props.set_int("Super_pel", usize::from(self.pel) as i64)?;
