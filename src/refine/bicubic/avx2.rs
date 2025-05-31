@@ -21,6 +21,7 @@ use crate::util::Pixel;
 /// - `width`: Width of the image in pixels
 /// - `height`: Height of the image in pixels
 /// - `bits_per_sample`: Bit depth of the pixel format for clamping
+#[target_feature(enable = "avx2")]
 pub fn refine_horizontal_bicubic<T: Pixel>(
     src: &[T],
     dest: &mut [T],
@@ -29,7 +30,11 @@ pub fn refine_horizontal_bicubic<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
-    todo!()
+    match size_of::<T>() {
+        1 => todo!(),
+        2 => todo!(),
+        _ => unreachable!(),
+    }
 }
 
 /// Performs vertical bicubic interpolation for sub-pixel motion estimation refinement.
@@ -49,6 +54,7 @@ pub fn refine_horizontal_bicubic<T: Pixel>(
 /// - `width`: Width of the image in pixels
 /// - `height`: Height of the image in pixels
 /// - `bits_per_sample`: Bit depth of the pixel format for clamping
+#[target_feature(enable = "avx2")]
 pub fn refine_vertical_bicubic<T: Pixel>(
     src: &[T],
     dest: &mut [T],
@@ -57,5 +63,9 @@ pub fn refine_vertical_bicubic<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
-    todo!()
+    match size_of::<T>() {
+        1 => todo!(),
+        2 => todo!(),
+        _ => unreachable!(),
+    }
 }

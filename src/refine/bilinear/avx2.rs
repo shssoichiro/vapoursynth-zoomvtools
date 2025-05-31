@@ -26,7 +26,11 @@ pub fn refine_horizontal_bilinear<T: Pixel>(
     height: NonZeroUsize,
     _bits_per_sample: NonZeroU8,
 ) {
-    todo!()
+    match size_of::<T>() {
+        1 => todo!(),
+        2 => todo!(),
+        _ => unreachable!(),
+    }
 }
 
 /// Performs vertical bilinear interpolation for sub-pixel motion estimation refinement.
@@ -45,6 +49,7 @@ pub fn refine_horizontal_bilinear<T: Pixel>(
 /// - `width`: Width of the image in pixels
 /// - `height`: Height of the image in pixels
 /// - `_bits_per_sample`: Unused parameter for API consistency
+#[target_feature(enable = "avx2")]
 pub fn refine_vertical_bilinear<T: Pixel>(
     src: &[T],
     dest: &mut [T],
@@ -53,7 +58,11 @@ pub fn refine_vertical_bilinear<T: Pixel>(
     height: NonZeroUsize,
     _bits_per_sample: NonZeroU8,
 ) {
-    todo!()
+    match size_of::<T>() {
+        1 => todo!(),
+        2 => todo!(),
+        _ => unreachable!(),
+    }
 }
 
 /// Performs diagonal bilinear interpolation for sub-pixel motion estimation refinement.
@@ -72,6 +81,7 @@ pub fn refine_vertical_bilinear<T: Pixel>(
 /// - `width`: Width of the image in pixels
 /// - `height`: Height of the image in pixels
 /// - `_bits_per_sample`: Unused parameter for API consistency
+#[target_feature(enable = "avx2")]
 pub fn refine_diagonal_bilinear<T: Pixel>(
     src: &[T],
     dest: &mut [T],
@@ -80,5 +90,9 @@ pub fn refine_diagonal_bilinear<T: Pixel>(
     height: NonZeroUsize,
     _bits_per_sample: NonZeroU8,
 ) {
-    todo!()
+    match size_of::<T>() {
+        1 => todo!(),
+        2 => todo!(),
+        _ => unreachable!(),
+    }
 }
