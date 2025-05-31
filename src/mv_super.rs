@@ -325,8 +325,6 @@ impl<'core> Super<'core> {
             self.format,
         )?;
 
-        // FIXME: Do we need to be filling in all these planes
-        // if chroma is disabled?
         for plane in 0..self.format.plane_count() {
             if let Some(plane_ref) = src_gof.frames[0].planes.get_mut(plane) {
                 plane_ref.fill_plane(
