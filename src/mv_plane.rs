@@ -33,7 +33,6 @@ pub struct MVPlane {
     pub hpad_pel: usize,
     pub vpad_pel: usize,
     pub bits_per_sample: NonZeroU8,
-    pub bytes_per_sample: NonZeroU8,
     pub pel: Subpel,
     pub is_padded: bool,
     pub is_refined: bool,
@@ -54,8 +53,7 @@ impl MVPlane {
         let pel_val = usize::from(pel);
         let padded_width = width.saturating_add(2 * hpad);
         let padded_height = height.saturating_add(2 * vpad);
-        let bytes_per_sample = NonZeroU8::try_from(bits_per_sample.saturating_add(7).get() / 8)?;
-        let offset_padding = pitch.get() * vpad + hpad * bytes_per_sample.get() as usize;
+        let offset_padding = pitch.get() * vpad + hpad;
 
         let windows = pel_val * pel_val;
         let mut offsets = SmallVec::with_capacity(windows);
@@ -77,7 +75,6 @@ impl MVPlane {
             offset_padding,
             pitch,
             bits_per_sample,
-            bytes_per_sample,
             pel,
             is_padded: false,
             is_refined: false,
@@ -453,7 +450,7 @@ pub fn plane_width_luma(
 
 /// Calculates the memory offset for a plane within a hierarchical superframe structure.
 ///
-/// This function computes the byte offset where a specific plane begins within
+/// This function computes the pixel offset where a specific plane begins within
 /// a superframe that contains multiple hierarchical levels and sub-pixel refinements.
 /// Superframes store multiple downscaled versions of the same image along with
 /// sub-pixel interpolated versions for efficient hierarchical motion estimation.
@@ -474,7 +471,7 @@ pub fn plane_width_luma(
 /// - `y_ratio_uv`: Vertical chroma subsampling ratio
 ///
 /// # Returns
-/// The byte offset where the specified plane begins in the superframe
+/// The pixel offset where the specified plane begins in the superframe
 pub fn plane_super_offset(
     chroma: bool,
     src_height: NonZeroUsize,
@@ -566,7 +563,6 @@ mod tests {
         assert_eq!(plane.pitch.get(), 80);
         assert_eq!(plane.pel, Subpel::Full);
         assert_eq!(plane.bits_per_sample.get(), 8);
-        assert_eq!(plane.bytes_per_sample.get(), 1);
         assert!(!plane.is_padded);
         assert!(!plane.is_refined);
         assert!(!plane.is_filled);
@@ -601,7 +597,6 @@ mod tests {
         assert_eq!(plane.pel, Subpel::Quarter);
         assert_eq!(plane.hpad_pel, 8); // 2 * 4
         assert_eq!(plane.vpad_pel, 8); // 2 * 4
-        assert_eq!(plane.bytes_per_sample.get(), 2); // (16 + 7) / 8 = 2
 
         // For Quarter subpel, should have 16 window offsets (4x4)
         assert_eq!(plane.subpel_window_offsets.len(), 16);
@@ -997,9 +992,6 @@ mod tests {
             );
 
             assert!(result.is_ok(), "Failed for {} bits per sample", bits);
-            let plane = result.unwrap();
-            let expected_bytes = (bits + 7) / 8;
-            assert_eq!(plane.bytes_per_sample.get(), expected_bytes);
         }
     }
 
