@@ -7,7 +7,7 @@ use vapoursynth::frame::Frame;
 use crate::{
     mv_plane::{MVPlane, MVPlaneSet},
     params::{ReduceFilter, Subpel, SubpelMethod},
-    util::Pixel,
+    util::{Pixel, plane_with_padding, plane_with_padding_mut},
 };
 
 #[derive(Debug, Clone)]
@@ -82,18 +82,16 @@ impl MVFrame {
                         + reduced_frame.planes[i].offset_padding;
                     let src_offset = plane.subpel_window_offsets[0] + plane.offset_padding;
                     // FIXME: Having to clone the source data is not ideal.
-                    let src = &frame
-                        .plane(i)
+                    let src = plane_with_padding::<T>(frame, i)
                         .expect("Super: source plane should exist but does not")[src_offset..]
                         .to_vec();
-                    let dest = &mut frame
-                        .plane_mut(i)
+                    let dest = &mut plane_with_padding_mut::<T>(frame, i)
                         .expect("Super: dest plane should exist but does not")[dest_offset..];
                     plane.reduce_to::<T>(
                         &mut reduced_frame.planes[i],
                         filter,
                         dest,
-                        src,
+                        &src,
                         reduced_pitch,
                         self.planes[i].pitch,
                         width,
@@ -109,8 +107,7 @@ impl MVFrame {
             if let Some(plane) = self.planes.get_mut(i) {
                 if (mode.bits() & (1 << i)) > 0 {
                     plane.pad(
-                        frame
-                            .plane_mut::<T>(i)
+                        plane_with_padding_mut::<T>(frame, i)
                             .expect("Super: source plane should exist but does not"),
                     );
                 }
@@ -129,8 +126,7 @@ impl MVFrame {
                 if (mode.bits() & (1 << i)) > 0 {
                     plane.refine::<T>(
                         subpel,
-                        frame
-                            .plane_mut::<T>(i)
+                        plane_with_padding_mut::<T>(frame, i)
                             .expect("Super: source plane should exist but does not"),
                     );
                 }

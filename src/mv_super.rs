@@ -14,7 +14,7 @@ use crate::{
     mv_gof::MVGroupOfFrames,
     mv_plane::{MVPlaneSet, plane_height_luma, plane_super_offset, plane_width_luma},
     params::{ReduceFilter, Subpel, SubpelMethod},
-    util::Pixel,
+    util::{Pixel, plane_with_padding, plane_with_padding_mut},
 };
 
 /// Get source clip and prepare special "super" clip with multilevel
@@ -281,12 +281,12 @@ impl<'core> Super<'core> {
             for plane in 0..self.format.plane_count() {
                 match self.format.bytes_per_sample() {
                     1 => {
-                        dest.plane_mut(plane)
+                        plane_with_padding_mut(&mut dest, plane)
                             .expect("Super: plane should exist but does not")
                             .fill(0u8);
                     }
                     2 => {
-                        dest.plane_mut(plane)
+                        plane_with_padding_mut(&mut dest, plane)
                             .expect("Super: plane should exist but does not")
                             .fill(0u16);
                     }
@@ -330,11 +330,11 @@ impl<'core> Super<'core> {
         for plane in 0..self.format.plane_count() {
             if let Some(plane_ref) = src_gof.frames[0].planes.get_mut(plane) {
                 plane_ref.fill_plane(
-                    src.plane::<T>(plane)
+                    plane_with_padding::<T>(&src, plane)
                         .expect("Super: source plane should exist but does not"),
                     // SAFETY: stride must be at least width and non-zero
                     unsafe { NonZeroUsize::new_unchecked(src.stride(plane) / bytes_per_sample) },
-                    dest.plane_mut(plane)
+                    plane_with_padding_mut(&mut dest, plane)
                         .expect("Super: destination plane should exist but does not"),
                 );
             }
@@ -349,8 +349,7 @@ impl<'core> Super<'core> {
 
             #[allow(clippy::needless_range_loop)]
             for plane in 0..self.format.plane_count() {
-                let src_pel = pel_clip
-                    .plane::<T>(plane)
+                let src_pel = plane_with_padding::<T>(pel_clip, plane)
                     .expect("Super: pelclip plane should exist but does not");
                 // SAFETY: stride must be at least width and non-zero
                 let src_pel_pitch = unsafe {
@@ -362,7 +361,7 @@ impl<'core> Super<'core> {
                         src_pel,
                         src_pel_pitch,
                         self.is_pelclip_padded,
-                        dest.plane_mut(plane)
+                        plane_with_padding_mut(&mut dest, plane)
                             .expect("Super: destination plane should exist but does not"),
                     );
                 }
