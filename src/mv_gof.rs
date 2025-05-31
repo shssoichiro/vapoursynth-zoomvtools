@@ -82,7 +82,7 @@ impl MVGroupOfFrames {
             frames.push(MVFrame::new(
                 width_i,
                 height_i,
-                Subpel::Full,
+                if i == 0 { pel } else { Subpel::Full },
                 this.hpad[0],
                 this.vpad[0],
                 yuv_mode,

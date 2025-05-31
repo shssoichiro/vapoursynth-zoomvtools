@@ -4,9 +4,9 @@ use anyhow::{Result, bail};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Subpel {
-    Full,
-    Half,
-    Quarter,
+    Full = 1,
+    Half = 2,
+    Quarter = 4,
 }
 
 impl TryFrom<i64> for Subpel {

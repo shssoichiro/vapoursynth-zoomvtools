@@ -172,7 +172,7 @@ impl MVPlane {
         }
     }
 
-    pub fn refine<T: Pixel>(&mut self, subpel: SubpelMethod, plane: &mut [T]) {
+    pub fn refine<T: Pixel>(&mut self, method: SubpelMethod, plane: &mut [T]) {
         if self.is_refined {
             return;
         }
@@ -182,7 +182,7 @@ impl MVPlane {
             return;
         }
 
-        let refine: [RefineFn<T>; 3] = match subpel {
+        let refine: [RefineFn<T>; 3] = match method {
             SubpelMethod::Bilinear => [
                 refine_horizontal_bilinear,
                 refine_vertical_bilinear,
@@ -210,7 +210,7 @@ impl MVPlane {
                 dest_offsets[2] = self.subpel_window_offsets[3];
                 src_offsets[0] = self.subpel_window_offsets[0];
                 src_offsets[1] = self.subpel_window_offsets[0];
-                if subpel == SubpelMethod::Bilinear {
+                if method == SubpelMethod::Bilinear {
                     src_offsets[2] = self.subpel_window_offsets[0];
                 } else {
                     src_offsets[2] = self.subpel_window_offsets[2];
@@ -222,7 +222,7 @@ impl MVPlane {
                 dest_offsets[2] = self.subpel_window_offsets[10];
                 src_offsets[0] = self.subpel_window_offsets[0];
                 src_offsets[1] = self.subpel_window_offsets[0];
-                if subpel == SubpelMethod::Bilinear {
+                if method == SubpelMethod::Bilinear {
                     src_offsets[2] = self.subpel_window_offsets[0];
                 } else {
                     src_offsets[2] = self.subpel_window_offsets[8];
