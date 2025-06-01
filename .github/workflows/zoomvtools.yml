@@ -59,7 +59,7 @@ jobs:
       - name: Install VapourSynth
         uses: Irrational-Encoding-Wizardry/install-vapoursynth-action@v0.1
         with:
-          version: 71
+          version: 50
           cache: true
       - name: Install stable
         uses: dtolnay/rust-toolchain@stable
@@ -90,7 +90,7 @@ jobs:
       - name: Install VapourSynth
         uses: Irrational-Encoding-Wizardry/install-vapoursynth-action@v0.1
         with:
-          version: 71
+          version: 50
           cache: true
       - name: Install stable
         uses: dtolnay/rust-toolchain@stable
