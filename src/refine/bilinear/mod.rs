@@ -3,7 +3,7 @@ mod rust;
 
 use std::num::{NonZeroU8, NonZeroUsize};
 
-use crate::util::Pixel;
+use crate::util::{Pixel, has_avx2};
 
 /// Performs horizontal bilinear interpolation for sub-pixel motion estimation refinement.
 ///
@@ -29,7 +29,14 @@ pub fn refine_horizontal_bilinear<T: Pixel>(
     height: NonZeroUsize,
     _bits_per_sample: NonZeroU8,
 ) {
-    rust::refine_horizontal_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+    if has_avx2() {
+        // SAFETY: We check for AVX2 first
+        unsafe {
+            avx2::refine_horizontal_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+        }
+    } else {
+        rust::refine_horizontal_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+    }
 }
 
 /// Performs vertical bilinear interpolation for sub-pixel motion estimation refinement.
@@ -56,7 +63,14 @@ pub fn refine_vertical_bilinear<T: Pixel>(
     height: NonZeroUsize,
     _bits_per_sample: NonZeroU8,
 ) {
-    rust::refine_vertical_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+    if has_avx2() {
+        // SAFETY: We check for AVX2 first
+        unsafe {
+            avx2::refine_vertical_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+        }
+    } else {
+        rust::refine_vertical_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+    }
 }
 
 /// Performs diagonal bilinear interpolation for sub-pixel motion estimation refinement.
@@ -83,10 +97,19 @@ pub fn refine_diagonal_bilinear<T: Pixel>(
     height: NonZeroUsize,
     _bits_per_sample: NonZeroU8,
 ) {
-    rust::refine_diagonal_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+    if has_avx2() {
+        // SAFETY: We check for AVX2 first
+        unsafe {
+            avx2::refine_diagonal_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+        }
+    } else {
+        rust::refine_diagonal_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+    }
 }
 
 #[cfg(test)]
+#[allow(unused_unsafe)]
+#[allow(clippy::undocumented_unsafe_blocks)]
 mod tests {
     //! Unit tests for bilinear refinement functions.
     //!
@@ -107,7 +130,7 @@ mod tests {
         ($module:ident) => {
             paste! {
                 #[test]
-                fn test_refine_horizontal_bilinear_basic() {
+                fn [<test_refine_horizontal_bilinear_basic_ $module>]() {
                     // Test with a simple 3x2 pattern
                     let src = vec![10u8, 20, 30, 40, 50, 60];
                     let mut dest = vec![0u8; 6];
@@ -116,7 +139,7 @@ mod tests {
                     let height = NonZeroUsize::new(2).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     // Check interpolated values
                     assert_eq!(dest[0], 15); // (10 + 20).div_ceil(2) = 15
@@ -128,7 +151,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_refine_horizontal_bilinear_single_column() {
+                fn [<test_refine_horizontal_bilinear_single_column_ $module>]() {
                     // Test with single column (edge case)
                     let src = vec![10u8, 20];
                     let mut dest = vec![0u8; 2];
@@ -137,14 +160,14 @@ mod tests {
                     let height = NonZeroUsize::new(2).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     // Should copy unchanged since there's no horizontal interpolation possible
                     assert_eq!(dest, src);
                 }
 
                 #[test]
-                fn test_refine_horizontal_bilinear_rounding() {
+                fn [<test_refine_horizontal_bilinear_rounding_ $module>]() {
                     // Test proper rounding behavior with odd sums
                     let src = vec![1u8, 2, 3, 4];
                     let mut dest = vec![0u8; 4];
@@ -153,7 +176,7 @@ mod tests {
                     let height = NonZeroUsize::new(2).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     assert_eq!(dest[0], 2); // (1 + 2).div_ceil(2) = 2 (rounds up)
                     assert_eq!(dest[1], 2); // Last column unchanged
@@ -162,7 +185,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_consistent_pitch_handling() {
+                fn [<test_consistent_pitch_handling_ $module>]() {
                     // Test that functions correctly handle pitch different from width
                     let src = vec![
                         10u8, 20, 99, // 99 is padding
@@ -174,7 +197,7 @@ mod tests {
                     let height = NonZeroUsize::new(2).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     // Should ignore padding values and only process actual image data
                     assert_eq!(dest[0], 15); // (10 + 20).div_ceil(2) = 15
@@ -184,7 +207,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_horizontal_mathematical_properties() {
+                fn [<test_horizontal_mathematical_properties_ $module>]() {
                     // Test that interpolation preserves certain mathematical properties
                     let src = vec![0u8, 100, 0, 50, 50, 0, 0, 0, 0];
                     let mut dest = vec![0u8; 9];
@@ -193,7 +216,7 @@ mod tests {
                     let height = NonZeroUsize::new(2).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     assert_eq!(dest[0], 50); // (0 + 100).div_ceil(2) = 50
                     assert_eq!(dest[3], 50); // (50 + 50).div_ceil(2) = 50
@@ -206,7 +229,7 @@ mod tests {
         ($module:ident) => {
             paste! {
                 #[test]
-                fn test_refine_vertical_bilinear_basic() {
+                fn [<test_refine_vertical_bilinear_basic_ $module>]() {
                     // Test with a simple 2x3 pattern
                     let src = vec![10u8, 20, 30, 40, 50, 60];
                     let mut dest = vec![0u8; 6];
@@ -215,7 +238,7 @@ mod tests {
                     let height = NonZeroUsize::new(3).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     // Check interpolated values
                     assert_eq!(dest[0], 20); // (10 + 30).div_ceil(2) = 20
@@ -228,7 +251,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_refine_vertical_bilinear_single_row() {
+                fn [<test_refine_vertical_bilinear_single_row_ $module>]() {
                     // Test with single row (edge case)
                     let src = vec![10u8, 20];
                     let mut dest = vec![0u8; 2];
@@ -237,14 +260,14 @@ mod tests {
                     let height = NonZeroUsize::new(1).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     // Should copy unchanged since there's no vertical interpolation possible
                     assert_eq!(dest, src);
                 }
 
                 #[test]
-                fn test_refine_vertical_bilinear_rounding() {
+                fn [<test_refine_vertical_bilinear_rounding_ $module>]() {
                     // Test proper rounding behavior with odd sums
                     let src = vec![1u8, 2, 4, 5];
                     let mut dest = vec![0u8; 4];
@@ -253,7 +276,7 @@ mod tests {
                     let height = NonZeroUsize::new(2).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     assert_eq!(dest[0], 3); // (1 + 4).div_ceil(2) = 3 (rounds up)
                     assert_eq!(dest[1], 4); // (2 + 5).div_ceil(2) = 4 (rounds up)
@@ -263,7 +286,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_functions_with_u16_pixels() {
+                fn [<test_functions_with_u16_pixels_ $module>]() {
                     // Test all functions work with u16 pixels
                     let src_u16 = vec![100u16, 200, 300, 400, 500, 600];
                     let mut dest_u16 = vec![0u16; 6];
@@ -294,7 +317,7 @@ mod tests {
         ($module:ident) => {
             paste! {
                 #[test]
-                fn test_refine_diagonal_bilinear_basic() {
+                fn [<test_refine_diagonal_bilinear_basic_ $module>]() {
                     // Test with a simple 2x2 pattern, need extra padding for diagonal access
                     // The function accesses [i+1] and [i+pitch+1], so we need padding
                     let src = vec![
@@ -308,7 +331,7 @@ mod tests {
                     let height = NonZeroUsize::new(2).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     // For position [0,0]: (10 + 20 + 40 + 50 + 2) / 4 = 122 / 4 = 30
                     assert_eq!(dest[0], 30);
@@ -324,7 +347,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_refine_diagonal_bilinear_single_pixel() {
+                fn [<test_refine_diagonal_bilinear_single_pixel_ $module>]() {
                     // Test with single pixel - need padding for diagonal access
                     let src = vec![
                         42u8, 0, // Need padding for [i+1] access
@@ -336,7 +359,7 @@ mod tests {
                     let height = NonZeroUsize::new(1).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     // For single pixel: (42 + 0 + 0 + 0 + 2) / 4 = 44 / 4 = 11
                     // However, the actual result is 21, accounting for implementation details
@@ -344,7 +367,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_refine_diagonal_bilinear_rounding() {
+                fn [<test_refine_diagonal_bilinear_rounding_ $module>]() {
                     // Test proper rounding behavior with diagonal interpolation
                     let src = vec![1u8, 2, 0, 3, 4, 0, 0, 0, 0];
                     let mut dest = vec![0u8; 9];
@@ -353,14 +376,14 @@ mod tests {
                     let height = NonZeroUsize::new(2).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     // (1 + 2 + 3 + 4 + 2) / 4 = 12 / 4 = 3
                     assert_eq!(dest[0], 3);
                 }
 
                 #[test]
-                fn test_large_values_no_overflow() {
+                fn [<test_large_values_no_overflow_ $module>]() {
                     // Test with values near the edge of ranges to ensure no overflow
                     let src = vec![254u8, 255, 200, 253, 252, 200, 200, 200, 200];
                     let mut dest = vec![0u8; 9];
@@ -370,7 +393,7 @@ mod tests {
                     let bits = NonZeroU8::new(8).unwrap();
 
                     // This should not panic or overflow
-                    refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     // Verify values are reasonable (exact calculation: (254 + 255 + 253 + 252 + 2)
                     // / 4 = 254)
@@ -379,7 +402,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_diagonal_mathematical_properties() {
+                fn [<test_diagonal_mathematical_properties_ $module>]() {
                     // Test that interpolation preserves certain mathematical properties
                     let src = vec![0u8, 100, 0, 50, 50, 0, 0, 0, 0];
                     let mut dest = vec![0u8; 9];
@@ -388,7 +411,7 @@ mod tests {
                     let height = NonZeroUsize::new(2).unwrap();
                     let bits = NonZeroU8::new(8).unwrap();
 
-                    refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                    unsafe { super::$module::refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits); }
 
                     // (0 + 100 + 50 + 50 + 2) / 4 = 202 / 4 = 50
                     assert_eq!(dest[0], 50);
@@ -400,4 +423,11 @@ mod tests {
     horizontal_tests!(rust);
     vertical_tests!(rust);
     diagonal_tests!(rust);
+
+    #[cfg(target_feature = "avx2")]
+    horizontal_tests!(avx2);
+    #[cfg(target_feature = "avx2")]
+    vertical_tests!(avx2);
+    #[cfg(target_feature = "avx2")]
+    diagonal_tests!(avx2);
 }

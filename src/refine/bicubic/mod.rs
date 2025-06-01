@@ -436,9 +436,10 @@ mod tests {
     }
 
     horizontal_tests!(rust);
+    vertical_tests!(rust);
+
     #[cfg(target_feature = "avx2")]
     horizontal_tests!(avx2);
-    vertical_tests!(rust);
     #[cfg(target_feature = "avx2")]
     vertical_tests!(avx2);
 }

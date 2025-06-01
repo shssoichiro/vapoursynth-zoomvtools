@@ -18,6 +18,7 @@ use crate::util::Pixel;
 /// - `width`: Width of the image in pixels
 /// - `height`: Height of the image in pixels
 /// - `_bits_per_sample`: Unused parameter for API consistency
+#[target_feature(enable = "avx2")]
 pub fn refine_horizontal_bilinear<T: Pixel>(
     src: &[T],
     dest: &mut [T],

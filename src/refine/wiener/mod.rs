@@ -74,6 +74,8 @@ pub fn refine_vertical_wiener<T: Pixel>(
 }
 
 #[cfg(test)]
+#[allow(unused_unsafe)]
+#[allow(clippy::undocumented_unsafe_blocks)]
 mod tests {
     use std::num::{NonZeroU8, NonZeroUsize};
 
