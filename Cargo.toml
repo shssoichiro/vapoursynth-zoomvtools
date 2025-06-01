@@ -54,6 +54,10 @@ required-features = ["bench"]
 [features]
 bench = []
 
+[lints.rust]
+# this rule is dumb when you're writing simd.
+unsafe_op_in_unsafe_fn = "allow"
+
 [lints.clippy]
 # This can result in worse performance. It should probably be allow by default...
 manual_div_ceil = "allow"

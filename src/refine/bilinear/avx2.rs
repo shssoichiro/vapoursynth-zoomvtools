@@ -167,28 +167,26 @@ unsafe fn refine_horizontal_bilinear_u8(
         let row_offset = j * pitch;
         let mut i = 0;
 
-        unsafe {
-            // Process 32 pixels at a time (AVX2 register size for u8)
-            while i + 32 < width {
-                let current = _mm256_loadu_si256((src.add(row_offset + i)) as *const __m256i);
-                let next = _mm256_loadu_si256((src.add(row_offset + i + 1)) as *const __m256i);
-                let result = _mm256_avg_epu8(current, next);
-                _mm256_storeu_si256((dest.add(row_offset + i)) as *mut __m256i, result);
-                i += 32;
-            }
+        // Process 32 pixels at a time (AVX2 register size for u8)
+        while i + 32 < width {
+            let current = _mm256_loadu_si256((src.add(row_offset + i)) as *const __m256i);
+            let next = _mm256_loadu_si256((src.add(row_offset + i + 1)) as *const __m256i);
+            let result = _mm256_avg_epu8(current, next);
+            _mm256_storeu_si256((dest.add(row_offset + i)) as *mut __m256i, result);
+            i += 32;
+        }
 
-            // Process remaining pixels with scalar code
-            while i < width - 1 {
-                let a = *src.add(row_offset + i) as u16;
-                let b = *src.add(row_offset + i + 1) as u16;
-                *dest.add(row_offset + i) = ((a + b + 1) / 2) as u8;
-                i += 1;
-            }
+        // Process remaining pixels with scalar code
+        while i < width - 1 {
+            let a = *src.add(row_offset + i) as u16;
+            let b = *src.add(row_offset + i + 1) as u16;
+            *dest.add(row_offset + i) = ((a + b + 1) / 2) as u8;
+            i += 1;
+        }
 
-            // Copy last column
-            if width > 0 {
-                *dest.add(row_offset + width - 1) = *src.add(row_offset + width - 1);
-            }
+        // Copy last column
+        if width > 0 {
+            *dest.add(row_offset + width - 1) = *src.add(row_offset + width - 1);
         }
     }
 }
@@ -209,28 +207,26 @@ unsafe fn refine_horizontal_bilinear_u16(
         let row_offset = j * pitch;
         let mut i = 0;
 
-        unsafe {
-            // Process 16 pixels at a time (AVX2 register size for u16)
-            while i + 16 < width {
-                let current = _mm256_loadu_si256((src.add(row_offset + i)) as *const __m256i);
-                let next = _mm256_loadu_si256((src.add(row_offset + i + 1)) as *const __m256i);
-                let result = _mm256_avg_epu16(current, next);
-                _mm256_storeu_si256((dest.add(row_offset + i)) as *mut __m256i, result);
-                i += 16;
-            }
+        // Process 16 pixels at a time (AVX2 register size for u16)
+        while i + 16 < width {
+            let current = _mm256_loadu_si256((src.add(row_offset + i)) as *const __m256i);
+            let next = _mm256_loadu_si256((src.add(row_offset + i + 1)) as *const __m256i);
+            let result = _mm256_avg_epu16(current, next);
+            _mm256_storeu_si256((dest.add(row_offset + i)) as *mut __m256i, result);
+            i += 16;
+        }
 
-            // Process remaining pixels with scalar code
-            while i < width - 1 {
-                let a = *src.add(row_offset + i) as u32;
-                let b = *src.add(row_offset + i + 1) as u32;
-                *dest.add(row_offset + i) = ((a + b + 1) / 2) as u16;
-                i += 1;
-            }
+        // Process remaining pixels with scalar code
+        while i < width - 1 {
+            let a = *src.add(row_offset + i) as u32;
+            let b = *src.add(row_offset + i + 1) as u32;
+            *dest.add(row_offset + i) = ((a + b + 1) / 2) as u16;
+            i += 1;
+        }
 
-            // Copy last column
-            if width > 0 {
-                *dest.add(row_offset + width - 1) = *src.add(row_offset + width - 1);
-            }
+        // Copy last column
+        if width > 0 {
+            *dest.add(row_offset + width - 1) = *src.add(row_offset + width - 1);
         }
     }
 }
@@ -247,38 +243,32 @@ unsafe fn refine_vertical_bilinear_u8(
     let width = width.get();
     let height = height.get();
 
-    unsafe {
-        for j in 0..height - 1 {
-            let row_offset = j * pitch;
-            let mut i = 0;
+    for j in 0..height - 1 {
+        let row_offset = j * pitch;
+        let mut i = 0;
 
-            // Process 32 pixels at a time
-            while i + 32 <= width {
-                let current = _mm256_loadu_si256((src.add(row_offset + i)) as *const __m256i);
-                let next = _mm256_loadu_si256((src.add(row_offset + pitch + i)) as *const __m256i);
-                let result = _mm256_avg_epu8(current, next);
-                _mm256_storeu_si256((dest.add(row_offset + i)) as *mut __m256i, result);
-                i += 32;
-            }
-
-            // Process remaining pixels with scalar code
-            while i < width {
-                let a = *src.add(row_offset + i) as u16;
-                let b = *src.add(row_offset + pitch + i) as u16;
-                *dest.add(row_offset + i) = ((a + b + 1) / 2) as u8;
-                i += 1;
-            }
+        // Process 32 pixels at a time
+        while i + 32 <= width {
+            let current = _mm256_loadu_si256((src.add(row_offset + i)) as *const __m256i);
+            let next = _mm256_loadu_si256((src.add(row_offset + pitch + i)) as *const __m256i);
+            let result = _mm256_avg_epu8(current, next);
+            _mm256_storeu_si256((dest.add(row_offset + i)) as *mut __m256i, result);
+            i += 32;
         }
 
-        // Copy last row
-        if height > 0 {
-            let last_row_offset = (height - 1) * pitch;
-            std::ptr::copy_nonoverlapping(
-                src.add(last_row_offset),
-                dest.add(last_row_offset),
-                width,
-            );
+        // Process remaining pixels with scalar code
+        while i < width {
+            let a = *src.add(row_offset + i) as u16;
+            let b = *src.add(row_offset + pitch + i) as u16;
+            *dest.add(row_offset + i) = ((a + b + 1) / 2) as u8;
+            i += 1;
         }
+    }
+
+    // Copy last row
+    if height > 0 {
+        let last_row_offset = (height - 1) * pitch;
+        std::ptr::copy_nonoverlapping(src.add(last_row_offset), dest.add(last_row_offset), width);
     }
 }
 
@@ -294,38 +284,32 @@ unsafe fn refine_vertical_bilinear_u16(
     let width = width.get();
     let height = height.get();
 
-    unsafe {
-        for j in 0..height - 1 {
-            let row_offset = j * pitch;
-            let mut i = 0;
+    for j in 0..height - 1 {
+        let row_offset = j * pitch;
+        let mut i = 0;
 
-            // Process 16 pixels at a time
-            while i + 16 <= width {
-                let current = _mm256_loadu_si256((src.add(row_offset + i)) as *const __m256i);
-                let next = _mm256_loadu_si256((src.add(row_offset + pitch + i)) as *const __m256i);
-                let result = _mm256_avg_epu16(current, next);
-                _mm256_storeu_si256((dest.add(row_offset + i)) as *mut __m256i, result);
-                i += 16;
-            }
-
-            // Process remaining pixels with scalar code
-            while i < width {
-                let a = *src.add(row_offset + i) as u32;
-                let b = *src.add(row_offset + pitch + i) as u32;
-                *dest.add(row_offset + i) = ((a + b + 1) / 2) as u16;
-                i += 1;
-            }
+        // Process 16 pixels at a time
+        while i + 16 <= width {
+            let current = _mm256_loadu_si256((src.add(row_offset + i)) as *const __m256i);
+            let next = _mm256_loadu_si256((src.add(row_offset + pitch + i)) as *const __m256i);
+            let result = _mm256_avg_epu16(current, next);
+            _mm256_storeu_si256((dest.add(row_offset + i)) as *mut __m256i, result);
+            i += 16;
         }
 
-        // Copy last row
-        if height > 0 {
-            let last_row_offset = (height - 1) * pitch;
-            std::ptr::copy_nonoverlapping(
-                src.add(last_row_offset),
-                dest.add(last_row_offset),
-                width,
-            );
+        // Process remaining pixels with scalar code
+        while i < width {
+            let a = *src.add(row_offset + i) as u32;
+            let b = *src.add(row_offset + pitch + i) as u32;
+            *dest.add(row_offset + i) = ((a + b + 1) / 2) as u16;
+            i += 1;
         }
+    }
+
+    // Copy last row
+    if height > 0 {
+        let last_row_offset = (height - 1) * pitch;
+        std::ptr::copy_nonoverlapping(src.add(last_row_offset), dest.add(last_row_offset), width);
     }
 }
 
@@ -343,38 +327,36 @@ unsafe fn refine_diagonal_bilinear_u8(
 
     let mut offset = 0;
 
-    unsafe {
-        for _j in 0..height {
-            // Main loop for each row
-            for i in 0..width {
-                let a = *src.add(offset + i) as u16;
-                let b = *src.add(offset + i + 1) as u16;
-                let c = *src.add(offset + i + pitch) as u16;
-                let d = *src.add(offset + i + pitch + 1) as u16;
-
-                *dest.add(offset + i) = ((a + b + c + d + 2) / 4) as u8;
-            }
-
-            // Handle last column separately (2-tap vertical)
-            if width > 0 {
-                let a = *src.add(offset + width - 1) as u16;
-                let b = *src.add(offset + width - 1 + pitch) as u16;
-                *dest.add(offset + width - 1) = ((a + b + 1) / 2) as u8;
-            }
-
-            offset += pitch;
-        }
-
-        // Handle last row separately (2-tap horizontal)
-        for i in 0..width - 1 {
+    for _j in 0..height {
+        // Main loop for each row
+        for i in 0..width {
             let a = *src.add(offset + i) as u16;
             let b = *src.add(offset + i + 1) as u16;
-            *dest.add(offset + i) = ((a + b + 1) / 2) as u8;
+            let c = *src.add(offset + i + pitch) as u16;
+            let d = *src.add(offset + i + pitch + 1) as u16;
+
+            *dest.add(offset + i) = ((a + b + c + d + 2) / 4) as u8;
         }
-        // Last pixel - copy directly
+
+        // Handle last column separately (2-tap vertical)
         if width > 0 {
-            *dest.add(offset + width - 1) = *src.add(offset + width - 1);
+            let a = *src.add(offset + width - 1) as u16;
+            let b = *src.add(offset + width - 1 + pitch) as u16;
+            *dest.add(offset + width - 1) = ((a + b + 1) / 2) as u8;
         }
+
+        offset += pitch;
+    }
+
+    // Handle last row separately (2-tap horizontal)
+    for i in 0..width - 1 {
+        let a = *src.add(offset + i) as u16;
+        let b = *src.add(offset + i + 1) as u16;
+        *dest.add(offset + i) = ((a + b + 1) / 2) as u8;
+    }
+    // Last pixel - copy directly
+    if width > 0 {
+        *dest.add(offset + width - 1) = *src.add(offset + width - 1);
     }
 }
 
@@ -392,37 +374,35 @@ unsafe fn refine_diagonal_bilinear_u16(
 
     let mut offset = 0;
 
-    unsafe {
-        for _j in 0..height {
-            // Main loop for each row
-            for i in 0..width {
-                let a = *src.add(offset + i) as u32;
-                let b = *src.add(offset + i + 1) as u32;
-                let c = *src.add(offset + i + pitch) as u32;
-                let d = *src.add(offset + i + pitch + 1) as u32;
-
-                *dest.add(offset + i) = ((a + b + c + d + 2) / 4) as u16;
-            }
-
-            // Handle last column separately (2-tap vertical)
-            if width > 0 {
-                let a = *src.add(offset + width - 1) as u32;
-                let b = *src.add(offset + width - 1 + pitch) as u32;
-                *dest.add(offset + width - 1) = ((a + b + 1) / 2) as u16;
-            }
-
-            offset += pitch;
-        }
-
-        // Handle last row separately (2-tap horizontal)
-        for i in 0..width - 1 {
+    for _j in 0..height {
+        // Main loop for each row
+        for i in 0..width {
             let a = *src.add(offset + i) as u32;
             let b = *src.add(offset + i + 1) as u32;
-            *dest.add(offset + i) = ((a + b + 1) / 2) as u16;
+            let c = *src.add(offset + i + pitch) as u32;
+            let d = *src.add(offset + i + pitch + 1) as u32;
+
+            *dest.add(offset + i) = ((a + b + c + d + 2) / 4) as u16;
         }
-        // Last pixel - copy directly
+
+        // Handle last column separately (2-tap vertical)
         if width > 0 {
-            *dest.add(offset + width - 1) = *src.add(offset + width - 1);
+            let a = *src.add(offset + width - 1) as u32;
+            let b = *src.add(offset + width - 1 + pitch) as u32;
+            *dest.add(offset + width - 1) = ((a + b + 1) / 2) as u16;
         }
+
+        offset += pitch;
+    }
+
+    // Handle last row separately (2-tap horizontal)
+    for i in 0..width - 1 {
+        let a = *src.add(offset + i) as u32;
+        let b = *src.add(offset + i + 1) as u32;
+        *dest.add(offset + i) = ((a + b + 1) / 2) as u16;
+    }
+    // Last pixel - copy directly
+    if width > 0 {
+        *dest.add(offset + width - 1) = *src.add(offset + width - 1);
     }
 }

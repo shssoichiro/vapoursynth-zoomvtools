@@ -92,10 +92,115 @@ unsafe fn reduce_bilinear_vertical_u8(
 
     // Special case for first line: (a + b + 1) / 2
     let mut x = 0;
-    unsafe {
+    while x + 32 <= dest_width {
+        let a = _mm256_loadu_si256(src_ptr.add(x) as *const __m256i);
+        let b = _mm256_loadu_si256(src_ptr.add(x + src_pitch) as *const __m256i);
+
+        // Convert to 16-bit for arithmetic
+        let a_lo = _mm256_unpacklo_epi8(a, _mm256_setzero_si256());
+        let a_hi = _mm256_unpackhi_epi8(a, _mm256_setzero_si256());
+        let b_lo = _mm256_unpacklo_epi8(b, _mm256_setzero_si256());
+        let b_hi = _mm256_unpackhi_epi8(b, _mm256_setzero_si256());
+
+        // (a + b + 1) / 2
+        let ones = _mm256_set1_epi16(1);
+        let sum_lo = _mm256_add_epi16(_mm256_add_epi16(a_lo, b_lo), ones);
+        let sum_hi = _mm256_add_epi16(_mm256_add_epi16(a_hi, b_hi), ones);
+        let result_lo = _mm256_srli_epi16(sum_lo, 1);
+        let result_hi = _mm256_srli_epi16(sum_hi, 1);
+
+        // Pack back to 8-bit
+        let result = _mm256_packus_epi16(result_lo, result_hi);
+        _mm256_storeu_si256(dest_ptr.add(x) as *mut __m256i, result);
+
+        x += 32;
+    }
+
+    // Handle remaining pixels
+    while x < dest_width {
+        let a = *src_ptr.add(x) as u32;
+        let b = *src_ptr.add(x + src_pitch) as u32;
+        *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
+        x += 1;
+    }
+
+    dest_ptr = dest_ptr.add(dest_pitch);
+
+    // Middle lines: (a + (b + c) * 3 + d + 4) / 8
+    for y in 1..(dest_height - 1) {
+        let src_row_offset = y * 2 * src_pitch;
+
+        let mut x = 0;
         while x + 32 <= dest_width {
-            let a = _mm256_loadu_si256(src_ptr.add(x) as *const __m256i);
-            let b = _mm256_loadu_si256(src_ptr.add(x + src_pitch) as *const __m256i);
+            let a =
+                _mm256_loadu_si256(src_ptr.add(src_row_offset + x - src_pitch) as *const __m256i);
+            let b = _mm256_loadu_si256(src_ptr.add(src_row_offset + x) as *const __m256i);
+            let c =
+                _mm256_loadu_si256(src_ptr.add(src_row_offset + x + src_pitch) as *const __m256i);
+            let d = _mm256_loadu_si256(
+                src_ptr.add(src_row_offset + x + src_pitch * 2) as *const __m256i
+            );
+
+            // Convert to 16-bit for arithmetic
+            let a_lo = _mm256_unpacklo_epi8(a, _mm256_setzero_si256());
+            let a_hi = _mm256_unpackhi_epi8(a, _mm256_setzero_si256());
+            let b_lo = _mm256_unpacklo_epi8(b, _mm256_setzero_si256());
+            let b_hi = _mm256_unpackhi_epi8(b, _mm256_setzero_si256());
+            let c_lo = _mm256_unpacklo_epi8(c, _mm256_setzero_si256());
+            let c_hi = _mm256_unpackhi_epi8(c, _mm256_setzero_si256());
+            let d_lo = _mm256_unpacklo_epi8(d, _mm256_setzero_si256());
+            let d_hi = _mm256_unpackhi_epi8(d, _mm256_setzero_si256());
+
+            // (b + c) * 3
+            let bc_lo = _mm256_add_epi16(b_lo, c_lo);
+            let bc_hi = _mm256_add_epi16(b_hi, c_hi);
+            let bc3_lo = _mm256_add_epi16(_mm256_add_epi16(bc_lo, bc_lo), bc_lo);
+            let bc3_hi = _mm256_add_epi16(_mm256_add_epi16(bc_hi, bc_hi), bc_hi);
+
+            // a + (b + c) * 3 + d + 4
+            let fours = _mm256_set1_epi16(4);
+            let sum_lo = _mm256_add_epi16(
+                _mm256_add_epi16(a_lo, bc3_lo),
+                _mm256_add_epi16(d_lo, fours),
+            );
+            let sum_hi = _mm256_add_epi16(
+                _mm256_add_epi16(a_hi, bc3_hi),
+                _mm256_add_epi16(d_hi, fours),
+            );
+
+            // Divide by 8
+            let result_lo = _mm256_srli_epi16(sum_lo, 3);
+            let result_hi = _mm256_srli_epi16(sum_hi, 3);
+
+            // Pack back to 8-bit
+            let result = _mm256_packus_epi16(result_lo, result_hi);
+            _mm256_storeu_si256(dest_ptr.add(x) as *mut __m256i, result);
+
+            x += 32;
+        }
+
+        // Handle remaining pixels
+        while x < dest_width {
+            let a = *src_ptr.add(src_row_offset + x - src_pitch) as u32;
+            let b = *src_ptr.add(src_row_offset + x) as u32;
+            let c = *src_ptr.add(src_row_offset + x + src_pitch) as u32;
+            let d = *src_ptr.add(src_row_offset + x + src_pitch * 2) as u32;
+            *dest_ptr.add(x) = ((a + (b + c) * 3 + d + 4) / 8) as u8;
+            x += 1;
+        }
+
+        dest_ptr = dest_ptr.add(dest_pitch);
+    }
+
+    // Special case for last line: (a + b + 1) / 2
+    if dest_height > 1 {
+        let src_row_offset = (dest_height - 1) * 2 * src_pitch;
+
+        let mut x = 0;
+        while x + 32 <= dest_width {
+            let a = _mm256_loadu_si256(src_ptr.add(src_row_offset + x) as *const __m256i);
+            let b =
+                _mm256_loadu_si256(src_ptr.add(src_row_offset + x + src_pitch) as *const __m256i);
 
             // Convert to 16-bit for arithmetic
             let a_lo = _mm256_unpacklo_epi8(a, _mm256_setzero_si256());
@@ -119,120 +224,10 @@ unsafe fn reduce_bilinear_vertical_u8(
 
         // Handle remaining pixels
         while x < dest_width {
-            let a = *src_ptr.add(x) as u32;
-            let b = *src_ptr.add(x + src_pitch) as u32;
+            let a = *src_ptr.add(src_row_offset + x) as u32;
+            let b = *src_ptr.add(src_row_offset + x + src_pitch) as u32;
             *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
             x += 1;
-        }
-
-        dest_ptr = dest_ptr.add(dest_pitch);
-
-        // Middle lines: (a + (b + c) * 3 + d + 4) / 8
-        for y in 1..(dest_height - 1) {
-            let src_row_offset = y * 2 * src_pitch;
-
-            let mut x = 0;
-            while x + 32 <= dest_width {
-                let a = _mm256_loadu_si256(
-                    src_ptr.add(src_row_offset + x - src_pitch) as *const __m256i
-                );
-                let b = _mm256_loadu_si256(src_ptr.add(src_row_offset + x) as *const __m256i);
-                let c = _mm256_loadu_si256(
-                    src_ptr.add(src_row_offset + x + src_pitch) as *const __m256i
-                );
-                let d = _mm256_loadu_si256(
-                    src_ptr.add(src_row_offset + x + src_pitch * 2) as *const __m256i
-                );
-
-                // Convert to 16-bit for arithmetic
-                let a_lo = _mm256_unpacklo_epi8(a, _mm256_setzero_si256());
-                let a_hi = _mm256_unpackhi_epi8(a, _mm256_setzero_si256());
-                let b_lo = _mm256_unpacklo_epi8(b, _mm256_setzero_si256());
-                let b_hi = _mm256_unpackhi_epi8(b, _mm256_setzero_si256());
-                let c_lo = _mm256_unpacklo_epi8(c, _mm256_setzero_si256());
-                let c_hi = _mm256_unpackhi_epi8(c, _mm256_setzero_si256());
-                let d_lo = _mm256_unpacklo_epi8(d, _mm256_setzero_si256());
-                let d_hi = _mm256_unpackhi_epi8(d, _mm256_setzero_si256());
-
-                // (b + c) * 3
-                let bc_lo = _mm256_add_epi16(b_lo, c_lo);
-                let bc_hi = _mm256_add_epi16(b_hi, c_hi);
-                let bc3_lo = _mm256_add_epi16(_mm256_add_epi16(bc_lo, bc_lo), bc_lo);
-                let bc3_hi = _mm256_add_epi16(_mm256_add_epi16(bc_hi, bc_hi), bc_hi);
-
-                // a + (b + c) * 3 + d + 4
-                let fours = _mm256_set1_epi16(4);
-                let sum_lo = _mm256_add_epi16(
-                    _mm256_add_epi16(a_lo, bc3_lo),
-                    _mm256_add_epi16(d_lo, fours),
-                );
-                let sum_hi = _mm256_add_epi16(
-                    _mm256_add_epi16(a_hi, bc3_hi),
-                    _mm256_add_epi16(d_hi, fours),
-                );
-
-                // Divide by 8
-                let result_lo = _mm256_srli_epi16(sum_lo, 3);
-                let result_hi = _mm256_srli_epi16(sum_hi, 3);
-
-                // Pack back to 8-bit
-                let result = _mm256_packus_epi16(result_lo, result_hi);
-                _mm256_storeu_si256(dest_ptr.add(x) as *mut __m256i, result);
-
-                x += 32;
-            }
-
-            // Handle remaining pixels
-            while x < dest_width {
-                let a = *src_ptr.add(src_row_offset + x - src_pitch) as u32;
-                let b = *src_ptr.add(src_row_offset + x) as u32;
-                let c = *src_ptr.add(src_row_offset + x + src_pitch) as u32;
-                let d = *src_ptr.add(src_row_offset + x + src_pitch * 2) as u32;
-                *dest_ptr.add(x) = ((a + (b + c) * 3 + d + 4) / 8) as u8;
-                x += 1;
-            }
-
-            dest_ptr = dest_ptr.add(dest_pitch);
-        }
-
-        // Special case for last line: (a + b + 1) / 2
-        if dest_height > 1 {
-            let src_row_offset = (dest_height - 1) * 2 * src_pitch;
-
-            let mut x = 0;
-            while x + 32 <= dest_width {
-                let a = _mm256_loadu_si256(src_ptr.add(src_row_offset + x) as *const __m256i);
-                let b = _mm256_loadu_si256(
-                    src_ptr.add(src_row_offset + x + src_pitch) as *const __m256i
-                );
-
-                // Convert to 16-bit for arithmetic
-                let a_lo = _mm256_unpacklo_epi8(a, _mm256_setzero_si256());
-                let a_hi = _mm256_unpackhi_epi8(a, _mm256_setzero_si256());
-                let b_lo = _mm256_unpacklo_epi8(b, _mm256_setzero_si256());
-                let b_hi = _mm256_unpackhi_epi8(b, _mm256_setzero_si256());
-
-                // (a + b + 1) / 2
-                let ones = _mm256_set1_epi16(1);
-                let sum_lo = _mm256_add_epi16(_mm256_add_epi16(a_lo, b_lo), ones);
-                let sum_hi = _mm256_add_epi16(_mm256_add_epi16(a_hi, b_hi), ones);
-                let result_lo = _mm256_srli_epi16(sum_lo, 1);
-                let result_hi = _mm256_srli_epi16(sum_hi, 1);
-
-                // Pack back to 8-bit
-                let result = _mm256_packus_epi16(result_lo, result_hi);
-                _mm256_storeu_si256(dest_ptr.add(x) as *mut __m256i, result);
-
-                x += 32;
-            }
-
-            // Handle remaining pixels
-            while x < dest_width {
-                let a = *src_ptr.add(src_row_offset + x) as u32;
-                let b = *src_ptr.add(src_row_offset + x + src_pitch) as u32;
-                *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
-                x += 1;
-            }
         }
     }
 }
@@ -250,62 +245,60 @@ unsafe fn reduce_bilinear_horizontal_inplace_u8(
 
     let mut dest_ptr = dest;
 
-    unsafe {
-        for _y in 0..dest_height {
-            // Special case start of line: (a + b + 1) / 2
-            let a = *dest_ptr as u32;
-            let b = *dest_ptr.add(1) as u32;
-            let src0 = ((a + b + 1) / 2) as u8;
+    for _y in 0..dest_height {
+        // Special case start of line: (a + b + 1) / 2
+        let a = *dest_ptr as u32;
+        let b = *dest_ptr.add(1) as u32;
+        let src0 = ((a + b + 1) / 2) as u8;
 
-            // Middle of line: (a + (b + c) * 3 + d + 4) / 8
-            // Process in groups that fit AVX2 registers
-            let mut x = 1;
+        // Middle of line: (a + (b + c) * 3 + d + 4) / 8
+        // Process in groups that fit AVX2 registers
+        let mut x = 1;
 
-            // We can process 16 output pixels at a time (64 input pixels)
-            while x + 16 <= dest_width - 1 {
-                // Load 64 input pixels for 16 output pixels
-                // We need to load with proper alignment for shuffles
-                let mut results = [0u8; 16];
+        // We can process 16 output pixels at a time (64 input pixels)
+        while x + 16 <= dest_width - 1 {
+            // Load 64 input pixels for 16 output pixels
+            // We need to load with proper alignment for shuffles
+            let mut results = [0u8; 16];
 
-                for i in 0..16 {
-                    let idx = x + i;
-                    let a = *dest_ptr.add(idx * 2 - 1) as u32;
-                    let b = *dest_ptr.add(idx * 2) as u32;
-                    let c = *dest_ptr.add(idx * 2 + 1) as u32;
-                    let d = *dest_ptr.add(idx * 2 + 2) as u32;
-                    results[i] = ((a + (b + c) * 3 + d + 4) / 8) as u8;
-                }
-
-                // Store results
-                for i in 0..16 {
-                    *dest_ptr.add(x + i) = results[i];
-                }
-
-                x += 16;
+            for i in 0..16 {
+                let idx = x + i;
+                let a = *dest_ptr.add(idx * 2 - 1) as u32;
+                let b = *dest_ptr.add(idx * 2) as u32;
+                let c = *dest_ptr.add(idx * 2 + 1) as u32;
+                let d = *dest_ptr.add(idx * 2 + 2) as u32;
+                results[i] = ((a + (b + c) * 3 + d + 4) / 8) as u8;
             }
 
-            // Handle remaining middle pixels
-            while x < dest_width - 1 {
-                let a = *dest_ptr.add(x * 2 - 1) as u32;
-                let b = *dest_ptr.add(x * 2) as u32;
-                let c = *dest_ptr.add(x * 2 + 1) as u32;
-                let d = *dest_ptr.add(x * 2 + 2) as u32;
-                *dest_ptr.add(x) = ((a + (b + c) * 3 + d + 4) / 8) as u8;
-                x += 1;
+            // Store results
+            for i in 0..16 {
+                *dest_ptr.add(x + i) = results[i];
             }
 
-            *dest_ptr = src0;
-
-            // Special case end of line: (a + b + 1) / 2
-            if dest_width > 1 {
-                let x = dest_width - 1;
-                let a = *dest_ptr.add(x * 2) as u32;
-                let b = *dest_ptr.add(x * 2 + 1) as u32;
-                *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
-            }
-
-            dest_ptr = dest_ptr.add(dest_pitch);
+            x += 16;
         }
+
+        // Handle remaining middle pixels
+        while x < dest_width - 1 {
+            let a = *dest_ptr.add(x * 2 - 1) as u32;
+            let b = *dest_ptr.add(x * 2) as u32;
+            let c = *dest_ptr.add(x * 2 + 1) as u32;
+            let d = *dest_ptr.add(x * 2 + 2) as u32;
+            *dest_ptr.add(x) = ((a + (b + c) * 3 + d + 4) / 8) as u8;
+            x += 1;
+        }
+
+        *dest_ptr = src0;
+
+        // Special case end of line: (a + b + 1) / 2
+        if dest_width > 1 {
+            let x = dest_width - 1;
+            let a = *dest_ptr.add(x * 2) as u32;
+            let b = *dest_ptr.add(x * 2 + 1) as u32;
+            *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
+        }
+
+        dest_ptr = dest_ptr.add(dest_pitch);
     }
 }
 
@@ -328,12 +321,117 @@ unsafe fn reduce_bilinear_vertical_u16(
 
     // Special case for first line: (a + b + 1) / 2
     let mut x = 0;
-    unsafe {
-        while x + 16 <= dest_width {
-            let a = _mm256_loadu_si256(src_ptr.add(x) as *const __m256i);
-            let b = _mm256_loadu_si256(src_ptr.add(x + src_pitch) as *const __m256i);
+    while x + 16 <= dest_width {
+        let a = _mm256_loadu_si256(src_ptr.add(x) as *const __m256i);
+        let b = _mm256_loadu_si256(src_ptr.add(x + src_pitch) as *const __m256i);
 
-            // Convert to 32-bit for arithmetic to avoid overflow
+        // Convert to 32-bit for arithmetic to avoid overflow
+        let a_lo = _mm256_unpacklo_epi16(a, _mm256_setzero_si256());
+        let a_hi = _mm256_unpackhi_epi16(a, _mm256_setzero_si256());
+        let b_lo = _mm256_unpacklo_epi16(b, _mm256_setzero_si256());
+        let b_hi = _mm256_unpackhi_epi16(b, _mm256_setzero_si256());
+
+        // (a + b + 1) / 2
+        let ones = _mm256_set1_epi32(1);
+        let sum_lo = _mm256_add_epi32(_mm256_add_epi32(a_lo, b_lo), ones);
+        let sum_hi = _mm256_add_epi32(_mm256_add_epi32(a_hi, b_hi), ones);
+        let result_lo = _mm256_srli_epi32(sum_lo, 1);
+        let result_hi = _mm256_srli_epi32(sum_hi, 1);
+
+        // Pack back to 16-bit
+        let result = _mm256_packus_epi32(result_lo, result_hi);
+        _mm256_storeu_si256(dest_ptr.add(x) as *mut __m256i, result);
+
+        x += 16;
+    }
+
+    // Handle remaining pixels
+    while x < dest_width {
+        let a = *src_ptr.add(x) as u32;
+        let b = *src_ptr.add(x + src_pitch) as u32;
+        *dest_ptr.add(x) = ((a + b + 1) / 2) as u16;
+        x += 1;
+    }
+
+    dest_ptr = dest_ptr.add(dest_pitch);
+
+    // Middle lines: (a + (b + c) * 3 + d + 4) / 8
+    for y in 1..(dest_height - 1) {
+        let src_row_offset = y * 2 * src_pitch;
+
+        let mut x = 0;
+        while x + 16 <= dest_width {
+            let a =
+                _mm256_loadu_si256(src_ptr.add(src_row_offset + x - src_pitch) as *const __m256i);
+            let b = _mm256_loadu_si256(src_ptr.add(src_row_offset + x) as *const __m256i);
+            let c =
+                _mm256_loadu_si256(src_ptr.add(src_row_offset + x + src_pitch) as *const __m256i);
+            let d = _mm256_loadu_si256(
+                src_ptr.add(src_row_offset + x + src_pitch * 2) as *const __m256i
+            );
+
+            // Convert to 32-bit for arithmetic
+            let a_lo = _mm256_unpacklo_epi16(a, _mm256_setzero_si256());
+            let a_hi = _mm256_unpackhi_epi16(a, _mm256_setzero_si256());
+            let b_lo = _mm256_unpacklo_epi16(b, _mm256_setzero_si256());
+            let b_hi = _mm256_unpackhi_epi16(b, _mm256_setzero_si256());
+            let c_lo = _mm256_unpacklo_epi16(c, _mm256_setzero_si256());
+            let c_hi = _mm256_unpackhi_epi16(c, _mm256_setzero_si256());
+            let d_lo = _mm256_unpacklo_epi16(d, _mm256_setzero_si256());
+            let d_hi = _mm256_unpackhi_epi16(d, _mm256_setzero_si256());
+
+            // (b + c) * 3
+            let bc_lo = _mm256_add_epi32(b_lo, c_lo);
+            let bc_hi = _mm256_add_epi32(b_hi, c_hi);
+            let bc3_lo = _mm256_add_epi32(_mm256_add_epi32(bc_lo, bc_lo), bc_lo);
+            let bc3_hi = _mm256_add_epi32(_mm256_add_epi32(bc_hi, bc_hi), bc_hi);
+
+            // a + (b + c) * 3 + d + 4
+            let fours = _mm256_set1_epi32(4);
+            let sum_lo = _mm256_add_epi32(
+                _mm256_add_epi32(a_lo, bc3_lo),
+                _mm256_add_epi32(d_lo, fours),
+            );
+            let sum_hi = _mm256_add_epi32(
+                _mm256_add_epi32(a_hi, bc3_hi),
+                _mm256_add_epi32(d_hi, fours),
+            );
+
+            // Divide by 8
+            let result_lo = _mm256_srli_epi32(sum_lo, 3);
+            let result_hi = _mm256_srli_epi32(sum_hi, 3);
+
+            // Pack back to 16-bit
+            let result = _mm256_packus_epi32(result_lo, result_hi);
+            _mm256_storeu_si256(dest_ptr.add(x) as *mut __m256i, result);
+
+            x += 16;
+        }
+
+        // Handle remaining pixels
+        while x < dest_width {
+            let a = *src_ptr.add(src_row_offset + x - src_pitch) as u32;
+            let b = *src_ptr.add(src_row_offset + x) as u32;
+            let c = *src_ptr.add(src_row_offset + x + src_pitch) as u32;
+            let d = *src_ptr.add(src_row_offset + x + src_pitch * 2) as u32;
+            *dest_ptr.add(x) = ((a + (b + c) * 3 + d + 4) / 8) as u16;
+            x += 1;
+        }
+
+        dest_ptr = dest_ptr.add(dest_pitch);
+    }
+
+    // Special case for last line: (a + b + 1) / 2
+    if dest_height > 1 {
+        let src_row_offset = (dest_height - 1) * 2 * src_pitch;
+
+        let mut x = 0;
+        while x + 16 <= dest_width {
+            let a = _mm256_loadu_si256(src_ptr.add(src_row_offset + x) as *const __m256i);
+            let b =
+                _mm256_loadu_si256(src_ptr.add(src_row_offset + x + src_pitch) as *const __m256i);
+
+            // Convert to 32-bit for arithmetic
             let a_lo = _mm256_unpacklo_epi16(a, _mm256_setzero_si256());
             let a_hi = _mm256_unpackhi_epi16(a, _mm256_setzero_si256());
             let b_lo = _mm256_unpacklo_epi16(b, _mm256_setzero_si256());
@@ -355,120 +453,10 @@ unsafe fn reduce_bilinear_vertical_u16(
 
         // Handle remaining pixels
         while x < dest_width {
-            let a = *src_ptr.add(x) as u32;
-            let b = *src_ptr.add(x + src_pitch) as u32;
+            let a = *src_ptr.add(src_row_offset + x) as u32;
+            let b = *src_ptr.add(src_row_offset + x + src_pitch) as u32;
             *dest_ptr.add(x) = ((a + b + 1) / 2) as u16;
             x += 1;
-        }
-
-        dest_ptr = dest_ptr.add(dest_pitch);
-
-        // Middle lines: (a + (b + c) * 3 + d + 4) / 8
-        for y in 1..(dest_height - 1) {
-            let src_row_offset = y * 2 * src_pitch;
-
-            let mut x = 0;
-            while x + 16 <= dest_width {
-                let a = _mm256_loadu_si256(
-                    src_ptr.add(src_row_offset + x - src_pitch) as *const __m256i
-                );
-                let b = _mm256_loadu_si256(src_ptr.add(src_row_offset + x) as *const __m256i);
-                let c = _mm256_loadu_si256(
-                    src_ptr.add(src_row_offset + x + src_pitch) as *const __m256i
-                );
-                let d = _mm256_loadu_si256(
-                    src_ptr.add(src_row_offset + x + src_pitch * 2) as *const __m256i
-                );
-
-                // Convert to 32-bit for arithmetic
-                let a_lo = _mm256_unpacklo_epi16(a, _mm256_setzero_si256());
-                let a_hi = _mm256_unpackhi_epi16(a, _mm256_setzero_si256());
-                let b_lo = _mm256_unpacklo_epi16(b, _mm256_setzero_si256());
-                let b_hi = _mm256_unpackhi_epi16(b, _mm256_setzero_si256());
-                let c_lo = _mm256_unpacklo_epi16(c, _mm256_setzero_si256());
-                let c_hi = _mm256_unpackhi_epi16(c, _mm256_setzero_si256());
-                let d_lo = _mm256_unpacklo_epi16(d, _mm256_setzero_si256());
-                let d_hi = _mm256_unpackhi_epi16(d, _mm256_setzero_si256());
-
-                // (b + c) * 3
-                let bc_lo = _mm256_add_epi32(b_lo, c_lo);
-                let bc_hi = _mm256_add_epi32(b_hi, c_hi);
-                let bc3_lo = _mm256_add_epi32(_mm256_add_epi32(bc_lo, bc_lo), bc_lo);
-                let bc3_hi = _mm256_add_epi32(_mm256_add_epi32(bc_hi, bc_hi), bc_hi);
-
-                // a + (b + c) * 3 + d + 4
-                let fours = _mm256_set1_epi32(4);
-                let sum_lo = _mm256_add_epi32(
-                    _mm256_add_epi32(a_lo, bc3_lo),
-                    _mm256_add_epi32(d_lo, fours),
-                );
-                let sum_hi = _mm256_add_epi32(
-                    _mm256_add_epi32(a_hi, bc3_hi),
-                    _mm256_add_epi32(d_hi, fours),
-                );
-
-                // Divide by 8
-                let result_lo = _mm256_srli_epi32(sum_lo, 3);
-                let result_hi = _mm256_srli_epi32(sum_hi, 3);
-
-                // Pack back to 16-bit
-                let result = _mm256_packus_epi32(result_lo, result_hi);
-                _mm256_storeu_si256(dest_ptr.add(x) as *mut __m256i, result);
-
-                x += 16;
-            }
-
-            // Handle remaining pixels
-            while x < dest_width {
-                let a = *src_ptr.add(src_row_offset + x - src_pitch) as u32;
-                let b = *src_ptr.add(src_row_offset + x) as u32;
-                let c = *src_ptr.add(src_row_offset + x + src_pitch) as u32;
-                let d = *src_ptr.add(src_row_offset + x + src_pitch * 2) as u32;
-                *dest_ptr.add(x) = ((a + (b + c) * 3 + d + 4) / 8) as u16;
-                x += 1;
-            }
-
-            dest_ptr = dest_ptr.add(dest_pitch);
-        }
-
-        // Special case for last line: (a + b + 1) / 2
-        if dest_height > 1 {
-            let src_row_offset = (dest_height - 1) * 2 * src_pitch;
-
-            let mut x = 0;
-            while x + 16 <= dest_width {
-                let a = _mm256_loadu_si256(src_ptr.add(src_row_offset + x) as *const __m256i);
-                let b = _mm256_loadu_si256(
-                    src_ptr.add(src_row_offset + x + src_pitch) as *const __m256i
-                );
-
-                // Convert to 32-bit for arithmetic
-                let a_lo = _mm256_unpacklo_epi16(a, _mm256_setzero_si256());
-                let a_hi = _mm256_unpackhi_epi16(a, _mm256_setzero_si256());
-                let b_lo = _mm256_unpacklo_epi16(b, _mm256_setzero_si256());
-                let b_hi = _mm256_unpackhi_epi16(b, _mm256_setzero_si256());
-
-                // (a + b + 1) / 2
-                let ones = _mm256_set1_epi32(1);
-                let sum_lo = _mm256_add_epi32(_mm256_add_epi32(a_lo, b_lo), ones);
-                let sum_hi = _mm256_add_epi32(_mm256_add_epi32(a_hi, b_hi), ones);
-                let result_lo = _mm256_srli_epi32(sum_lo, 1);
-                let result_hi = _mm256_srli_epi32(sum_hi, 1);
-
-                // Pack back to 16-bit
-                let result = _mm256_packus_epi32(result_lo, result_hi);
-                _mm256_storeu_si256(dest_ptr.add(x) as *mut __m256i, result);
-
-                x += 16;
-            }
-
-            // Handle remaining pixels
-            while x < dest_width {
-                let a = *src_ptr.add(src_row_offset + x) as u32;
-                let b = *src_ptr.add(src_row_offset + x + src_pitch) as u32;
-                *dest_ptr.add(x) = ((a + b + 1) / 2) as u16;
-                x += 1;
-            }
         }
     }
 }
@@ -486,58 +474,56 @@ unsafe fn reduce_bilinear_horizontal_inplace_u16(
 
     let mut dest_ptr = dest;
 
-    unsafe {
-        for _y in 0..dest_height {
-            // Special case start of line: (a + b + 1) / 2
-            let a = *dest_ptr as u32;
-            let b = *dest_ptr.add(1) as u32;
-            let src0 = ((a + b + 1) / 2) as u16;
+    for _y in 0..dest_height {
+        // Special case start of line: (a + b + 1) / 2
+        let a = *dest_ptr as u32;
+        let b = *dest_ptr.add(1) as u32;
+        let src0 = ((a + b + 1) / 2) as u16;
 
-            // Middle of line: (a + (b + c) * 3 + d + 4) / 8
-            let mut x = 1;
+        // Middle of line: (a + (b + c) * 3 + d + 4) / 8
+        let mut x = 1;
 
-            // Process 8 output pixels at a time (32 input pixels)
-            while x + 8 <= dest_width - 1 {
-                let mut results = [0u16; 8];
+        // Process 8 output pixels at a time (32 input pixels)
+        while x + 8 <= dest_width - 1 {
+            let mut results = [0u16; 8];
 
-                for i in 0..8 {
-                    let idx = x + i;
-                    let a = *dest_ptr.add(idx * 2 - 1) as u32;
-                    let b = *dest_ptr.add(idx * 2) as u32;
-                    let c = *dest_ptr.add(idx * 2 + 1) as u32;
-                    let d = *dest_ptr.add(idx * 2 + 2) as u32;
-                    results[i] = ((a + (b + c) * 3 + d + 4) / 8) as u16;
-                }
-
-                // Store results
-                for i in 0..8 {
-                    *dest_ptr.add(x + i) = results[i];
-                }
-
-                x += 8;
+            for i in 0..8 {
+                let idx = x + i;
+                let a = *dest_ptr.add(idx * 2 - 1) as u32;
+                let b = *dest_ptr.add(idx * 2) as u32;
+                let c = *dest_ptr.add(idx * 2 + 1) as u32;
+                let d = *dest_ptr.add(idx * 2 + 2) as u32;
+                results[i] = ((a + (b + c) * 3 + d + 4) / 8) as u16;
             }
 
-            // Handle remaining middle pixels
-            while x < dest_width - 1 {
-                let a = *dest_ptr.add(x * 2 - 1) as u32;
-                let b = *dest_ptr.add(x * 2) as u32;
-                let c = *dest_ptr.add(x * 2 + 1) as u32;
-                let d = *dest_ptr.add(x * 2 + 2) as u32;
-                *dest_ptr.add(x) = ((a + (b + c) * 3 + d + 4) / 8) as u16;
-                x += 1;
+            // Store results
+            for i in 0..8 {
+                *dest_ptr.add(x + i) = results[i];
             }
 
-            *dest_ptr = src0;
-
-            // Special case end of line: (a + b + 1) / 2
-            if dest_width > 1 {
-                let x = dest_width - 1;
-                let a = *dest_ptr.add(x * 2) as u32;
-                let b = *dest_ptr.add(x * 2 + 1) as u32;
-                *dest_ptr.add(x) = ((a + b + 1) / 2) as u16;
-            }
-
-            dest_ptr = dest_ptr.add(dest_pitch);
+            x += 8;
         }
+
+        // Handle remaining middle pixels
+        while x < dest_width - 1 {
+            let a = *dest_ptr.add(x * 2 - 1) as u32;
+            let b = *dest_ptr.add(x * 2) as u32;
+            let c = *dest_ptr.add(x * 2 + 1) as u32;
+            let d = *dest_ptr.add(x * 2 + 2) as u32;
+            *dest_ptr.add(x) = ((a + (b + c) * 3 + d + 4) / 8) as u16;
+            x += 1;
+        }
+
+        *dest_ptr = src0;
+
+        // Special case end of line: (a + b + 1) / 2
+        if dest_width > 1 {
+            let x = dest_width - 1;
+            let a = *dest_ptr.add(x * 2) as u32;
+            let b = *dest_ptr.add(x * 2 + 1) as u32;
+            *dest_ptr.add(x) = ((a + b + 1) / 2) as u16;
+        }
+
+        dest_ptr = dest_ptr.add(dest_pitch);
     }
 }

@@ -130,36 +130,34 @@ unsafe fn refine_horizontal_bicubic_u8(
 
     for j in 0..height.get() {
         let row_offset = j * pitch_val;
-        let src_row = unsafe { src.add(row_offset) };
-        let dest_row = unsafe { dest.add(row_offset) };
+        let src_row = src.add(row_offset);
+        let dest_row = dest.add(row_offset);
 
         // First pixel: linear interpolation
-        let a = unsafe { *src_row.add(0) } as u16;
-        let b = unsafe { *src_row.add(1) } as u16;
-        unsafe { *dest_row.add(0) = ((a + b + 1) / 2) as u8 };
+        let a = *src_row.add(0) as u16;
+        let b = *src_row.add(1) as u16;
+        *dest_row.add(0) = ((a + b + 1) / 2) as u8;
 
         // Handle middle pixels individually - SIMD implementation would be more complex
         // and needs careful boundary checking
         for i in 1..(width_val - 3) {
-            let a = unsafe { *src_row.add(i - 1) } as i16;
-            let b = unsafe { *src_row.add(i) } as i16;
-            let c = unsafe { *src_row.add(i + 1) } as i16;
-            let d = unsafe { *src_row.add(i + 2) } as i16;
+            let a = *src_row.add(i - 1) as i16;
+            let b = *src_row.add(i) as i16;
+            let c = *src_row.add(i + 1) as i16;
+            let d = *src_row.add(i + 2) as i16;
             let result = (-(a + d) + (b + c) * 9 + 8) >> 4;
-            unsafe {
-                *dest_row.add(i) = std::cmp::min(pixel_max, std::cmp::max(0, result) as u16) as u8;
-            }
+            *dest_row.add(i) = std::cmp::min(pixel_max, std::cmp::max(0, result) as u16) as u8;
         }
 
         // Second-to-last pixels: linear interpolation
         for i in (width_val - 3)..(width_val - 1) {
-            let a = unsafe { *src_row.add(i) } as u16;
-            let b = unsafe { *src_row.add(i + 1) } as u16;
-            unsafe { *dest_row.add(i) = ((a + b + 1) / 2) as u8 };
+            let a = *src_row.add(i) as u16;
+            let b = *src_row.add(i + 1) as u16;
+            *dest_row.add(i) = ((a + b + 1) / 2) as u8;
         }
 
         // Last pixel: copy
-        unsafe { *dest_row.add(width_val - 1) = *src_row.add(width_val - 1) };
+        *dest_row.add(width_val - 1) = *src_row.add(width_val - 1);
     }
 }
 
@@ -178,35 +176,33 @@ unsafe fn refine_horizontal_bicubic_u16(
 
     for j in 0..height.get() {
         let row_offset = j * pitch_val;
-        let src_row = unsafe { src.add(row_offset) };
-        let dest_row = unsafe { dest.add(row_offset) };
+        let src_row = src.add(row_offset);
+        let dest_row = dest.add(row_offset);
 
         // First pixel: linear interpolation
-        let a = unsafe { *src_row.add(0) } as u32;
-        let b = unsafe { *src_row.add(1) } as u32;
-        unsafe { *dest_row.add(0) = ((a + b + 1) / 2) as u16 };
+        let a = *src_row.add(0) as u32;
+        let b = *src_row.add(1) as u32;
+        *dest_row.add(0) = ((a + b + 1) / 2) as u16;
 
         // Handle middle pixels individually
         for i in 1..(width_val - 3) {
-            let a = unsafe { *src_row.add(i - 1) } as i32;
-            let b = unsafe { *src_row.add(i) } as i32;
-            let c = unsafe { *src_row.add(i + 1) } as i32;
-            let d = unsafe { *src_row.add(i + 2) } as i32;
+            let a = *src_row.add(i - 1) as i32;
+            let b = *src_row.add(i) as i32;
+            let c = *src_row.add(i + 1) as i32;
+            let d = *src_row.add(i + 2) as i32;
             let result = (-(a + d) + (b + c) * 9 + 8) >> 4;
-            unsafe {
-                *dest_row.add(i) = std::cmp::min(pixel_max, std::cmp::max(0, result) as u32) as u16;
-            }
+            *dest_row.add(i) = std::cmp::min(pixel_max, std::cmp::max(0, result) as u32) as u16;
         }
 
         // Second-to-last pixels: linear interpolation
         for i in (width_val - 3)..(width_val - 1) {
-            let a = unsafe { *src_row.add(i) } as u32;
-            let b = unsafe { *src_row.add(i + 1) } as u32;
-            unsafe { *dest_row.add(i) = ((a + b + 1) / 2) as u16 };
+            let a = *src_row.add(i) as u32;
+            let b = *src_row.add(i + 1) as u32;
+            *dest_row.add(i) = ((a + b + 1) / 2) as u16;
         }
 
         // Last pixel: copy
-        unsafe { *dest_row.add(width_val - 1) = *src_row.add(width_val - 1) };
+        *dest_row.add(width_val - 1) = *src_row.add(width_val - 1);
     }
 }
 
@@ -226,9 +222,9 @@ unsafe fn refine_vertical_bicubic_u8(
 
     // First row: linear interpolation
     for i in 0..width_val {
-        let a = unsafe { *src.add(i) } as u16;
-        let b = unsafe { *src.add(i + pitch_val) } as u16;
-        unsafe { *dest.add(i) = ((a + b + 1) / 2) as u8 };
+        let a = *src.add(i) as u16;
+        let b = *src.add(i + pitch_val) as u16;
+        *dest.add(i) = ((a + b + 1) / 2) as u8;
     }
 
     // Middle rows: bicubic interpolation
@@ -236,15 +232,12 @@ unsafe fn refine_vertical_bicubic_u8(
         let offset = j * pitch_val;
 
         for i in 0..width_val {
-            let a = unsafe { *src.add(offset + i - pitch_val) } as i16;
-            let b = unsafe { *src.add(offset + i) } as i16;
-            let c = unsafe { *src.add(offset + i + pitch_val) } as i16;
-            let d = unsafe { *src.add(offset + i + pitch_val * 2) } as i16;
+            let a = *src.add(offset + i - pitch_val) as i16;
+            let b = *src.add(offset + i) as i16;
+            let c = *src.add(offset + i + pitch_val) as i16;
+            let d = *src.add(offset + i + pitch_val * 2) as i16;
             let result = (-(a + d) + (b + c) * 9 + 8) >> 4;
-            unsafe {
-                *dest.add(offset + i) =
-                    std::cmp::min(pixel_max, std::cmp::max(0, result) as u16) as u8;
-            }
+            *dest.add(offset + i) = std::cmp::min(pixel_max, std::cmp::max(0, result) as u16) as u8;
         }
     }
 
@@ -253,17 +246,15 @@ unsafe fn refine_vertical_bicubic_u8(
         let offset = j * pitch_val;
 
         for i in 0..width_val {
-            let a = unsafe { *src.add(offset + i) } as u16;
-            let b = unsafe { *src.add(offset + i + pitch_val) } as u16;
-            unsafe { *dest.add(offset + i) = ((a + b + 1) / 2) as u8 };
+            let a = *src.add(offset + i) as u16;
+            let b = *src.add(offset + i + pitch_val) as u16;
+            *dest.add(offset + i) = ((a + b + 1) / 2) as u8;
         }
     }
 
     // Last row: copy
     let last_offset = (height_val - 1) * pitch_val;
-    unsafe {
-        std::ptr::copy_nonoverlapping(src.add(last_offset), dest.add(last_offset), width_val);
-    }
+    std::ptr::copy_nonoverlapping(src.add(last_offset), dest.add(last_offset), width_val);
 }
 
 #[target_feature(enable = "avx2")]
@@ -282,9 +273,9 @@ unsafe fn refine_vertical_bicubic_u16(
 
     // First row: linear interpolation
     for i in 0..width_val {
-        let a = unsafe { *src.add(i) } as u32;
-        let b = unsafe { *src.add(i + pitch_val) } as u32;
-        unsafe { *dest.add(i) = ((a + b + 1) / 2) as u16 };
+        let a = *src.add(i) as u32;
+        let b = *src.add(i + pitch_val) as u32;
+        *dest.add(i) = ((a + b + 1) / 2) as u16;
     }
 
     // Middle rows: bicubic interpolation
@@ -292,15 +283,13 @@ unsafe fn refine_vertical_bicubic_u16(
         let offset = j * pitch_val;
 
         for i in 0..width_val {
-            let a = unsafe { *src.add(offset + i - pitch_val) } as i32;
-            let b = unsafe { *src.add(offset + i) } as i32;
-            let c = unsafe { *src.add(offset + i + pitch_val) } as i32;
-            let d = unsafe { *src.add(offset + i + pitch_val * 2) } as i32;
+            let a = *src.add(offset + i - pitch_val) as i32;
+            let b = *src.add(offset + i) as i32;
+            let c = *src.add(offset + i + pitch_val) as i32;
+            let d = *src.add(offset + i + pitch_val * 2) as i32;
             let result = (-(a + d) + (b + c) * 9 + 8) >> 4;
-            unsafe {
-                *dest.add(offset + i) =
-                    std::cmp::min(pixel_max, std::cmp::max(0, result) as u32) as u16;
-            }
+            *dest.add(offset + i) =
+                std::cmp::min(pixel_max, std::cmp::max(0, result) as u32) as u16;
         }
     }
 
@@ -309,15 +298,13 @@ unsafe fn refine_vertical_bicubic_u16(
         let offset = j * pitch_val;
 
         for i in 0..width_val {
-            let a = unsafe { *src.add(offset + i) } as u32;
-            let b = unsafe { *src.add(offset + i + pitch_val) } as u32;
-            unsafe { *dest.add(offset + i) = ((a + b + 1) / 2) as u16 };
+            let a = *src.add(offset + i) as u32;
+            let b = *src.add(offset + i + pitch_val) as u32;
+            *dest.add(offset + i) = ((a + b + 1) / 2) as u16;
         }
     }
 
     // Last row: copy
     let last_offset = (height_val - 1) * pitch_val;
-    unsafe {
-        std::ptr::copy_nonoverlapping(src.add(last_offset), dest.add(last_offset), width_val);
-    }
+    std::ptr::copy_nonoverlapping(src.add(last_offset), dest.add(last_offset), width_val);
 }
