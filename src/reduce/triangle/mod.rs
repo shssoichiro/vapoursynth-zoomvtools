@@ -43,6 +43,8 @@ pub fn reduce_triangle<T: Pixel>(
 }
 
 #[cfg(test)]
+#[allow(unused_unsafe)]
+#[allow(clippy::undocumented_unsafe_blocks)]
 mod tests {
     use pastey::paste;
     use std::num::NonZeroUsize;
