@@ -9,8 +9,10 @@ use std::{
 
 use vapoursynth::{frame::Frame, prelude::Component};
 
+#[cfg(target_arch = "x86_64")]
 cpufeatures::new!(cpuid_avx2, "avx2");
 
+#[cfg(target_arch = "x86_64")]
 pub use cpuid_avx2::get as has_avx2;
 
 pub trait Pixel:

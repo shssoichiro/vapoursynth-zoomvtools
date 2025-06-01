@@ -1,9 +1,10 @@
+#[cfg(target_arch = "x86_64")]
 mod avx2;
 mod rust;
 
 use std::num::NonZeroUsize;
 
-use crate::util::{Pixel, has_avx2};
+use crate::util::Pixel;
 
 /// Downscales an image by 2x using bilinear interpolation.
 ///
@@ -28,7 +29,8 @@ pub fn reduce_bilinear<T: Pixel>(
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
-    if has_avx2() {
+    #[cfg(target_arch = "x86_64")]
+    if crate::util::has_avx2() {
         // SAFETY: We check for AVX2 first
         unsafe {
             avx2::reduce_bilinear(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
@@ -36,6 +38,9 @@ pub fn reduce_bilinear<T: Pixel>(
     } else {
         rust::reduce_bilinear(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
     }
+
+    #[cfg(not(target_arch = "x86_64"))]
+    rust::reduce_bilinear(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
 }
 
 #[cfg(test)]
