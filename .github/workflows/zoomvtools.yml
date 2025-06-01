@@ -49,30 +49,25 @@ jobs:
     needs: [clippy]
     strategy:
       matrix:
-        platform: [ubuntu-latest, windows-latest, ubuntu-24.04-arm]
+        platform: [ubuntu-latest, ubuntu-24.04-arm]
 
     runs-on: ${{ matrix.platform }}
+    container: shssoichiro/av1an-ci:latest
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install VapourSynth
-        uses: Irrational-Encoding-Wizardry/install-vapoursynth-action@v0.1
-        with:
-          version: 50
-          cache: true
       - name: Install stable
         uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      - name: Set MSVC x86_64 linker path
-        if: matrix.platform == 'windows-latest'
-        run: |
-          $LinkGlob = "VC\Tools\MSVC\*\bin\Hostx64\x64"
-          $env:PATH = "$env:PATH;${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
-          $LinkPath = vswhere -latest -products * -find "$LinkGlob" |
-                      Select-Object -Last 1
-          echo "$LinkPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      # - name: Set MSVC x86_64 linker path
+      #   if: matrix.platform == 'windows-latest'
+      #   run: |
+      #     $LinkGlob = "VC\Tools\MSVC\*\bin\Hostx64\x64"
+      #     $env:PATH = "$env:PATH;${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
+      #     $LinkPath = vswhere -latest -products * -find "$LinkGlob" |
+      #                 Select-Object -Last 1
+      #     echo "$LinkPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Run tests
         run: cargo test
@@ -83,15 +78,10 @@ jobs:
   code-coverage:
     needs: [test]
     runs-on: ubuntu-latest
+    container: shssoichiro/av1an-ci:latest
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install VapourSynth
-        uses: Irrational-Encoding-Wizardry/install-vapoursynth-action@v0.1
-        with:
-          version: 50
-          cache: true
       - name: Install stable
         uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
