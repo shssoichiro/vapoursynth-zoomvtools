@@ -3,7 +3,7 @@ mod rust;
 
 use std::num::{NonZeroU8, NonZeroUsize};
 
-use crate::util::Pixel;
+use crate::util::{Pixel, has_avx2};
 
 /// Performs horizontal Wiener filtering for sub-pixel motion estimation refinement.
 ///
@@ -36,7 +36,14 @@ pub fn refine_horizontal_wiener<T: Pixel>(
             && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
     );
 
-    rust::refine_horizontal_wiener(src, dest, pitch, width, height, bits_per_sample);
+    if has_avx2() {
+        // SAFETY: We check for AVX2 first
+        unsafe {
+            avx2::refine_horizontal_wiener(src, dest, pitch, width, height, bits_per_sample);
+        }
+    } else {
+        rust::refine_horizontal_wiener(src, dest, pitch, width, height, bits_per_sample);
+    }
 }
 
 /// Performs vertical Wiener filtering for sub-pixel motion estimation refinement.
@@ -70,7 +77,14 @@ pub fn refine_vertical_wiener<T: Pixel>(
             && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
     );
 
-    rust::refine_vertical_wiener(src, dest, pitch, width, height, bits_per_sample);
+    if has_avx2() {
+        // SAFETY: We check for AVX2 first
+        unsafe {
+            avx2::refine_vertical_wiener(src, dest, pitch, width, height, bits_per_sample);
+        }
+    } else {
+        rust::refine_vertical_wiener(src, dest, pitch, width, height, bits_per_sample);
+    }
 }
 
 #[cfg(test)]
