@@ -32,14 +32,14 @@ pub fn reduce_triangle<T: Pixel>(
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
-    // if has_avx2() {
-    //     // SAFETY: We check for AVX2 first
-    //     unsafe {
-    //         avx2::reduce_triangle(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
-    //     }
-    // } else {
-    rust::reduce_triangle(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
-    // }
+    if has_avx2() {
+        // SAFETY: We check for AVX2 first
+        unsafe {
+            avx2::reduce_triangle(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
+        }
+    } else {
+        rust::reduce_triangle(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
+    }
 }
 
 #[cfg(test)]
@@ -432,6 +432,6 @@ mod tests {
 
     create_tests!(rust);
 
-    // #[cfg(target_feature = "avx2")]
-    // create_tests!(avx2);
+    #[cfg(target_feature = "avx2")]
+    create_tests!(avx2);
 }
