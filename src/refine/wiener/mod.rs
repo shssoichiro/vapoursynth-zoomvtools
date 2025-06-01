@@ -79,14 +79,13 @@ pub fn refine_vertical_wiener<T: Pixel>(
 mod tests {
     use std::num::{NonZeroU8, NonZeroUsize};
 
-    use super::{refine_horizontal_wiener, refine_vertical_wiener};
     use pastey::paste;
 
     macro_rules! horizontal_tests {
         ($module:ident) => {
             paste! {
                 #[test]
-                fn test_horizontal_wiener_u8_basic() {
+                fn [<test_horizontal_wiener_u8_basic_ $module>]() {
                     // Test basic horizontal Wiener filtering with u8 pixels
                     let width = NonZeroUsize::new(8).unwrap();
                     let height = NonZeroUsize::new(1).unwrap();
@@ -97,7 +96,7 @@ mod tests {
                     let src: Vec<u8> = vec![0, 32, 64, 96, 128, 160, 192, 255];
                     let mut dest = vec![0u8; 8];
 
-                    refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // First two pixels should be bilinear interpolation
                     assert_eq!(dest[0], 16); // (0 + 32) / 2
@@ -113,7 +112,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_horizontal_wiener_u16_basic() {
+                fn [<test_horizontal_wiener_u16_basic_ $module>]() {
                     // Test basic horizontal Wiener filtering with u16 pixels
                     let width = NonZeroUsize::new(8).unwrap();
                     let height = NonZeroUsize::new(1).unwrap();
@@ -124,7 +123,7 @@ mod tests {
                     let src: Vec<u16> = vec![0, 128, 256, 384, 512, 640, 768, 1023];
                     let mut dest = vec![0u16; 8];
 
-                    refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // First two pixels should be bilinear interpolation
                     assert_eq!(dest[0], 64); // (0 + 128) / 2
@@ -139,7 +138,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_horizontal_wiener_multirow() {
+                fn [<test_horizontal_wiener_multirow_ $module>]() {
                     // Test horizontal Wiener with multiple rows
                     let width = NonZeroUsize::new(6).unwrap();
                     let height = NonZeroUsize::new(3).unwrap();
@@ -153,7 +152,7 @@ mod tests {
                     ];
                     let mut dest = vec![0u8; 18];
 
-                    refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // Check that each row is processed independently
                     // First pixel of each row should be bilinear of first two
@@ -168,7 +167,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_horizontal_wiener_minimum_width() {
+                fn [<test_horizontal_wiener_minimum_width_ $module>]() {
                     // Test with minimum width where Wiener filter can be applied
                     let width = NonZeroUsize::new(6).unwrap(); // Minimum for Wiener core (needs i-2 to i+3)
                     let height = NonZeroUsize::new(1).unwrap();
@@ -178,7 +177,7 @@ mod tests {
                     let src: Vec<u8> = vec![0, 50, 100, 150, 200, 255];
                     let mut dest = vec![0u8; 6];
 
-                    refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // Should not crash and produce reasonable results
                     assert_eq!(dest[0], 25); // (0 + 50) / 2
@@ -187,7 +186,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_wiener_with_different_pitch() {
+                fn [<test_wiener_with_different_pitch_ $module>]() {
                     // Test with pitch different from width (common in real scenarios)
                     let width = NonZeroUsize::new(4).unwrap();
                     let height = NonZeroUsize::new(2).unwrap();
@@ -200,7 +199,7 @@ mod tests {
                     ];
                     let mut dest = vec![0u8; 16];
 
-                    refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // Check that pitch is respected
                     assert_eq!(dest[0], 15); // (10 + 20) / 2
@@ -210,7 +209,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_horizontal_wiener_uniform_values() {
+                fn [<test_horizontal_wiener_uniform_values_ $module>]() {
                     // Test with uniform input values - should produce uniform output
                     let width = NonZeroUsize::new(8).unwrap();
                     let height = NonZeroUsize::new(1).unwrap();
@@ -220,7 +219,7 @@ mod tests {
                     let src = vec![100u8; 8]; // All pixels same value
                     let mut dest = vec![0u8; 8];
 
-                    refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // All output values should be the same as input
                     for &pixel in &dest {
@@ -229,7 +228,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_wiener_pixel_clamping() {
+                fn [<test_wiener_pixel_clamping_ $module>]() {
                     // Test that output is properly clamped to pixel range
                     let width = NonZeroUsize::new(8).unwrap();
                     let height = NonZeroUsize::new(1).unwrap();
@@ -240,7 +239,7 @@ mod tests {
                     let src: Vec<u8> = vec![0, 0, 255, 255, 0, 0, 255, 255];
                     let mut dest = vec![0u8; 8];
 
-                    refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // Test passes if function doesn't panic with extreme values
                     // The type system ensures u8 values are in valid range [0, 255]
@@ -248,7 +247,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_wiener_16bit_pixel_clamping() {
+                fn [<test_wiener_16bit_pixel_clamping_ $module>]() {
                     // Test pixel clamping for 16-bit values
                     let width = NonZeroUsize::new(8).unwrap();
                     let height = NonZeroUsize::new(1).unwrap();
@@ -259,7 +258,7 @@ mod tests {
                     let src: Vec<u16> = vec![0, 0, 1023, 1023, 0, 0, 1023, 1023];
                     let mut dest = vec![0u16; 8];
 
-                    refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // All output values should be in valid range [0, 1023]
                     for &pixel in &dest {
@@ -274,7 +273,7 @@ mod tests {
         ($module:ident) => {
             paste! {
                 #[test]
-                fn test_vertical_wiener_u8_basic() {
+                fn [<test_vertical_wiener_u8_basic_ $module>]() {
                     // Test basic vertical Wiener filtering with u8 pixels
                     let width = NonZeroUsize::new(1).unwrap();
                     let height = NonZeroUsize::new(8).unwrap();
@@ -285,7 +284,7 @@ mod tests {
                     let src: Vec<u8> = vec![0, 32, 64, 96, 128, 160, 192, 255];
                     let mut dest = vec![0u8; 8];
 
-                    refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // First two pixels should be bilinear interpolation
                     assert_eq!(dest[0], 16); // (0 + 32) / 2
@@ -300,7 +299,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_vertical_wiener_u16_basic() {
+                fn [<test_vertical_wiener_u16_basic_ $module>]() {
                     // Test basic vertical Wiener filtering with u16 pixels
                     let width = NonZeroUsize::new(1).unwrap();
                     let height = NonZeroUsize::new(8).unwrap();
@@ -311,7 +310,7 @@ mod tests {
                     let src: Vec<u16> = vec![0, 512, 1024, 1536, 2048, 2560, 3072, 4095];
                     let mut dest = vec![0u16; 8];
 
-                    refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // First two pixels should be bilinear interpolation
                     assert_eq!(dest[0], 256); // (0 + 512) / 2
@@ -326,7 +325,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_vertical_wiener_multicolumn() {
+                fn [<test_vertical_wiener_multicolumn_ $module>]() {
                     // Test vertical Wiener with multiple columns
                     let width = NonZeroUsize::new(3).unwrap();
                     let height = NonZeroUsize::new(6).unwrap();
@@ -343,7 +342,7 @@ mod tests {
                     ];
                     let mut dest = vec![0u8; 18];
 
-                    refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // Check that each column is processed independently
                     // First two rows should be bilinear interpolation
@@ -362,7 +361,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_vertical_wiener_minimum_height() {
+                fn [<test_vertical_wiener_minimum_height_ $module>]() {
                     // Test with minimum height where Wiener filter can be applied
                     let width = NonZeroUsize::new(1).unwrap();
                     let height = NonZeroUsize::new(6).unwrap(); // Minimum for Wiener core
@@ -372,7 +371,7 @@ mod tests {
                     let src: Vec<u8> = vec![0, 50, 100, 150, 200, 255];
                     let mut dest = vec![0u8; 6];
 
-                    refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // Should not crash and produce reasonable results
                     assert_eq!(dest[0], 25); // (0 + 50) / 2
@@ -381,7 +380,7 @@ mod tests {
                 }
 
                 #[test]
-                fn test_vertical_wiener_uniform_values() {
+                fn [<test_vertical_wiener_uniform_values_ $module>]() {
                     // Test with uniform input values - should produce uniform output
                     let width = NonZeroUsize::new(1).unwrap();
                     let height = NonZeroUsize::new(8).unwrap();
@@ -391,7 +390,7 @@ mod tests {
                     let src = vec![100u8; 8]; // All pixels same value
                     let mut dest = vec![0u8; 8];
 
-                    refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample);
+                    unsafe { super::$module::refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample); }
 
                     // All output values should be the same as input
                     for &pixel in &dest {
@@ -404,4 +403,9 @@ mod tests {
 
     horizontal_tests!(rust);
     vertical_tests!(rust);
+
+    #[cfg(target_feature = "avx2")]
+    horizontal_tests!(avx2);
+    #[cfg(target_feature = "avx2")]
+    vertical_tests!(avx2);
 }

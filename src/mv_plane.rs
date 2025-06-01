@@ -711,7 +711,7 @@ mod tests {
 
         // Check offset calculations
         let padded_height = 32; // 24 + 2*4
-        let expected_offset_1 = 100 + 1 * 40 * padded_height;
+        let expected_offset_1 = 100 + 40 * padded_height;
         assert_eq!(plane.subpel_window_offsets[1], expected_offset_1);
     }
 

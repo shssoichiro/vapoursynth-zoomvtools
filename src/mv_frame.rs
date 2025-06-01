@@ -139,6 +139,7 @@ mod tests {
     use quickcheck_macros::quickcheck;
 
     /// Test helper to create minimal valid parameters for MVFrame::new
+    #[allow(clippy::type_complexity)]
     fn create_test_params() -> (
         NonZeroUsize,
         NonZeroUsize,
