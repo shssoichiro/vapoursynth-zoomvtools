@@ -30,7 +30,9 @@ pub struct MVPlane {
     pub hpad: usize,
     pub vpad: usize,
     pub offset_padding: usize,
+    #[allow(dead_code)]
     pub hpad_pel: usize,
+    #[allow(dead_code)]
     pub vpad_pel: usize,
     pub bits_per_sample: NonZeroU8,
     pub pel: Subpel,
