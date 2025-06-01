@@ -38,8 +38,8 @@ pub fn refine_horizontal_wiener<T: Pixel>(
         let a: u32 = src[offset].into();
         let b: u32 = src[offset + 1].into();
         let c: u32 = src[offset + 2].into();
-        dest[offset] = T::from_or_max((a + b).div_ceil(2));
-        dest[offset + 1] = T::from_or_max((b + c).div_ceil(2));
+        dest[offset] = T::from_or_max((a + b + 1) / 2);
+        dest[offset + 1] = T::from_or_max((b + c + 1) / 2);
 
         for i in 2..(width.get() - 4) {
             let mut m0: i32 = src[offset + i - 2].into();
@@ -63,7 +63,7 @@ pub fn refine_horizontal_wiener<T: Pixel>(
         for i in (width.get() - 4)..(width.get() - 1) {
             let a: u32 = src[offset + i].into();
             let b: u32 = src[offset + i + 1].into();
-            dest[offset + i] = T::from_or_max((a + b).div_ceil(2));
+            dest[offset + i] = T::from_or_max((a + b + 1) / 2);
         }
 
         dest[offset + width.get() - 1] = src[offset + width.get() - 1];
@@ -104,7 +104,7 @@ pub fn refine_vertical_wiener<T: Pixel>(
         for i in 0..width.get() {
             let a: u32 = src[offset + i].into();
             let b: u32 = src[offset + i + pitch.get()].into();
-            dest[offset + i] = T::from_or_max((a + b).div_ceil(2));
+            dest[offset + i] = T::from_or_max((a + b + 1) / 2);
         }
         offset += pitch.get();
     }
@@ -135,7 +135,7 @@ pub fn refine_vertical_wiener<T: Pixel>(
         for i in 0..width.get() {
             let a: u32 = src[offset + i].into();
             let b: u32 = src[offset + i + pitch.get()].into();
-            dest[offset + i] = T::from_or_max((a + b).div_ceil(2));
+            dest[offset + i] = T::from_or_max((a + b + 1) / 2);
         }
 
         offset += pitch.get();

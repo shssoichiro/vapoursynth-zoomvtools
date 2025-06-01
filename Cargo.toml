@@ -55,11 +55,11 @@ required-features = ["bench"]
 bench = []
 
 [lints.clippy]
+# This can result in worse performance. It should probably be allow by default...
+manual_div_ceil = "allow"
 needless_range_loop = "allow"
 too_many_arguments = "allow"
 undocumented_unsafe_blocks = "warn"
 uninlined_format_args = "allow"
 # false positive: https://github.com/rust-lang/rust-clippy/issues/14918
 unnecessary_to_owned = "allow"
-
-# TODO: top hotspots: reduce and refine

@@ -64,7 +64,7 @@ fn reduce_filtered_vertical<T: Pixel>(
     for x in 0..width_usize {
         let a: u32 = src[x].into();
         let b: u32 = src[x + src_pitch_usize].into();
-        dest[x] = T::from_or_max((a + b).div_ceil(2));
+        dest[x] = T::from_or_max((a + b + 1) / 2);
     }
 
     // Process remaining output rows: 1/4, 1/2, 1/4 filter
@@ -99,7 +99,7 @@ fn reduce_filtered_horizontal_inplace<T: Pixel>(
         let mut a: u32;
         let mut b: u32 = dest[x * 2].into();
         let mut c: u32 = dest[x * 2 + 1].into();
-        let src0 = (b + c).div_ceil(2);
+        let src0 = (b + c + 1) / 2;
 
         for x in 1..width.get() {
             a = dest[x * 2 - 1].into();

@@ -499,7 +499,7 @@ pub fn plane_height_luma(
 
     for _i in 1..=level {
         height = if vpad >= y_ratio_uv_val {
-            (height / y_ratio_uv_val).div_ceil(2) * y_ratio_uv_val
+            (height / y_ratio_uv_val + 1) / 2 * y_ratio_uv_val
         } else {
             ((height / y_ratio_uv_val) / 2) * y_ratio_uv_val
         };
@@ -548,7 +548,7 @@ pub fn plane_width_luma(
 
     for _i in 1..=level {
         width = if hpad >= x_ratio_uv_val {
-            (width / x_ratio_uv_val).div_ceil(2) * x_ratio_uv_val
+            (width / x_ratio_uv_val + 1) / 2 * x_ratio_uv_val
         } else {
             ((width / x_ratio_uv_val) / 2) * x_ratio_uv_val
         };
