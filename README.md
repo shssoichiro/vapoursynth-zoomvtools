@@ -12,4 +12,12 @@ Zoomy MV tools, written in Rust.
 - Fast
 - Works
 - Minimal unsafe outside of SIMD code
-- Actually have tests
+- Test Coverage
+
+## Done
+
+- [x] Super
+
+## TODO
+
+All the others.
