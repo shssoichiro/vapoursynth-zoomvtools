@@ -29,6 +29,11 @@ pub fn refine_horizontal_bicubic<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
+    debug_assert!(
+        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
+            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
+    );
+
     if has_avx2() {
         // SAFETY: We check for AVX2 first
         unsafe {
@@ -64,6 +69,11 @@ pub fn refine_vertical_bicubic<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
+    debug_assert!(
+        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
+            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
+    );
+
     if has_avx2() {
         // SAFETY: We check for AVX2 first
         unsafe {
@@ -322,12 +332,12 @@ mod tests {
                 fn [<test_vertical_bicubic_u16_ $module>]() {
                     // Test with 2x4 image (2 width, 4 height)
                     let src = vec![
-                        10u8, 20, // row 0
+                        10u16, 20, // row 0
                         30, 40, // row 1
                         50, 60, // row 2
                         70, 80, // row 3
                     ];
-                    let mut dest = vec![0u8; 8];
+                    let mut dest = vec![0u16; 8];
                     let pitch = NonZeroUsize::new(2).unwrap();
                     let width = NonZeroUsize::new(2).unwrap();
                     let height = NonZeroUsize::new(4).unwrap();
@@ -429,4 +439,6 @@ mod tests {
     #[cfg(target_feature = "avx2")]
     horizontal_tests!(avx2);
     vertical_tests!(rust);
+    #[cfg(target_feature = "avx2")]
+    vertical_tests!(avx2);
 }

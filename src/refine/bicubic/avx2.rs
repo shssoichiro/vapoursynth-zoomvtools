@@ -2,11 +2,6 @@
 
 use std::num::{NonZeroU8, NonZeroUsize};
 
-#[cfg(target_arch = "x86")]
-use std::arch::x86::*;
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
-
 use crate::util::Pixel;
 
 /// Performs horizontal bicubic interpolation for sub-pixel motion estimation refinement.
@@ -34,6 +29,11 @@ pub unsafe fn refine_horizontal_bicubic<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
+    debug_assert!(
+        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
+            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
+    );
+
     match size_of::<T>() {
         1 => unsafe {
             refine_horizontal_bicubic_u8(
@@ -85,6 +85,11 @@ pub unsafe fn refine_vertical_bicubic<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
+    debug_assert!(
+        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
+            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
+    );
+
     match size_of::<T>() {
         1 => unsafe {
             refine_vertical_bicubic_u8(

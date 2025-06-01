@@ -31,6 +31,11 @@ pub fn refine_horizontal_wiener<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
+    debug_assert!(
+        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
+            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
+    );
+
     rust::refine_horizontal_wiener(src, dest, pitch, width, height, bits_per_sample);
 }
 
@@ -60,6 +65,11 @@ pub fn refine_vertical_wiener<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
+    debug_assert!(
+        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
+            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
+    );
+
     rust::refine_vertical_wiener(src, dest, pitch, width, height, bits_per_sample);
 }
 

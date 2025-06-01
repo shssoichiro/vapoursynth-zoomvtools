@@ -29,6 +29,11 @@ pub fn refine_horizontal_wiener<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
+    debug_assert!(
+        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
+            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
+    );
+
     match size_of::<T>() {
         1 => todo!(),
         2 => todo!(),
@@ -63,6 +68,11 @@ pub fn refine_vertical_wiener<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
+    debug_assert!(
+        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
+            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
+    );
+
     match size_of::<T>() {
         1 => todo!(),
         2 => todo!(),

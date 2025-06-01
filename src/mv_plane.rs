@@ -181,6 +181,11 @@ impl MVPlane {
         padded_height: NonZeroUsize,
         bits_per_sample: NonZeroU8,
     ) {
+        debug_assert!(
+            bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
+                && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
+        );
+
         if src_offset <= dest_offset {
             // Source comes before destination, split at destination
             let (left, right) = plane.split_at_mut(dest_offset);
