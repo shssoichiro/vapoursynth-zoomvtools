@@ -29,7 +29,7 @@ pub fn reduce_triangle<T: Pixel>(
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
-    reduce_filtered_vertical(
+    reduce_triangle_vertical(
         dest,
         src,
         dest_pitch,
@@ -38,7 +38,7 @@ pub fn reduce_triangle<T: Pixel>(
         dest_width.saturating_mul(unsafe { NonZeroUsize::new_unchecked(2) }),
         dest_height,
     );
-    reduce_filtered_horizontal_inplace(dest, dest_pitch, dest_width, dest_height);
+    reduce_triangle_horizontal_inplace(dest, dest_pitch, dest_width, dest_height);
 }
 
 /// Applies vertical triangle filtering to reduce image height by 2x.
@@ -47,7 +47,7 @@ pub fn reduce_triangle<T: Pixel>(
 /// vertically. The first row uses simple averaging of two rows, while subsequent
 /// rows use a 3-tap triangle filter with weights (1/4, 1/2, 1/4) applied to
 /// three consecutive source rows.
-fn reduce_filtered_vertical<T: Pixel>(
+fn reduce_triangle_vertical<T: Pixel>(
     dest: &mut [T],
     src: &[T],
     dest_pitch: NonZeroUsize,
@@ -88,7 +88,7 @@ fn reduce_filtered_vertical<T: Pixel>(
 /// horizontally on the already vertically-filtered data. It modifies the buffer
 /// in-place, using a 3-tap triangle filter with weights (1/4, 1/2, 1/4).
 /// The first column uses simple averaging of two pixels.
-fn reduce_filtered_horizontal_inplace<T: Pixel>(
+fn reduce_triangle_horizontal_inplace<T: Pixel>(
     mut dest: &mut [T],
     dest_pitch: NonZeroUsize,
     width: NonZeroUsize,

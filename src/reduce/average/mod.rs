@@ -1,8 +1,9 @@
+mod avx2;
 mod rust;
 
 use std::num::NonZeroUsize;
 
-use crate::util::Pixel;
+use crate::util::{Pixel, has_avx2};
 
 /// Downscales an image by 2x using simple averaging of 2x2 pixel blocks.
 ///
@@ -26,15 +27,20 @@ pub fn reduce_average<T: Pixel>(
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
+    // if has_avx2() {
+    //     // SAFETY: We check for AVX2 first
+    //     unsafe {
+    //         avx2::reduce_average(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
+    //     }
+    // } else {
     rust::reduce_average(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
+    // }
 }
 
 #[cfg(test)]
 mod tests {
     use pastey::paste;
     use std::num::NonZeroUsize;
-
-    use super::reduce_average;
 
     macro_rules! create_tests {
         ($module:ident) => {
@@ -352,14 +358,14 @@ mod tests {
                     ];
                     let mut dest2 = vec![0u8; 1];
 
-                    reduce_average(
+                    unsafe { super::$module::reduce_average(
                         &mut dest2,
                         &src2,
                         dest_pitch,
                         src_pitch,
                         dest_width,
                         dest_height,
-                    );
+                    ); }
 
                     // Expected: (1 + 1 + 1 + 2 + 2) / 4 = 7 / 4 = 1
                     assert_eq!(dest2[0], 1);
@@ -369,4 +375,7 @@ mod tests {
     }
 
     create_tests!(rust);
+
+    // #[cfg(target_feature = "avx2")]
+    // create_tests!(avx2);
 }
