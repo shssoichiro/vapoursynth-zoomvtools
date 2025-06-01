@@ -1,3 +1,5 @@
+#![allow(clippy::undocumented_unsafe_blocks)]
+
 use std::num::{NonZeroU8, NonZeroUsize};
 
 use crate::util::Pixel;
