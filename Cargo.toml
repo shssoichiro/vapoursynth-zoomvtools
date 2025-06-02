@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.98"
 bitflags = "2.9.1"
+cfg-if = "1.0.0"
 cpufeatures = "0.2.17"
 smallvec = "1.15.0"
 vapoursynth = { version = "0.4.0", features = ["vapoursynth-api-36"] }
@@ -53,6 +54,9 @@ required-features = ["bench"]
 
 [features]
 bench = []
+# This feature is ONLY for testing and benchmarking.
+# If you use it in production it will make me sad.
+no_simd = []
 
 [lints.rust]
 # this rule is dumb when you're writing simd.

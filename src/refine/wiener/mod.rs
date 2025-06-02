@@ -5,9 +5,9 @@ mod rust;
 #[cfg(test)]
 mod tests;
 
-use std::num::{NonZeroU8, NonZeroUsize};
-
 use crate::util::Pixel;
+use cfg_if::cfg_if;
+use std::num::{NonZeroU8, NonZeroUsize};
 
 /// Performs horizontal Wiener filtering for sub-pixel motion estimation refinement.
 ///
@@ -40,17 +40,18 @@ pub fn refine_horizontal_wiener<T: Pixel>(
             && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
     );
 
-    #[cfg(target_arch = "x86_64")]
-    if crate::util::has_avx2() {
-        // SAFETY: We check for AVX2 first
-        unsafe {
-            avx2::refine_horizontal_wiener(src, dest, pitch, width, height, bits_per_sample);
+    cfg_if! {
+        if #[cfg(all(target_arch = "x86_64", not(feature = "no_simd")))] {
+            if crate::util::has_avx2() {
+                // SAFETY: We check for AVX2 first
+                unsafe {
+                    avx2::refine_horizontal_wiener(src, dest, pitch, width, height, bits_per_sample);
+                }
+                return;
+            }
         }
-    } else {
-        rust::refine_horizontal_wiener(src, dest, pitch, width, height, bits_per_sample);
     }
 
-    #[cfg(not(target_arch = "x86_64"))]
     rust::refine_horizontal_wiener(src, dest, pitch, width, height, bits_per_sample);
 }
 
@@ -85,16 +86,17 @@ pub fn refine_vertical_wiener<T: Pixel>(
             && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
     );
 
-    #[cfg(target_arch = "x86_64")]
-    if crate::util::has_avx2() {
-        // SAFETY: We check for AVX2 first
-        unsafe {
-            avx2::refine_vertical_wiener(src, dest, pitch, width, height, bits_per_sample);
+    cfg_if! {
+        if #[cfg(all(target_arch = "x86_64", not(feature = "no_simd")))] {
+            if crate::util::has_avx2() {
+                // SAFETY: We check for AVX2 first
+                unsafe {
+                    avx2::refine_vertical_wiener(src, dest, pitch, width, height, bits_per_sample);
+                }
+                return;
+            }
         }
-    } else {
-        rust::refine_vertical_wiener(src, dest, pitch, width, height, bits_per_sample);
     }
 
-    #[cfg(not(target_arch = "x86_64"))]
     rust::refine_vertical_wiener(src, dest, pitch, width, height, bits_per_sample);
 }

@@ -5,9 +5,9 @@ mod rust;
 #[cfg(test)]
 mod tests;
 
-use std::num::NonZeroUsize;
-
 use crate::util::Pixel;
+use cfg_if::cfg_if;
+use std::num::NonZeroUsize;
 
 /// Downscales an image by 2x using simple averaging of 2x2 pixel blocks.
 ///
@@ -31,16 +31,17 @@ pub fn reduce_average<T: Pixel>(
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
-    #[cfg(target_arch = "x86_64")]
-    if crate::util::has_avx2() {
-        // SAFETY: We check for AVX2 first
-        unsafe {
-            avx2::reduce_average(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
+    cfg_if! {
+        if #[cfg(all(target_arch = "x86_64", not(feature = "no_simd")))] {
+            if crate::util::has_avx2() {
+                // SAFETY: We check for AVX2 first
+                unsafe {
+                    avx2::reduce_average(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
+                }
+                return;
+            }
         }
-    } else {
-        rust::reduce_average(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
     }
 
-    #[cfg(not(target_arch = "x86_64"))]
     rust::reduce_average(dest, src, dest_pitch, src_pitch, dest_width, dest_height);
 }
