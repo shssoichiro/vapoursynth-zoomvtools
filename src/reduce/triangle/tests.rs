@@ -22,14 +22,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Triangle filter is separable:
                 // 1. Vertical: intermediate results at width*2 = 2 First column: (10 +
@@ -55,14 +55,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Triangle filter is separable:
                 // 1. Vertical: intermediate results at width*2 = 4 [0]: (10 + 50).div_ceil(2) =
@@ -92,14 +92,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Triangle filter is separable:
                 // 1. Vertical reduction with averaging for first row, then 1/4, 1/2, 1/4
@@ -135,14 +135,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(3).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Triangle filter first processes vertically, then horizontally
                 // The algorithm should handle the multi-tap filtering correctly
@@ -170,14 +170,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Should only process the first 2x2 block, ignoring padding
                 // Vertical: (10 + 30).div_ceil(2) = 20, (20 + 40).div_ceil(2) = 30
@@ -202,14 +202,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Triangle filter:
                 // Vertical: (1000 + 3000).div_ceil(2) = 2000, (2000 + 4000).div_ceil(2) = 3000
@@ -232,14 +232,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Triangle filter:
                 // Vertical: (60000 + 62000).div_ceil(2) = 61000, (61000 + 63000).div_ceil(2) =
@@ -264,14 +264,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Similar to the u8 case but with larger values
                 // The triangle filter should produce smoothed results
@@ -301,14 +301,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Vertical: (100 + 200).div_ceil(2) = 150, (150 + 250).div_ceil(2) = 200
                 // Horizontal: (150 + 200).div_ceil(2) = 175
@@ -332,14 +332,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Uniform values should remain uniform after filtering
                 assert_eq!(dest[0], 128);
@@ -367,14 +367,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(3).unwrap();
 
-                unsafe { super::$module::reduce_triangle(
+                verify_asm!($module, reduce_triangle(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // This test ensures triangle filter works correctly with larger heights
                 assert_ne!(dest[0], 0); // Should have been modified

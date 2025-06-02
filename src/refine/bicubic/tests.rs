@@ -18,7 +18,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // First pixel should be average of first two
                 assert_eq!(dest[0], 15); // (10 + 20 + 1) / 2 = 15
@@ -49,7 +49,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits_per_sample = NonZeroU8::new(16).unwrap();
 
-                unsafe { super::$module::refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // First pixel: linear interpolation
                 assert_eq!(dest[0], 150); // (100 + 200 + 1) / 2 = 150
@@ -74,7 +74,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // Only first and last positions get linear interpolation
                 assert_eq!(dest[0], 15); // (10 + 20 + 1) / 2 = 15
@@ -92,7 +92,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // All values should be within valid range [0, 255]
                 for &pixel in &dest {
@@ -115,7 +115,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // Check first row
                 assert_eq!(dest[0], 15); // (10 + 20 + 1) / 2 = 15
@@ -137,7 +137,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // For a linear ramp, bicubic interpolation should produce these specific values
                 assert_eq!(dest[1], 96); // Verified by manual calculation
@@ -155,7 +155,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // All outputs should be 255 (max value)
                 for &pixel in &dest {
@@ -175,7 +175,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // For symmetric input, the middle value should be computed using the bicubic
                 // formula For i=2: a=150, b=200, c=150, d=100
@@ -195,7 +195,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_horizontal_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // All outputs should be zero
                 for &pixel in &dest {
@@ -224,7 +224,7 @@ macro_rules! vertical_tests {
                 let height = NonZeroUsize::new(4).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_vertical_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_vertical_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // First row should be average of first two rows
                 assert_eq!(dest[0], 20); // (10 + 30 + 1) / 2 = 20
@@ -256,7 +256,7 @@ macro_rules! vertical_tests {
                 let height = NonZeroUsize::new(4).unwrap();
                 let bits_per_sample = NonZeroU8::new(16).unwrap();
 
-                unsafe { super::$module::refine_vertical_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_vertical_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // First row should be average of first two rows
                 assert_eq!(dest[0], 20); // (10 + 30 + 1) / 2 = 20
@@ -288,7 +288,7 @@ macro_rules! vertical_tests {
                 let height = NonZeroUsize::new(4).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_vertical_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_vertical_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // First row: linear interpolation
                 assert_eq!(dest[0], 25); // (10 + 40 + 1) / 2 = 25
@@ -319,7 +319,7 @@ macro_rules! vertical_tests {
                 let height = NonZeroUsize::new(6).unwrap();
                 let bits_per_sample = NonZeroU8::new(8).unwrap();
 
-                unsafe { super::$module::refine_vertical_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample); }
+                verify_asm!($module, refine_vertical_bicubic(&src, &mut dest, pitch, width, height, bits_per_sample));
 
                 // First row: linear interpolation of rows 0 and 1
                 assert_eq!(dest[0], 20); // (10 + 30 + 1) / 2 = 20

@@ -20,14 +20,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Expected: (10 + 20 + 30 + 40 + 2) / 4 = 102 / 4 = 25
                 assert_eq!(dest[0], 25);
@@ -46,14 +46,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // First 2x2 block: (10 + 20 + 50 + 60 + 2) / 4 = 142 / 4 = 35
                 // Second 2x2 block: (30 + 40 + 70 + 80 + 2) / 4 = 222 / 4 = 55
@@ -76,14 +76,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Top-left 2x2 block: (10 + 20 + 50 + 60 + 2) / 4 = 142 / 4 = 35
                 // Top-right 2x2 block: (30 + 40 + 70 + 80 + 2) / 4 = 222 / 4 = 55
@@ -108,14 +108,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Should only process the first 2x2 block, ignoring padding
                 // (10 + 20 + 30 + 40 + 2) / 4 = 102 / 4 = 25
@@ -136,14 +136,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Expected: (1000 + 2000 + 3000 + 4000 + 2) / 4 = 10002 / 4 = 2500
                 assert_eq!(dest[0], 2500);
@@ -162,14 +162,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Expected: (60000 + 61000 + 62000 + 63000 + 2) / 4 = 246002 / 4 = 61500
                 assert_eq!(dest[0], 61500);
@@ -190,14 +190,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Top-left 2x2 block: (100 + 200 + 500 + 600 + 2) / 4 = 1402 / 4 = 350
                 // Top-right 2x2 block: (300 + 400 + 700 + 800 + 2) / 4 = 2202 / 4 = 550
@@ -222,14 +222,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Expected: (0 + 1 + 2 + 3 + 2) / 4 = 8 / 4 = 2
                 assert_eq!(dest[0], 2);
@@ -248,14 +248,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Expected: (255 + 255 + 255 + 255 + 2) / 4 = 1022 / 4 = 255
                 assert_eq!(dest[0], 255);
@@ -274,14 +274,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Expected: (0 + 1 + 2 + 3 + 2) / 4 = 8 / 4 = 2
                 assert_eq!(dest[0], 2);
@@ -301,14 +301,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Expected: (1 + 1 + 1 + 1 + 2) / 4 = 6 / 4 = 1
                 assert_eq!(dest[0], 1);
@@ -320,14 +320,14 @@ macro_rules! create_tests {
                 ];
                 let mut dest2 = vec![0u8; 1];
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest2,
                     &src2,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Expected: (1 + 1 + 1 + 2 + 2) / 4 = 7 / 4 = 1
                 assert_eq!(dest2[0], 1);
@@ -355,14 +355,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(16).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Verify each 2x2 block average
                 for i in 0..16usize {
@@ -399,14 +399,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(8).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_average(
+                verify_asm!($module, reduce_average(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Verify each 2x2 block average
                 for i in 0..8usize {

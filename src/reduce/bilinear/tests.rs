@@ -22,14 +22,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Bilinear filter is separable:
                 // 1. Vertical: (10 + 30).div_ceil(2) = 20, (20 + 40).div_ceil(2) = 30 So
@@ -53,14 +53,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Bilinear filter is separable:
                 // 1. Vertical: [0]: (10 + 50).div_ceil(2) = 30, [1]: (20 + 60).div_ceil(2) = 40
@@ -89,14 +89,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Bilinear filter is separable:
                 // 1. Vertical reduction (first pass): Row 0: [0]: (10 + 50).div_ceil(2) = 30,
@@ -131,14 +131,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(3).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Values should be reasonable - detailed calculation would be complex
                 // but we can verify general properties
@@ -172,14 +172,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Bilinear filter:
                 // Vertical: (1000 + 3000).div_ceil(2) = 2000, (2000 + 4000).div_ceil(2) = 3000
@@ -202,14 +202,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Bilinear filter:
                 // Vertical: (60000 + 62000).div_ceil(2) = 61000, (61000 + 63000).div_ceil(2) =
@@ -234,14 +234,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Similar to the u8 case but with larger values
                 // The bilinear filter should produce smoothed results
@@ -273,14 +273,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // All outputs should be 128 since input is uniform
                 assert_eq!(dest[0], 128);
@@ -304,14 +304,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Bilinear filter:
                 // Vertical: (0 + 255).div_ceil(2) = 128, (255 + 0).div_ceil(2) = 128
@@ -333,14 +333,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Should only process the first 2x2 block, ignoring padding
                 // Vertical: (10 + 30).div_ceil(2) = 20, (20 + 40).div_ceil(2) = 30
@@ -364,14 +364,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // All 255 values should result in 255
                 assert_eq!(dest[0], 255);
@@ -394,14 +394,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Values should form a smooth gradient
                 // Check that values increase roughly from top-left to bottom-right
@@ -433,14 +433,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(3).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // This test primarily ensures the middle lines loop doesn't crash
                 // The exact values are less important than ensuring no index out of bounds
@@ -472,14 +472,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(32).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Verify the bilinear filtering results
                 // Step 1: Vertical reduction creates intermediate array with width=64
@@ -536,14 +536,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(32).unwrap();
                 let dest_height = NonZeroUsize::new(3).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Verify the vertical reduction (which creates intermediate values)
                 // Row 0 (y=0): Simple averaging of src rows 0 and 1
@@ -596,14 +596,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(16).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Verify the bilinear filtering results
                 // Step 1: Vertical reduction creates intermediate array with width=32
@@ -660,14 +660,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(16).unwrap();
                 let dest_height = NonZeroUsize::new(3).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Verify the vertical reduction (which creates intermediate values)
                 // Row 0 (y=0): Simple averaging of src rows 0 and 1
@@ -718,14 +718,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(18).unwrap(); // Not divisible by 16!
                 let dest_height = NonZeroUsize::new(3).unwrap();
 
-                unsafe { super::$module::reduce_bilinear(
+                verify_asm!($module, reduce_bilinear(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Test all positions including the scalar fallback regions
                 // SIMD processes pixels 0-15, scalar fallback handles pixels 16-17

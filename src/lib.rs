@@ -10,6 +10,10 @@ use vapoursynth::{
     plugins::{Filter, FilterArgument, Metadata},
 };
 
+#[cfg(test)]
+#[macro_use]
+mod tests;
+
 #[cfg(feature = "bench")]
 pub mod average;
 #[cfg(feature = "bench")]
@@ -55,9 +59,6 @@ mod reduce;
 mod refine;
 #[cfg(not(feature = "bench"))]
 mod util;
-
-#[cfg(test)]
-mod tests;
 
 pub const PLUGIN_IDENTIFIER: &str = "com.soichiro.zoomvtools";
 pub const PLUGIN_NAME: &str = "zoomvtools";

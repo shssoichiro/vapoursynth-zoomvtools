@@ -22,14 +22,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Quadratic filter is separable:
                 // 1. Vertical: For single line (height=1), uses simple averaging: (10 +
@@ -55,14 +55,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Quadratic filter is separable:
                 // 1. Vertical: For single height, uses simple averaging: [0]: (10 +
@@ -93,14 +93,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Quadratic filter is separable with edge case handling:
                 // 1. Vertical: Row 0 uses simple averaging, Row 1 uses edge case averaging Row
@@ -134,14 +134,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(3).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Quadratic filter should produce reasonable smoothed values
                 // We verify that values are reasonable and follow expected trends
@@ -170,14 +170,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Verify gradient property is preserved
                 assert!(dest[0] < dest[1]); // Left to right increase
@@ -205,14 +205,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Quadratic filter with edge case handling:
                 // Vertical: (1000 + 3000).div_ceil(2) = 2000, (2000 + 4000).div_ceil(2) = 3000
@@ -235,14 +235,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Should handle large values without overflow
                 // Vertical: (60000 + 62000).div_ceil(2) = 61000, (61000 + 63000).div_ceil(2) =
@@ -267,14 +267,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Verify reasonable values and ordering
                 assert!(dest[0] > 1000 && dest[0] < 8000); // Top-left
@@ -304,14 +304,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Should only process the first 2x2 block, ignoring padding
                 // Vertical: (10 + 30).div_ceil(2) = 20, (20 + 40).div_ceil(2) = 30
@@ -336,14 +336,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(2).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Uniform input should produce uniform output
                 assert_eq!(dest[0], 100);
@@ -367,14 +367,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // With minimal case, should use simple averaging
                 // Vertical: (50 + 70).div_ceil(2) = 60, (60 + 80).div_ceil(2) = 70
@@ -397,14 +397,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(1).unwrap();
                 let dest_height = NonZeroUsize::new(1).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // Maximum values should be preserved
                 assert_eq!(dest[0], 255);
@@ -429,14 +429,14 @@ macro_rules! create_tests {
                 let dest_width = NonZeroUsize::new(2).unwrap();
                 let dest_height = NonZeroUsize::new(3).unwrap();
 
-                unsafe { super::$module::reduce_quadratic(
+                verify_asm!($module, reduce_quadratic(
                     &mut dest,
                     &src,
                     dest_pitch,
                     src_pitch,
                     dest_width,
                     dest_height,
-                ); }
+                ));
 
                 // This test primarily ensures the middle lines loop doesn't crash
                 // The exact values are less important than ensuring no index out of bounds
