@@ -80,57 +80,31 @@ unsafe fn reduce_average_u8(
 
         // Process SIMD chunks
         while x + simd_width <= dest_width {
-            // Load 32 bytes from each of two rows (64 source pixels total)
+            // Load 32 bytes from each of two rows (32 source pixels per row)
             let src1 = _mm256_loadu_si256(src_row1.add(x * 2) as *const __m256i);
             let src2 = _mm256_loadu_si256(src_row2.add(x * 2) as *const __m256i);
 
-            // Split into even and odd pixels for each row
-            let mask_even = _mm256_set1_epi16(0x00FF);
-            let src1_even = _mm256_and_si256(
-                _mm256_unpacklo_epi8(src1, _mm256_setzero_si256()),
-                mask_even,
-            );
-            let src1_odd = _mm256_and_si256(
-                _mm256_unpackhi_epi8(src1, _mm256_setzero_si256()),
-                mask_even,
-            );
-            let src2_even = _mm256_and_si256(
-                _mm256_unpacklo_epi8(src2, _mm256_setzero_si256()),
-                mask_even,
-            );
-            let src2_odd = _mm256_and_si256(
-                _mm256_unpackhi_epi8(src2, _mm256_setzero_si256()),
-                mask_even,
-            );
+            // Convert to u16 to prevent overflow during addition
+            let src1_lo = _mm256_unpacklo_epi8(src1, _mm256_setzero_si256());
+            let src1_hi = _mm256_unpackhi_epi8(src1, _mm256_setzero_si256());
+            let src2_lo = _mm256_unpacklo_epi8(src2, _mm256_setzero_si256());
+            let src2_hi = _mm256_unpackhi_epi8(src2, _mm256_setzero_si256());
 
-            // Rearrange to get 2x2 blocks
-            // For each 2x2 block: [a, b; c, d] where a,b are from row1 and c,d from row2
-            let pairs1_lo = _mm256_unpacklo_epi16(src1_even, src1_odd); // [a0,b0,a1,b1,...]
-            let pairs1_hi = _mm256_unpackhi_epi16(src1_even, src1_odd);
-            let pairs2_lo = _mm256_unpacklo_epi16(src2_even, src2_odd); // [c0,d0,c1,d1,...]
-            let pairs2_hi = _mm256_unpackhi_epi16(src2_even, src2_odd);
+            // Add horizontal pairs: (a + b) and (c + d) for each 2x2 block
+            let pairs1_lo = _mm256_hadd_epi16(src1_lo, src1_hi);
+            let pairs2_lo = _mm256_hadd_epi16(src2_lo, src2_hi);
 
-            // Add corresponding pairs from both rows
-            let sum_lo = _mm256_add_epi16(_mm256_add_epi16(pairs1_lo, pairs2_lo), rounding);
-            let sum_hi = _mm256_add_epi16(_mm256_add_epi16(pairs1_hi, pairs2_hi), rounding);
-
-            // Add horizontal pairs and divide by 4
-            let block_sum_lo = _mm256_add_epi16(
-                _mm256_and_si256(sum_lo, _mm256_set1_epi32(0x0000FFFF)),
-                _mm256_srli_epi32(sum_lo, 16),
-            );
-            let block_sum_hi = _mm256_add_epi16(
-                _mm256_and_si256(sum_hi, _mm256_set1_epi32(0x0000FFFF)),
-                _mm256_srli_epi32(sum_hi, 16),
-            );
+            // Add vertical pairs: (a+b) + (c+d) for each 2x2 block
+            let block_sums = _mm256_add_epi16(_mm256_add_epi16(pairs1_lo, pairs2_lo), rounding);
 
             // Divide by 4 (right shift by 2)
-            let result_lo = _mm256_srli_epi16(block_sum_lo, 2);
-            let result_hi = _mm256_srli_epi16(block_sum_hi, 2);
+            let result = _mm256_srli_epi16(block_sums, 2);
 
-            // Pack back to u8 and store
-            let result = _mm256_packus_epi16(result_lo, result_hi);
-            let final_result = _mm256_permute4x64_epi64(result, 0b11011000); // Fix lane order
+            // Pack back to u8
+            let packed = _mm256_packus_epi16(result, result);
+
+            // Extract the lower 128 bits and permute to fix ordering
+            let final_result = _mm256_permute4x64_epi64(packed, 0b11011000);
 
             _mm_storeu_si128(
                 dest_row.add(x) as *mut __m128i,

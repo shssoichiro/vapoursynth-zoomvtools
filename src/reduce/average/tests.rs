@@ -332,6 +332,50 @@ macro_rules! create_tests {
                 // Expected: (1 + 1 + 1 + 2 + 2) / 4 = 7 / 4 = 1
                 assert_eq!(dest2[0], 1);
             }
+
+            #[test]
+            fn [<test_reduce_average_u8_large_simd_ $module>]() {
+                // Test large enough to trigger SIMD processing (32x2 -> 16x1)
+                // This ensures we cover the SIMD loop in AVX2 implementation
+                let mut src = Vec::new();
+
+                // First row: 32 pixels with values 0-31
+                for i in 0..32u8 {
+                    src.push(i);
+                }
+
+                // Second row: 32 pixels with values 32-63
+                for i in 32..64u8 {
+                    src.push(i);
+                }
+
+                let mut dest = vec![0u8; 16];
+                let src_pitch = NonZeroUsize::new(32).unwrap();
+                let dest_pitch = NonZeroUsize::new(16).unwrap();
+                let dest_width = NonZeroUsize::new(16).unwrap();
+                let dest_height = NonZeroUsize::new(1).unwrap();
+
+                unsafe { super::$module::reduce_average(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ); }
+
+                // Verify each 2x2 block average
+                for i in 0..16usize {
+                    let x = i * 2;
+                    let top_left = src[x] as u16;
+                    let top_right = src[x + 1] as u16;
+                    let bottom_left = src[32 + x] as u16;
+                    let bottom_right = src[32 + x + 1] as u16;
+
+                    let expected = ((top_left + top_right + bottom_left + bottom_right + 2) / 4) as u8;
+                    assert_eq!(dest[i], expected, "Mismatch at position {}", i);
+                }
+            }
         }
     };
 }
