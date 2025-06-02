@@ -165,15 +165,15 @@ impl TryFrom<i64> for DctMode {
 
 impl DctMode {
     pub fn uses_satd(&self) -> bool {
-        match self {
+        matches!(
+            self,
             DctMode::Satd
-            | DctMode::MixedSatdDct
-            | DctMode::AdaptiveSatdMixed
-            | DctMode::AdaptiveSatdDct
-            | DctMode::MixedSadEqSatdDct
-            | DctMode::AdaptiveSatdLuma => true,
-            _ => false,
-        }
+                | DctMode::MixedSatdDct
+                | DctMode::AdaptiveSatdMixed
+                | DctMode::AdaptiveSatdDct
+                | DctMode::MixedSadEqSatdDct
+                | DctMode::AdaptiveSatdLuma
+        )
     }
 }
 

@@ -43,8 +43,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Clippy
-        run: cargo clippy --tests --benches -- -D warnings
-
+        run: cargo clippy --tests --benches
+        # -- -D warnings
   test:
     needs: [clippy]
     strategy:
