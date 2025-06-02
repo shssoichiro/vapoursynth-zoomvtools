@@ -1,0 +1,6 @@
+coverage:
+  ignore_patterns:
+    - "^\\s*#\\[cfg\\(test\\)\\]"
+    - "^\\s*mod tests \\{"
+    - "^\\s*fn test_"
+    - "^\\s*#\\[test\\]"
