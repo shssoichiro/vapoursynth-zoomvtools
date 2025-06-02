@@ -40,13 +40,27 @@ pub fn refine_horizontal_wiener<T: Pixel>(
     let mut offset = 0;
 
     for _j in 0..height.get() {
-        let a: u32 = src[offset].into();
-        let b: u32 = src[offset + 1].into();
-        let c: u32 = src[offset + 2].into();
-        dest[offset] = T::from_or_max((a + b + 1) / 2);
-        dest[offset + 1] = T::from_or_max((b + c + 1) / 2);
+        // Handle first two pixels with bilinear interpolation (if width >= 2)
+        if width.get() >= 2 {
+            let a: u32 = src[offset].into();
+            let b: u32 = src[offset + 1].into();
+            dest[offset] = T::from_or_max((a + b + 1) / 2);
 
-        for i in 2..(width.get() - 4) {
+            if width.get() >= 3 {
+                let c: u32 = src[offset + 2].into();
+                dest[offset + 1] = T::from_or_max((b + c + 1) / 2);
+            }
+        }
+
+        // Process middle pixels with Wiener filter
+        let wiener_start = 2;
+        let wiener_end = if width.get() >= 4 {
+            width.get() - 4
+        } else {
+            wiener_start
+        };
+
+        for i in wiener_start..wiener_end {
             let mut m0: i32 = src[offset + i - 2].into();
             let m1: i32 = src[offset + i - 1].into();
             let mut m2: i32 = src[offset + i].into();
@@ -65,13 +79,17 @@ pub fn refine_horizontal_wiener<T: Pixel>(
             dest[offset + i] = T::from_or_max(max(0, min(m0, pixel_max)) as u32);
         }
 
-        for i in (width.get() - 4)..(width.get() - 1) {
+        // Handle last few pixels with bilinear interpolation
+        for i in wiener_end..(width.get() - 1).min(width.get()) {
             let a: u32 = src[offset + i].into();
             let b: u32 = src[offset + i + 1].into();
             dest[offset + i] = T::from_or_max((a + b + 1) / 2);
         }
 
-        dest[offset + width.get() - 1] = src[offset + width.get() - 1];
+        // Copy last pixel
+        if width.get() > 0 {
+            dest[offset + width.get() - 1] = src[offset + width.get() - 1];
+        }
         offset += pitch.get();
     }
 }
