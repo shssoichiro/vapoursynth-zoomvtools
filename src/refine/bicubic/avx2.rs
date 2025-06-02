@@ -22,8 +22,8 @@ use crate::util::Pixel;
 /// - `bits_per_sample`: Bit depth of the pixel format for clamping
 #[target_feature(enable = "avx2")]
 pub unsafe fn refine_horizontal_bicubic<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
@@ -78,8 +78,8 @@ pub unsafe fn refine_horizontal_bicubic<T: Pixel>(
 /// - `bits_per_sample`: Bit depth of the pixel format for clamping
 #[target_feature(enable = "avx2")]
 pub unsafe fn refine_vertical_bicubic<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,

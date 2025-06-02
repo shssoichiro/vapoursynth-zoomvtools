@@ -25,8 +25,8 @@ use std::arch::x86_64::*;
 /// - `_bits_per_sample`: Unused parameter for API consistency
 #[target_feature(enable = "avx2")]
 pub fn refine_horizontal_bilinear<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
@@ -73,8 +73,8 @@ pub fn refine_horizontal_bilinear<T: Pixel>(
 /// - `_bits_per_sample`: Unused parameter for API consistency
 #[target_feature(enable = "avx2")]
 pub fn refine_vertical_bilinear<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
@@ -121,8 +121,8 @@ pub fn refine_vertical_bilinear<T: Pixel>(
 /// - `_bits_per_sample`: Unused parameter for API consistency
 #[target_feature(enable = "avx2")]
 pub fn refine_diagonal_bilinear<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,

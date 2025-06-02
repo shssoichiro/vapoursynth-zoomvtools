@@ -194,8 +194,8 @@ impl MVPlane {
             // Source comes before destination, split at destination
             let (left, right) = plane.split_at_mut(dest_offset);
             refine_fn(
-                &left[src_offset..],
                 right,
+                &left[src_offset..],
                 pitch,
                 padded_width,
                 padded_height,
@@ -205,8 +205,8 @@ impl MVPlane {
             // Destination comes before source, split at source
             let (left, right) = plane.split_at_mut(src_offset);
             refine_fn(
-                right,
                 &mut left[dest_offset..],
+                right,
                 pitch,
                 padded_width,
                 padded_height,

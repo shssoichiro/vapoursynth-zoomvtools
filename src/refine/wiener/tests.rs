@@ -20,7 +20,7 @@ macro_rules! horizontal_tests {
                 let src: Vec<u8> = vec![0, 32, 64, 96, 128, 160, 192, 255];
                 let mut dest = vec![0u8; 8];
 
-                verify_asm!($module, refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_horizontal_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // First two pixels should be bilinear interpolation
                 assert_eq!(dest[0], 16); // (0 + 32) / 2
@@ -47,7 +47,7 @@ macro_rules! horizontal_tests {
                 let src: Vec<u16> = vec![0, 128, 256, 384, 512, 640, 768, 1023];
                 let mut dest = vec![0u16; 8];
 
-                verify_asm!($module, refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_horizontal_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // First two pixels should be bilinear interpolation
                 assert_eq!(dest[0], 64); // (0 + 128) / 2
@@ -76,7 +76,7 @@ macro_rules! horizontal_tests {
                 ];
                 let mut dest = vec![0u8; 18];
 
-                verify_asm!($module, refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_horizontal_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // Check that each row is processed independently
                 // First pixel of each row should be bilinear of first two
@@ -101,7 +101,7 @@ macro_rules! horizontal_tests {
                 let src: Vec<u8> = vec![0, 50, 100, 150, 200, 255];
                 let mut dest = vec![0u8; 6];
 
-                verify_asm!($module, refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_horizontal_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // Should not crash and produce reasonable results
                 assert_eq!(dest[0], 25); // (0 + 50) / 2
@@ -123,7 +123,7 @@ macro_rules! horizontal_tests {
                 ];
                 let mut dest = vec![0u8; 16];
 
-                verify_asm!($module, refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_horizontal_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // Check that pitch is respected
                 assert_eq!(dest[0], 15); // (10 + 20) / 2
@@ -143,7 +143,7 @@ macro_rules! horizontal_tests {
                 let src = vec![100u8; 8]; // All pixels same value
                 let mut dest = vec![0u8; 8];
 
-                verify_asm!($module, refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_horizontal_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // All output values should be the same as input
                 for &pixel in &dest {
@@ -163,7 +163,7 @@ macro_rules! horizontal_tests {
                 let src: Vec<u8> = vec![0, 0, 255, 255, 0, 0, 255, 255];
                 let mut dest = vec![0u8; 8];
 
-                verify_asm!($module, refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_horizontal_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // Test passes if function doesn't panic with extreme values
                 // The type system ensures u8 values are in valid range [0, 255]
@@ -182,7 +182,7 @@ macro_rules! horizontal_tests {
                 let src: Vec<u16> = vec![0, 0, 1023, 1023, 0, 0, 1023, 1023];
                 let mut dest = vec![0u16; 8];
 
-                verify_asm!($module, refine_horizontal_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_horizontal_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // All output values should be in valid range [0, 1023]
                 for &pixel in &dest {
@@ -208,7 +208,7 @@ macro_rules! vertical_tests {
                 let src: Vec<u8> = vec![0, 32, 64, 96, 128, 160, 192, 255];
                 let mut dest = vec![0u8; 8];
 
-                verify_asm!($module, refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_vertical_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // First two pixels should be bilinear interpolation
                 assert_eq!(dest[0], 16); // (0 + 32) / 2
@@ -234,7 +234,7 @@ macro_rules! vertical_tests {
                 let src: Vec<u16> = vec![0, 512, 1024, 1536, 2048, 2560, 3072, 4095];
                 let mut dest = vec![0u16; 8];
 
-                verify_asm!($module, refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_vertical_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // First two pixels should be bilinear interpolation
                 assert_eq!(dest[0], 256); // (0 + 512) / 2
@@ -266,7 +266,7 @@ macro_rules! vertical_tests {
                 ];
                 let mut dest = vec![0u8; 18];
 
-                verify_asm!($module, refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_vertical_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // Check that each column is processed independently
                 // First two rows should be bilinear interpolation
@@ -295,7 +295,7 @@ macro_rules! vertical_tests {
                 let src: Vec<u8> = vec![0, 50, 100, 150, 200, 255];
                 let mut dest = vec![0u8; 6];
 
-                verify_asm!($module, refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_vertical_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // Should not crash and produce reasonable results
                 assert_eq!(dest[0], 25); // (0 + 50) / 2
@@ -314,7 +314,7 @@ macro_rules! vertical_tests {
                 let src = vec![100u8; 8]; // All pixels same value
                 let mut dest = vec![0u8; 8];
 
-                verify_asm!($module, refine_vertical_wiener(&src, &mut dest, pitch, width, height, bits_per_sample));
+                verify_asm!($module, refine_vertical_wiener(&mut dest, &src, pitch, width, height, bits_per_sample));
 
                 // All output values should be the same as input
                 for &pixel in &dest {

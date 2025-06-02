@@ -26,8 +26,8 @@ use std::num::{NonZeroU8, NonZeroUsize};
 /// - `height`: Height of the image in pixels
 /// - `_bits_per_sample`: Unused parameter for API consistency
 pub fn refine_horizontal_bilinear<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
@@ -38,14 +38,14 @@ pub fn refine_horizontal_bilinear<T: Pixel>(
             if crate::util::has_avx2() {
                 // SAFETY: We check for AVX2 first
                 unsafe {
-                    avx2::refine_horizontal_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+                    avx2::refine_horizontal_bilinear(dest, src, pitch, width, height, _bits_per_sample);
                 }
                 return;
             }
         }
     }
 
-    rust::refine_horizontal_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+    rust::refine_horizontal_bilinear(dest, src, pitch, width, height, _bits_per_sample);
 }
 
 /// Performs vertical bilinear interpolation for sub-pixel motion estimation refinement.
@@ -65,8 +65,8 @@ pub fn refine_horizontal_bilinear<T: Pixel>(
 /// - `height`: Height of the image in pixels
 /// - `_bits_per_sample`: Unused parameter for API consistency
 pub fn refine_vertical_bilinear<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
@@ -77,14 +77,14 @@ pub fn refine_vertical_bilinear<T: Pixel>(
             if crate::util::has_avx2() {
                 // SAFETY: We check for AVX2 first
                 unsafe {
-                    avx2::refine_vertical_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+                    avx2::refine_vertical_bilinear(dest, src, pitch, width, height, _bits_per_sample);
                 }
                 return;
             }
         }
     }
 
-    rust::refine_vertical_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+    rust::refine_vertical_bilinear(dest, src, pitch, width, height, _bits_per_sample);
 }
 
 /// Performs diagonal bilinear interpolation for sub-pixel motion estimation refinement.
@@ -104,8 +104,8 @@ pub fn refine_vertical_bilinear<T: Pixel>(
 /// - `height`: Height of the image in pixels
 /// - `_bits_per_sample`: Unused parameter for API consistency
 pub fn refine_diagonal_bilinear<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
@@ -116,12 +116,12 @@ pub fn refine_diagonal_bilinear<T: Pixel>(
             if crate::util::has_avx2() {
                 // SAFETY: We check for AVX2 first
                 unsafe {
-                    avx2::refine_diagonal_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+                    avx2::refine_diagonal_bilinear(dest, src, pitch, width, height, _bits_per_sample);
                 }
                 return;
             }
         }
     }
 
-    rust::refine_diagonal_bilinear(src, dest, pitch, width, height, _bits_per_sample);
+    rust::refine_diagonal_bilinear(dest, src, pitch, width, height, _bits_per_sample);
 }

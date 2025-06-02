@@ -22,8 +22,8 @@ use crate::util::Pixel;
 /// - `height`: Height of the image in pixels
 /// - `bits_per_sample`: Bit depth of the pixel format for clamping
 pub fn refine_horizontal_bicubic<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
@@ -81,8 +81,8 @@ pub fn refine_horizontal_bicubic<T: Pixel>(
 /// - `height`: Height of the image in pixels
 /// - `bits_per_sample`: Bit depth of the pixel format for clamping
 pub fn refine_vertical_bicubic<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,

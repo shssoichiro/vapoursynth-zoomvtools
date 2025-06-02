@@ -19,7 +19,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Check interpolated values
                 assert_eq!(dest[0], 15); // (10 + 20).div_ceil(2) = 15
@@ -40,7 +40,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Should copy unchanged since there's no horizontal interpolation possible
                 assert_eq!(dest, src);
@@ -56,7 +56,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 assert_eq!(dest[0], 2); // (1 + 2).div_ceil(2) = 2 (rounds up)
                 assert_eq!(dest[1], 2); // Last column unchanged
@@ -77,7 +77,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Should ignore padding values and only process actual image data
                 assert_eq!(dest[0], 15); // (10 + 20).div_ceil(2) = 15
@@ -96,7 +96,7 @@ macro_rules! horizontal_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 assert_eq!(dest[0], 50); // (0 + 100).div_ceil(2) = 50
                 assert_eq!(dest[3], 50); // (50 + 50).div_ceil(2) = 50
@@ -118,7 +118,7 @@ macro_rules! vertical_tests {
                 let height = NonZeroUsize::new(3).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_vertical_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Check interpolated values
                 assert_eq!(dest[0], 20); // (10 + 30).div_ceil(2) = 20
@@ -140,7 +140,7 @@ macro_rules! vertical_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_vertical_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Should copy unchanged since there's no vertical interpolation possible
                 assert_eq!(dest, src);
@@ -156,7 +156,7 @@ macro_rules! vertical_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_vertical_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 assert_eq!(dest[0], 3); // (1 + 4).div_ceil(2) = 3 (rounds up)
                 assert_eq!(dest[1], 4); // (2 + 5).div_ceil(2) = 4 (rounds up)
@@ -175,7 +175,7 @@ macro_rules! vertical_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(16).unwrap();
 
-                refine_horizontal_bilinear(&src_u16, &mut dest_u16, pitch, width, height, bits);
+                refine_horizontal_bilinear(&mut dest_u16, &src_u16, pitch, width, height, bits);
 
                 assert_eq!(dest_u16[0], 150); // (100 + 200).div_ceil(2) = 150
                 assert_eq!(dest_u16[1], 250); // (200 + 300).div_ceil(2) = 250
@@ -183,7 +183,7 @@ macro_rules! vertical_tests {
 
                 // Test vertical with same data
                 dest_u16.fill(0);
-                refine_vertical_bilinear(&src_u16, &mut dest_u16, pitch, width, height, bits);
+                refine_vertical_bilinear(&mut dest_u16, &src_u16, pitch, width, height, bits);
 
                 assert_eq!(dest_u16[0], 250); // (100 + 400).div_ceil(2) = 250
                 assert_eq!(dest_u16[1], 350); // (200 + 500).div_ceil(2) = 350
@@ -211,7 +211,7 @@ macro_rules! diagonal_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_diagonal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // For position [0,0]: (10 + 20 + 40 + 50 + 2) / 4 = 122 / 4 = 30
                 assert_eq!(dest[0], 30);
@@ -241,7 +241,7 @@ macro_rules! diagonal_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(16).unwrap();
 
-                verify_asm!($module, refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_diagonal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // For position [0,0]: (10 + 20 + 40 + 50 + 2) / 4 = 122 / 4 = 30
                 assert_eq!(dest[0], 30);
@@ -269,7 +269,7 @@ macro_rules! diagonal_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_diagonal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // For single pixel: (42 + 0 + 0 + 0 + 2) / 4 = 44 / 4 = 11
                 // However, the actual result is 21, accounting for implementation details
@@ -286,7 +286,7 @@ macro_rules! diagonal_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_diagonal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // (1 + 2 + 3 + 4 + 2) / 4 = 12 / 4 = 3
                 assert_eq!(dest[0], 3);
@@ -303,7 +303,7 @@ macro_rules! diagonal_tests {
                 let bits = NonZeroU8::new(8).unwrap();
 
                 // This should not panic or overflow
-                verify_asm!($module, refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_diagonal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Verify values are reasonable (exact calculation: (254 + 255 + 253 + 252 + 2)
                 // / 4 = 254)
@@ -321,7 +321,7 @@ macro_rules! diagonal_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_diagonal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // (0 + 100 + 50 + 50 + 2) / 4 = 202 / 4 = 50
                 assert_eq!(dest[0], 50);
@@ -352,7 +352,7 @@ macro_rules! simd_coverage_tests {
                 let height = NonZeroUsize::new(3).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Verify SIMD and scalar results are consistent
                 for j in 0..3 {
@@ -385,7 +385,7 @@ macro_rules! simd_coverage_tests {
                 let height = NonZeroUsize::new(5).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_vertical_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Verify SIMD and scalar results are consistent
                 for j in 0..4 { // height - 1
@@ -420,7 +420,7 @@ macro_rules! simd_coverage_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(16).unwrap();
 
-                refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits);
+                refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits);
 
                 // Verify SIMD and scalar results are consistent
                 for j in 0..2 {
@@ -453,7 +453,7 @@ macro_rules! simd_coverage_tests {
                 let height = NonZeroUsize::new(5).unwrap();
                 let bits = NonZeroU8::new(16).unwrap();
 
-                verify_asm!($module, refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_vertical_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Verify SIMD and scalar results are consistent
                 for j in 0..4 { // height - 1
@@ -480,7 +480,7 @@ macro_rules! simd_coverage_tests {
                 let height = NonZeroUsize::new(3).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Check that all interpolations are correct
                 assert_eq!(dest[0], 15); // (10 + 20) / 2 = 15
@@ -501,7 +501,7 @@ macro_rules! simd_coverage_tests {
                 let height = NonZeroUsize::new(2).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 assert_eq!(dest[0], 128); // (0 + 255) / 2 = 127.5 -> 128 (rounded up)
                 assert_eq!(dest[1], 192); // (255 + 128) / 2 = 191.5 -> 192 (rounded up)
@@ -536,7 +536,7 @@ macro_rules! simd_coverage_tests {
                 let height = NonZeroUsize::new(5).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_diagonal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_diagonal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Verify first few main diagonal calculations based on actual implementation
                 // Position [0,0]: (0 + 1 + 10 + 11 + 2) / 4 = 24 / 4 = 6
@@ -563,7 +563,7 @@ macro_rules! simd_coverage_tests {
                 let height = NonZeroUsize::new(3).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Verify the function correctly handles pitch > width
                 assert_eq!(dest[0], 15); // (10 + 20) / 2 = 15
@@ -591,14 +591,14 @@ macro_rules! edge_case_tests {
                 let mut dest = vec![0u8; 4];
 
                 // Test horizontal
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest,
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src,
                     NonZeroUsize::new(1).unwrap(), NonZeroUsize::new(1).unwrap(),
                     NonZeroUsize::new(1).unwrap(), NonZeroU8::new(8).unwrap()));
                 assert_eq!(dest[0], 42); // Single pixel should be unchanged
 
                 // Reset and test vertical
                 dest.fill(0);
-                verify_asm!($module, refine_vertical_bilinear(&src, &mut dest,
+                verify_asm!($module, refine_vertical_bilinear(&mut dest, &src,
                     NonZeroUsize::new(1).unwrap(), NonZeroUsize::new(1).unwrap(),
                     NonZeroUsize::new(1).unwrap(), NonZeroU8::new(8).unwrap()));
                 assert_eq!(dest[0], 42); // Single pixel should be unchanged
@@ -620,7 +620,7 @@ macro_rules! edge_case_tests {
                 let height = NonZeroUsize::new(1).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_horizontal_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_horizontal_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Every interpolated position should be 150 (average of 100 and 200)
                 for i in 0..63 { // width - 1
@@ -646,7 +646,7 @@ macro_rules! edge_case_tests {
                 let height = NonZeroUsize::new(64).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
-                verify_asm!($module, refine_vertical_bilinear(&src, &mut dest, pitch, width, height, bits));
+                verify_asm!($module, refine_vertical_bilinear(&mut dest, &src, pitch, width, height, bits));
 
                 // Every interpolated position should be 100 (average of 50 and 150)
                 for i in 0..63 { // height - 1
@@ -675,9 +675,9 @@ macro_rules! edge_case_tests {
                 let bits = NonZeroU8::new(8).unwrap();
 
                 unsafe {
-                    super::$module::refine_horizontal_bilinear(&src, &mut dest_h, pitch, width, height, bits);
-                    super::$module::refine_vertical_bilinear(&src, &mut dest_v, pitch, width, height, bits);
-                    super::$module::refine_diagonal_bilinear(&src, &mut dest_d, pitch, width, height, bits);
+                    super::$module::refine_horizontal_bilinear(&mut dest_h, &src, pitch, width, height, bits);
+                    super::$module::refine_vertical_bilinear(&mut dest_v, &src, pitch, width, height, bits);
+                    super::$module::refine_diagonal_bilinear(&mut dest_d, &src, pitch, width, height, bits);
                 }
 
                 // All functions should handle boundary conditions correctly

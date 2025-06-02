@@ -297,8 +297,8 @@ pub fn bench_refine_horizontal_bilinear_8bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_horizontal_bilinear(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -321,8 +321,8 @@ pub fn bench_refine_horizontal_bilinear_16bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_horizontal_bilinear(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -345,8 +345,8 @@ pub fn bench_refine_vertical_bilinear_8bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_vertical_bilinear(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -369,8 +369,8 @@ pub fn bench_refine_vertical_bilinear_16bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_vertical_bilinear(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -395,8 +395,8 @@ pub fn bench_refine_diagonal_bilinear_8bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_diagonal_bilinear(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(NonZeroUsize::new(padded_width).unwrap()),
                 black_box(resolution),
                 black_box(resolution),
@@ -421,8 +421,8 @@ pub fn bench_refine_diagonal_bilinear_16bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_diagonal_bilinear(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(NonZeroUsize::new(padded_width).unwrap()),
                 black_box(resolution),
                 black_box(resolution),
@@ -445,8 +445,8 @@ pub fn bench_refine_horizontal_bicubic_8bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_horizontal_bicubic(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -469,8 +469,8 @@ pub fn bench_refine_horizontal_bicubic_16bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_horizontal_bicubic(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -493,8 +493,8 @@ pub fn bench_refine_vertical_bicubic_8bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_vertical_bicubic(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -517,8 +517,8 @@ pub fn bench_refine_vertical_bicubic_16bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_vertical_bicubic(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -541,8 +541,8 @@ pub fn bench_refine_horizontal_wiener_8bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_horizontal_wiener(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -565,8 +565,8 @@ pub fn bench_refine_horizontal_wiener_16bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_horizontal_wiener(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -589,8 +589,8 @@ pub fn bench_refine_vertical_wiener_8bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_vertical_wiener(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -613,8 +613,8 @@ pub fn bench_refine_vertical_wiener_16bit(c: &mut Criterion) {
 
         b.iter(|| {
             refine_vertical_wiener(
-                black_box(&src),
                 black_box(&mut dest),
+                black_box(&src),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),

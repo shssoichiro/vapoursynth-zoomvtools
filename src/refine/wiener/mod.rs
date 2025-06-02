@@ -28,8 +28,8 @@ use std::num::{NonZeroU8, NonZeroUsize};
 /// - `height`: Height of the image in pixels
 /// - `bits_per_sample`: Bit depth of the pixel format for clamping
 pub fn refine_horizontal_wiener<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
@@ -45,14 +45,14 @@ pub fn refine_horizontal_wiener<T: Pixel>(
             if crate::util::has_avx2() {
                 // SAFETY: We check for AVX2 first
                 unsafe {
-                    avx2::refine_horizontal_wiener(src, dest, pitch, width, height, bits_per_sample);
+                    avx2::refine_horizontal_wiener(dest, src, pitch, width, height, bits_per_sample);
                 }
                 return;
             }
         }
     }
 
-    rust::refine_horizontal_wiener(src, dest, pitch, width, height, bits_per_sample);
+    rust::refine_horizontal_wiener(dest, src, pitch, width, height, bits_per_sample);
 }
 
 /// Performs vertical Wiener filtering for sub-pixel motion estimation refinement.
@@ -74,8 +74,8 @@ pub fn refine_horizontal_wiener<T: Pixel>(
 /// - `height`: Height of the image in pixels
 /// - `bits_per_sample`: Bit depth of the pixel format for clamping
 pub fn refine_vertical_wiener<T: Pixel>(
-    src: &[T],
     dest: &mut [T],
+    src: &[T],
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
@@ -91,12 +91,12 @@ pub fn refine_vertical_wiener<T: Pixel>(
             if crate::util::has_avx2() {
                 // SAFETY: We check for AVX2 first
                 unsafe {
-                    avx2::refine_vertical_wiener(src, dest, pitch, width, height, bits_per_sample);
+                    avx2::refine_vertical_wiener(dest, src, pitch, width, height, bits_per_sample);
                 }
                 return;
             }
         }
     }
 
-    rust::refine_vertical_wiener(src, dest, pitch, width, height, bits_per_sample);
+    rust::refine_vertical_wiener(dest, src, pitch, width, height, bits_per_sample);
 }

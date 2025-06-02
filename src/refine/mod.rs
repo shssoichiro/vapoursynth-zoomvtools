@@ -20,7 +20,7 @@ use crate::{mv_plane::MVPlane, pad::pad_reference_frame, util::Pixel};
 /// This type alias defines the signature for all refinement functions that perform
 /// sub-pixel interpolation for motion estimation. All refinement functions follow
 /// this common interface for consistency and interchangeability.
-pub type RefineFn<T> = fn(&[T], &mut [T], NonZeroUsize, NonZeroUsize, NonZeroUsize, NonZeroU8);
+pub type RefineFn<T> = fn(&mut [T], &[T], NonZeroUsize, NonZeroUsize, NonZeroUsize, NonZeroU8);
 
 impl MVPlane {
     /// Refines motion vector plane to half-pixel precision using 2x upsampled reference.
