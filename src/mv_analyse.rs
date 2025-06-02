@@ -540,8 +540,43 @@ impl<'core> Filter<'core> for Analyse<'core> {
         context: vapoursynth::plugins::FrameContext,
         n: usize,
     ) -> std::result::Result<Option<vapoursynth::prelude::FrameRef<'core>>, anyhow::Error> {
-        self.node.request_frame_filter(context, n);
-        todo!();
+        if self.analysis_data.delta_frame > 0 {
+            let offset = if self.analysis_data.is_backward {
+                self.analysis_data.delta_frame
+            } else {
+                -self.analysis_data.delta_frame
+            };
+            let nref = n as isize + offset;
+
+            if nref >= 0 && (nref as usize) < self.node.info().num_frames {
+                let nref = nref as usize;
+                if n < nref {
+                    self.node.request_frame_filter(context, n);
+                    self.node.request_frame_filter(context, nref);
+                } else {
+                    self.node.request_frame_filter(context, nref);
+                    self.node.request_frame_filter(context, n);
+                }
+            } else {
+                // too close to beginning/end of clip
+                self.node.request_frame_filter(context, n);
+            }
+        } else {
+            // special static mode
+
+            // positive fixed frame number
+            let nref = -self.analysis_data.delta_frame;
+            debug_assert!(nref >= 0);
+            let nref = nref as usize;
+
+            if n < nref {
+                self.node.request_frame_filter(context, n);
+                self.node.request_frame_filter(context, nref);
+            } else {
+                self.node.request_frame_filter(context, nref);
+                self.node.request_frame_filter(context, n);
+            }
+        }
         Ok(None)
     }
 
