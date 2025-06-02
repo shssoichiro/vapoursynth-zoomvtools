@@ -448,6 +448,323 @@ macro_rules! create_tests {
                 assert_ne!(dest[4], 0); // Second row should have been modified
                 assert_ne!(dest[8], 0); // Third row should have been modified
             }
+
+            #[test]
+            fn [<test_reduce_bilinear_u8_large_simd_ $module>]() {
+                // Test large enough to trigger SIMD processing (64x2 -> 32x1)
+                // This ensures we cover the SIMD loop in vertical reduction for AVX2 implementation
+                let mut src = Vec::new();
+
+                // First row: 64 pixels with values 0-63
+                for i in 0..64u8 {
+                    src.push(i);
+                }
+
+                // Second row: 64 pixels with values 64-127
+                for i in 64..128u8 {
+                    src.push(i);
+                }
+
+                // Destination buffer needs intermediate width of 64 (dest_width*2)
+                let mut dest = vec![0u8; 64];
+                let src_pitch = NonZeroUsize::new(64).unwrap();
+                let dest_pitch = NonZeroUsize::new(64).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(32).unwrap();
+                let dest_height = NonZeroUsize::new(1).unwrap();
+
+                unsafe { super::$module::reduce_bilinear(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ); }
+
+                // Verify the bilinear filtering results
+                // Step 1: Vertical reduction creates intermediate array with width=64
+                let mut intermediate = vec![0u8; 64];
+                for i in 0..64usize {
+                    let a = src[i] as u32; // First row
+                    let b = src[64 + i] as u32; // Second row
+                    intermediate[i] = ((a + b + 1) / 2) as u8;
+                }
+
+                // Step 2: Horizontal reduction processes the intermediate array
+                for i in 0..32usize {
+                    let expected = if i == 0 {
+                        // First pixel: (a + b + 1) / 2
+                        let a = intermediate[0] as u32;
+                        let b = intermediate[1] as u32;
+                        ((a + b + 1) / 2) as u8
+                    } else if i == 31 {
+                        // Last pixel: (a + b + 1) / 2
+                        let a = intermediate[62] as u32;
+                        let b = intermediate[63] as u32;
+                        ((a + b + 1) / 2) as u8
+                    } else {
+                        // Middle pixels: (a + (b + c) * 3 + d + 4) / 8
+                        let a = intermediate[i * 2 - 1] as u32;
+                        let b = intermediate[i * 2] as u32;
+                        let c = intermediate[i * 2 + 1] as u32;
+                        let d = intermediate[i * 2 + 2] as u32;
+                        ((a + (b + c) * 3 + d + 4) / 8) as u8
+                    };
+
+                    assert_eq!(dest[i], expected, "Mismatch at position {}", i);
+                }
+            }
+
+            #[test]
+            fn [<test_reduce_bilinear_u8_large_simd_middle_lines_ $module>]() {
+                // Test large enough to trigger SIMD processing for middle lines (64x6 -> 32x3)
+                // This ensures we cover the complex weighted SIMD loop in vertical reduction
+                let mut src = Vec::new();
+
+                // Create 6 rows of 64 pixels each with incrementing values
+                // Keep values small to avoid overflow (max value will be 5*40+39 = 239)
+                for row in 0..6u8 {
+                    for col in 0..64u8 {
+                        src.push(row * 40 + (col % 40));
+                    }
+                }
+
+                // Destination buffer needs intermediate width of 64 (dest_width*2) and height of 3
+                let mut dest = vec![0u8; 192]; // 64 width * 3 height
+                let src_pitch = NonZeroUsize::new(64).unwrap();
+                let dest_pitch = NonZeroUsize::new(64).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(32).unwrap();
+                let dest_height = NonZeroUsize::new(3).unwrap();
+
+                unsafe { super::$module::reduce_bilinear(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ); }
+
+                // Verify the vertical reduction (which creates intermediate values)
+                // Row 0 (y=0): Simple averaging of src rows 0 and 1
+                // Row 1 (y=1): Weighted interpolation of src rows 0, 2, 4, 6 (this triggers the SIMD loop)
+                // Row 2 (y=2): Simple averaging of src rows 4 and 5
+
+                // Test a few key positions to ensure the middle line SIMD processing worked
+                // We mainly want to ensure no crashes and reasonable values
+                for y in 0..3usize {
+                    for x in 0..32usize {
+                        let dest_idx = y * 64 + x;
+                        assert_ne!(dest[dest_idx], 0, "Row {} pixel {} should have been processed", y, x);
+
+                        // Values should be within reasonable range based on input
+                        let max_input = (5 * 40 + 39) as u8; // Maximum input value
+                        assert!(dest[dest_idx] <= max_input, "Row {} pixel {} value {} exceeds maximum", y, x, dest[dest_idx]);
+                    }
+                }
+
+                // The middle row should have different values than edge rows due to weighted interpolation
+                let first_row_sample = dest[0];
+                let middle_row_sample = dest[64]; // Second row
+                let last_row_sample = dest[128]; // Third row
+
+                // These should be different due to different interpolation methods
+                assert_ne!(first_row_sample, middle_row_sample, "First and middle rows should differ");
+                assert_ne!(middle_row_sample, last_row_sample, "Middle and last rows should differ");
+            }
+
+            #[test]
+            fn [<test_reduce_bilinear_u16_large_simd_ $module>]() {
+                // Test large enough to trigger SIMD processing for u16 (32x2 -> 16x1)
+                // This ensures we cover the u16 SIMD loop in vertical reduction for AVX2 implementation
+                let mut src = Vec::new();
+
+                // First row: 32 pixels with values 0-31 scaled to u16 range
+                for i in 0..32u16 {
+                    src.push(i * 1000);
+                }
+
+                // Second row: 32 pixels with values 32-63 scaled to u16 range
+                for i in 32..64u16 {
+                    src.push(i * 1000);
+                }
+
+                // Destination buffer needs intermediate width of 32 (dest_width*2)
+                let mut dest = vec![0u16; 32];
+                let src_pitch = NonZeroUsize::new(32).unwrap();
+                let dest_pitch = NonZeroUsize::new(32).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(16).unwrap();
+                let dest_height = NonZeroUsize::new(1).unwrap();
+
+                unsafe { super::$module::reduce_bilinear(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ); }
+
+                // Verify the bilinear filtering results
+                // Step 1: Vertical reduction creates intermediate array with width=32
+                let mut intermediate = vec![0u16; 32];
+                for i in 0..32usize {
+                    let a = src[i] as u32; // First row
+                    let b = src[32 + i] as u32; // Second row
+                    intermediate[i] = ((a + b + 1) / 2) as u16;
+                }
+
+                // Step 2: Horizontal reduction processes the intermediate array
+                for i in 0..16usize {
+                    let expected = if i == 0 {
+                        // First pixel: (a + b + 1) / 2
+                        let a = intermediate[0] as u32;
+                        let b = intermediate[1] as u32;
+                        ((a + b + 1) / 2) as u16
+                    } else if i == 15 {
+                        // Last pixel: (a + b + 1) / 2
+                        let a = intermediate[30] as u32;
+                        let b = intermediate[31] as u32;
+                        ((a + b + 1) / 2) as u16
+                    } else {
+                        // Middle pixels: (a + (b + c) * 3 + d + 4) / 8
+                        let a = intermediate[i * 2 - 1] as u32;
+                        let b = intermediate[i * 2] as u32;
+                        let c = intermediate[i * 2 + 1] as u32;
+                        let d = intermediate[i * 2 + 2] as u32;
+                        ((a + (b + c) * 3 + d + 4) / 8) as u16
+                    };
+
+                    assert_eq!(dest[i], expected, "Mismatch at position {}", i);
+                }
+            }
+
+            #[test]
+            fn [<test_reduce_bilinear_u16_large_simd_middle_lines_ $module>]() {
+                // Test large enough to trigger SIMD processing for u16 middle lines (32x6 -> 16x3)
+                // This ensures we cover the complex weighted u16 SIMD loop in vertical reduction
+                let mut src = Vec::new();
+
+                // Create 6 rows of 32 pixels each with incrementing values
+                // Keep values reasonable to avoid overflow (max value will be 5*8000+31*200 = 46200)
+                for row in 0..6u16 {
+                    for col in 0..32u16 {
+                        src.push(row * 8000 + col * 200);
+                    }
+                }
+
+                // Destination buffer needs intermediate width of 32 (dest_width*2) and height of 3
+                let mut dest = vec![0u16; 96]; // 32 width * 3 height
+                let src_pitch = NonZeroUsize::new(32).unwrap();
+                let dest_pitch = NonZeroUsize::new(32).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(16).unwrap();
+                let dest_height = NonZeroUsize::new(3).unwrap();
+
+                unsafe { super::$module::reduce_bilinear(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ); }
+
+                // Verify the vertical reduction (which creates intermediate values)
+                // Row 0 (y=0): Simple averaging of src rows 0 and 1
+                // Row 1 (y=1): Weighted interpolation of src rows 0, 2, 4, 6 (this triggers the SIMD loop)
+                // Row 2 (y=2): Simple averaging of src rows 4 and 5
+
+                // Test a few key positions to ensure the middle line SIMD processing worked
+                // We mainly want to ensure no crashes and reasonable values
+                for y in 0..3usize {
+                    for x in 0..16usize {
+                        let dest_idx = y * 32 + x;
+                        assert_ne!(dest[dest_idx], 0, "Row {} pixel {} should have been processed", y, x);
+
+                        // Values should be within reasonable range based on input
+                        let max_input = (5 * 8000 + 31 * 200) as u16; // Maximum input value
+                        assert!(dest[dest_idx] <= max_input, "Row {} pixel {} value {} exceeds maximum", y, x, dest[dest_idx]);
+                    }
+                }
+
+                // The middle row should have different values than edge rows due to weighted interpolation
+                let first_row_sample = dest[0];
+                let middle_row_sample = dest[32]; // Second row
+                let last_row_sample = dest[64]; // Third row
+
+                // These should be different due to different interpolation methods
+                assert_ne!(first_row_sample, middle_row_sample, "First and middle rows should differ");
+                assert_ne!(middle_row_sample, last_row_sample, "Middle and last rows should differ");
+            }
+
+            #[test]
+            fn [<test_reduce_bilinear_u16_scalar_fallback_ $module>]() {
+                // Test with width not divisible by 16 to trigger scalar fallback (36x6 -> 18x3)
+                // This ensures we cover the scalar fallback code in u16 middle lines processing
+                let mut src = Vec::new();
+
+                // Create 6 rows of 36 pixels each with incrementing values
+                // Keep values reasonable to avoid overflow
+                for row in 0..6u16 {
+                    for col in 0..36u16 {
+                        src.push(row * 5000 + col * 100);
+                    }
+                }
+
+                // Destination buffer needs intermediate width of 36 (dest_width*2) and height of 3
+                let mut dest = vec![0u16; 108]; // 36 width * 3 height
+                let src_pitch = NonZeroUsize::new(36).unwrap();
+                let dest_pitch = NonZeroUsize::new(36).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(18).unwrap(); // Not divisible by 16!
+                let dest_height = NonZeroUsize::new(3).unwrap();
+
+                unsafe { super::$module::reduce_bilinear(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ); }
+
+                // Test all positions including the scalar fallback regions
+                // SIMD processes pixels 0-15, scalar fallback handles pixels 16-17
+                for y in 0..3usize {
+                    for x in 0..18usize {
+                        let dest_idx = y * 36 + x;
+                        assert_ne!(dest[dest_idx], 0, "Row {} pixel {} should have been processed", y, x);
+
+                        // Values should be within reasonable range based on input
+                        let max_input = (5 * 5000 + 35 * 100) as u16; // Maximum input value
+                        assert!(dest[dest_idx] <= max_input, "Row {} pixel {} value {} exceeds maximum", y, x, dest[dest_idx]);
+                    }
+                }
+
+                // Verify that the scalar fallback pixels (16-17) were processed correctly
+                // These should have reasonable values, not zero
+                let middle_row_simd_end = dest[32 + 15]; // Last SIMD-processed pixel in middle row
+                let middle_row_scalar_1 = dest[32 + 16]; // First scalar-processed pixel in middle row
+                let middle_row_scalar_2 = dest[32 + 17]; // Second scalar-processed pixel in middle row
+
+                assert_ne!(middle_row_scalar_1, 0, "First scalar fallback pixel should be processed");
+                assert_ne!(middle_row_scalar_2, 0, "Second scalar fallback pixel should be processed");
+
+                // The scalar pixels should have reasonable values relative to SIMD pixels
+                // (This is a rough sanity check, not an exact calculation)
+                let diff1 = if middle_row_scalar_1 > middle_row_simd_end {
+                    middle_row_scalar_1 - middle_row_simd_end
+                } else {
+                    middle_row_simd_end - middle_row_scalar_1
+                };
+                assert!(diff1 < 10000, "Scalar fallback pixel 1 should have reasonable value relative to SIMD");
+
+                let diff2 = if middle_row_scalar_2 > middle_row_scalar_1 {
+                    middle_row_scalar_2 - middle_row_scalar_1
+                } else {
+                    middle_row_scalar_1 - middle_row_scalar_2
+                };
+                assert!(diff2 < 10000, "Scalar fallback pixel 2 should have reasonable value relative to previous");
+            }
         }
     };
 }

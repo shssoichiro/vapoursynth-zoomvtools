@@ -118,8 +118,8 @@ unsafe fn reduce_bilinear_vertical_u8(
 
     // Handle remaining pixels
     while x < dest_width {
-        let a = *src_ptr.add(x) as u32;
-        let b = *src_ptr.add(x + src_pitch) as u32;
+        let a = *src_ptr.add(x) as u16;
+        let b = *src_ptr.add(x + src_pitch) as u16;
         *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
         x += 1;
     }
@@ -181,10 +181,10 @@ unsafe fn reduce_bilinear_vertical_u8(
 
         // Handle remaining pixels
         while x < dest_width {
-            let a = *src_ptr.add(src_row_offset + x - src_pitch) as u32;
-            let b = *src_ptr.add(src_row_offset + x) as u32;
-            let c = *src_ptr.add(src_row_offset + x + src_pitch) as u32;
-            let d = *src_ptr.add(src_row_offset + x + src_pitch * 2) as u32;
+            let a = *src_ptr.add(src_row_offset + x - src_pitch) as u16;
+            let b = *src_ptr.add(src_row_offset + x) as u16;
+            let c = *src_ptr.add(src_row_offset + x + src_pitch) as u16;
+            let d = *src_ptr.add(src_row_offset + x + src_pitch * 2) as u16;
             *dest_ptr.add(x) = ((a + (b + c) * 3 + d + 4) / 8) as u8;
             x += 1;
         }
@@ -224,8 +224,8 @@ unsafe fn reduce_bilinear_vertical_u8(
 
         // Handle remaining pixels
         while x < dest_width {
-            let a = *src_ptr.add(src_row_offset + x) as u32;
-            let b = *src_ptr.add(src_row_offset + x + src_pitch) as u32;
+            let a = *src_ptr.add(src_row_offset + x) as u16;
+            let b = *src_ptr.add(src_row_offset + x + src_pitch) as u16;
             *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
             x += 1;
         }
@@ -247,8 +247,8 @@ unsafe fn reduce_bilinear_horizontal_inplace_u8(
 
     for _y in 0..dest_height {
         // Special case start of line: (a + b + 1) / 2
-        let a = *dest_ptr as u32;
-        let b = *dest_ptr.add(1) as u32;
+        let a = *dest_ptr as u16;
+        let b = *dest_ptr.add(1) as u16;
         let src0 = ((a + b + 1) / 2) as u8;
 
         // Middle of line: (a + (b + c) * 3 + d + 4) / 8
@@ -263,10 +263,10 @@ unsafe fn reduce_bilinear_horizontal_inplace_u8(
 
             for i in 0..16 {
                 let idx = x + i;
-                let a = *dest_ptr.add(idx * 2 - 1) as u32;
-                let b = *dest_ptr.add(idx * 2) as u32;
-                let c = *dest_ptr.add(idx * 2 + 1) as u32;
-                let d = *dest_ptr.add(idx * 2 + 2) as u32;
+                let a = *dest_ptr.add(idx * 2 - 1) as u16;
+                let b = *dest_ptr.add(idx * 2) as u16;
+                let c = *dest_ptr.add(idx * 2 + 1) as u16;
+                let d = *dest_ptr.add(idx * 2 + 2) as u16;
                 results[i] = ((a + (b + c) * 3 + d + 4) / 8) as u8;
             }
 
@@ -280,10 +280,10 @@ unsafe fn reduce_bilinear_horizontal_inplace_u8(
 
         // Handle remaining middle pixels
         while x < dest_width - 1 {
-            let a = *dest_ptr.add(x * 2 - 1) as u32;
-            let b = *dest_ptr.add(x * 2) as u32;
-            let c = *dest_ptr.add(x * 2 + 1) as u32;
-            let d = *dest_ptr.add(x * 2 + 2) as u32;
+            let a = *dest_ptr.add(x * 2 - 1) as u16;
+            let b = *dest_ptr.add(x * 2) as u16;
+            let c = *dest_ptr.add(x * 2 + 1) as u16;
+            let d = *dest_ptr.add(x * 2 + 2) as u16;
             *dest_ptr.add(x) = ((a + (b + c) * 3 + d + 4) / 8) as u8;
             x += 1;
         }
@@ -293,8 +293,8 @@ unsafe fn reduce_bilinear_horizontal_inplace_u8(
         // Special case end of line: (a + b + 1) / 2
         if dest_width > 1 {
             let x = dest_width - 1;
-            let a = *dest_ptr.add(x * 2) as u32;
-            let b = *dest_ptr.add(x * 2 + 1) as u32;
+            let a = *dest_ptr.add(x * 2) as u16;
+            let b = *dest_ptr.add(x * 2 + 1) as u16;
             *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
         }
 
