@@ -20,6 +20,7 @@ use crate::{
     util::Pixel,
 };
 
+#[derive(Debug)]
 pub struct Analyse<'core> {
     /// Super clip
     node: Node<'core>,
