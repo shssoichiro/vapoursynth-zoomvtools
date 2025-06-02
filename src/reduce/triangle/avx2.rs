@@ -114,8 +114,8 @@ unsafe fn reduce_triangle_vertical_u8(
 
     // Handle remaining pixels
     while x < width_usize {
-        let a = *src.add(x) as u32;
-        let b = *src.add(x + src_pitch_usize) as u32;
+        let a = *src.add(x) as u16;
+        let b = *src.add(x + src_pitch_usize) as u16;
         *dest.add(x) = ((a + b + 1) / 2) as u8;
         x += 1;
     }
@@ -159,9 +159,9 @@ unsafe fn reduce_triangle_vertical_u8(
 
         // Handle remaining pixels
         while x < width_usize {
-            let a = *src.add(src_offset + x - src_pitch_usize) as u32;
-            let b = *src.add(src_offset + x) as u32;
-            let c = *src.add(src_offset + x + src_pitch_usize) as u32;
+            let a = *src.add(src_offset + x - src_pitch_usize) as u16;
+            let b = *src.add(src_offset + x) as u16;
+            let c = *src.add(src_offset + x + src_pitch_usize) as u16;
             *dest.add(dest_offset + x) = ((a + b * 2 + c + 2) / 4) as u8;
             x += 1;
         }
@@ -183,8 +183,8 @@ unsafe fn reduce_triangle_horizontal_inplace_u8(
         let row_offset = y * dest_pitch_usize;
 
         // First pixel: simple average
-        let b = *dest.add(row_offset) as u32;
-        let c = *dest.add(row_offset + 1) as u32;
+        let b = *dest.add(row_offset) as u16;
+        let c = *dest.add(row_offset + 1) as u16;
         let src0 = ((b + c + 1) / 2) as u8;
 
         // Process remaining pixels with triangle filter
@@ -197,9 +197,9 @@ unsafe fn reduce_triangle_horizontal_inplace_u8(
             // Load in chunks and process individually to avoid complex shuffles
             for i in 0..16.min(width_usize - x) {
                 let pixel_offset = data_offset + i * 2;
-                let a = *dest.add(pixel_offset) as u32;
-                let b = *dest.add(pixel_offset + 1) as u32;
-                let c = *dest.add(pixel_offset + 2) as u32;
+                let a = *dest.add(pixel_offset) as u16;
+                let b = *dest.add(pixel_offset + 1) as u16;
+                let c = *dest.add(pixel_offset + 2) as u16;
                 *dest.add(row_offset + x + i) = ((a + b * 2 + c + 2) / 4) as u8;
             }
             x += 16;
@@ -208,9 +208,9 @@ unsafe fn reduce_triangle_horizontal_inplace_u8(
         // Handle remaining pixels
         while x < width_usize {
             let pixel_offset = row_offset + x * 2 - 1;
-            let a = *dest.add(pixel_offset) as u32;
-            let b = *dest.add(pixel_offset + 1) as u32;
-            let c = *dest.add(pixel_offset + 2) as u32;
+            let a = *dest.add(pixel_offset) as u16;
+            let b = *dest.add(pixel_offset + 1) as u16;
+            let c = *dest.add(pixel_offset + 2) as u16;
             *dest.add(row_offset + x) = ((a + b * 2 + c + 2) / 4) as u8;
             x += 1;
         }

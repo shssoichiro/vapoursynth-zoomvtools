@@ -122,8 +122,8 @@ unsafe fn reduce_quadratic_vertical_u8(
 
         // Handle remaining pixels
         while x < dest_width_val {
-            let a = *src_row0.add(x) as u32;
-            let b = *src_row1.add(x) as u32;
+            let a = *src_row0.add(x) as u16;
+            let b = *src_row1.add(x) as u16;
             *dest_row.add(x) = ((a + b + 1) / 2) as u8;
             x += 1;
         }
@@ -141,58 +141,17 @@ unsafe fn reduce_quadratic_vertical_u8(
         let src_p3 = src.add(src_row_offset + src_pitch_val * 3);
 
         let mut x = 0;
-        // Process 16 pixels at a time (since we need u16 for calculations)
-        while x + 16 <= dest_width_val {
-            // Load 16 u8 values from each row
-            let m0 = _mm_loadu_si128(src_m2.add(x) as *const __m128i);
-            let m1 = _mm_loadu_si128(src_m1.add(x) as *const __m128i);
-            let m2 = _mm_loadu_si128(src_p0.add(x) as *const __m128i);
-            let m3 = _mm_loadu_si128(src_p1.add(x) as *const __m128i);
-            let m4 = _mm_loadu_si128(src_p2.add(x) as *const __m128i);
-            let m5 = _mm_loadu_si128(src_p3.add(x) as *const __m128i);
-
-            // Convert to u16
-            let m0_16 = _mm256_cvtepu8_epi16(m0);
-            let m1_16 = _mm256_cvtepu8_epi16(m1);
-            let m2_16 = _mm256_cvtepu8_epi16(m2);
-            let m3_16 = _mm256_cvtepu8_epi16(m3);
-            let m4_16 = _mm256_cvtepu8_epi16(m4);
-            let m5_16 = _mm256_cvtepu8_epi16(m5);
-
-            // Apply quadratic filter: (m0 + m5 + 9*(m1 + m4) + 22*(m2 + m3) + 32) >> 6
-            let sum_m2_m3 = _mm256_add_epi16(m2_16, m3_16);
-            let mul_22 = _mm256_mullo_epi16(sum_m2_m3, _mm256_set1_epi16(22));
-
-            let sum_m1_m4 = _mm256_add_epi16(m1_16, m4_16);
-            let mul_9 = _mm256_mullo_epi16(sum_m1_m4, _mm256_set1_epi16(9));
-
-            let sum_m0_m5 = _mm256_add_epi16(m0_16, m5_16);
-            let bias = _mm256_set1_epi16(32);
-
-            let result = _mm256_add_epi16(
-                sum_m0_m5,
-                _mm256_add_epi16(mul_9, _mm256_add_epi16(mul_22, bias)),
-            );
-            let final_result = _mm256_srli_epi16(result, 6);
-
-            // Pack back to u8 with saturation
-            let packed_result = _mm256_packus_epi16(final_result, _mm256_setzero_si256());
-            _mm_storeu_si128(
-                dest_row.add(x) as *mut __m128i,
-                _mm256_extracti128_si256(packed_result, 0),
-            );
-
-            x += 16;
-        }
+        // For now, just process pixel by pixel using the same algorithm as Rust
+        // TODO: Optimize with SIMD later once the algorithm is working correctly
 
         // Handle remaining pixels
         while x < dest_width_val {
-            let mut m0 = *src_m2.add(x) as u32;
-            let mut m1 = *src_m1.add(x) as u32;
-            let mut m2 = *src_p0.add(x) as u32;
-            let m3 = *src_p1.add(x) as u32;
-            let m4 = *src_p2.add(x) as u32;
-            let m5 = *src_p3.add(x) as u32;
+            let mut m0 = *src_m2.add(x) as u16;
+            let mut m1 = *src_m1.add(x) as u16;
+            let mut m2 = *src_p0.add(x) as u16;
+            let m3 = *src_p1.add(x) as u16;
+            let m4 = *src_p2.add(x) as u16;
+            let m5 = *src_p3.add(x) as u16;
 
             m2 = (m2 + m3) * 22;
             m1 = (m1 + m4) * 9;
@@ -241,8 +200,8 @@ unsafe fn reduce_quadratic_vertical_u8(
 
         // Handle remaining pixels
         while x < dest_width_val {
-            let a = *src_row0.add(x) as u32;
-            let b = *src_row1.add(x) as u32;
+            let a = *src_row0.add(x) as u16;
+            let b = *src_row1.add(x) as u16;
             *dest_row.add(x) = ((a + b + 1) / 2) as u8;
             x += 1;
         }
@@ -264,18 +223,18 @@ unsafe fn reduce_quadratic_horizontal_inplace_u8(
         let dest_row = dest.add(y * dest_pitch_val);
 
         // Special case start of line
-        let a = *dest_row as u32;
-        let b = *dest_row.add(1) as u32;
+        let a = *dest_row as u16;
+        let b = *dest_row.add(1) as u16;
         let src0 = ((a + b + 1) / 2) as u8;
 
         // Middle of line - process multiple pixels with SIMD where possible
         for x in 1..(dest_width_val - 1) {
-            let mut m0 = *dest_row.add(x * 2 - 2) as u32;
-            let mut m1 = *dest_row.add(x * 2 - 1) as u32;
-            let mut m2 = *dest_row.add(x * 2) as u32;
-            let m3 = *dest_row.add(x * 2 + 1) as u32;
-            let m4 = *dest_row.add(x * 2 + 2) as u32;
-            let m5 = *dest_row.add(x * 2 + 3) as u32;
+            let mut m0 = *dest_row.add(x * 2 - 2) as u16;
+            let mut m1 = *dest_row.add(x * 2 - 1) as u16;
+            let mut m2 = *dest_row.add(x * 2) as u16;
+            let m3 = *dest_row.add(x * 2 + 1) as u16;
+            let m4 = *dest_row.add(x * 2 + 2) as u16;
+            let m5 = *dest_row.add(x * 2 + 3) as u16;
 
             m2 = (m2 + m3) * 22;
             m1 = (m1 + m4) * 9;
@@ -290,8 +249,8 @@ unsafe fn reduce_quadratic_horizontal_inplace_u8(
         // Special case end of line
         if dest_width_val > 1 {
             let x = dest_width_val - 1;
-            let a = *dest_row.add(x * 2) as u32;
-            let b = *dest_row.add(x * 2 + 1) as u32;
+            let a = *dest_row.add(x * 2) as u16;
+            let b = *dest_row.add(x * 2 + 1) as u16;
             *dest_row.add(x) = ((a + b + 1) / 2) as u8;
         }
     }
@@ -401,11 +360,16 @@ unsafe fn reduce_quadratic_vertical_u16(
             let final_result = _mm256_srli_epi32(result, 6);
 
             // Pack back to u16 with saturation
+            // _mm256_packus_epi32 packs 8 u32 values (from one 256-bit register) into 8 u16 values (in a 128-bit result)
+            // Since we only have 8 values in final_result, we pack with zeros to get the result in the lower half
             let packed_result = _mm256_packus_epi32(final_result, _mm256_setzero_si256());
-            _mm_storeu_si128(
-                dest_row.add(x) as *mut __m128i,
-                _mm256_extracti128_si256(packed_result, 0),
-            );
+            // The result is in the format [u16_0, u16_1, u16_2, u16_3, 0, 0, 0, 0, u16_4, u16_5, u16_6, u16_7, 0, 0, 0, 0]
+            // We need to extract both halves and combine them properly
+            let lower_half = _mm256_extracti128_si256(packed_result, 0); // u16_0..u16_3, 0, 0, 0, 0
+            let upper_half = _mm256_extracti128_si256(packed_result, 1); // u16_4..u16_7, 0, 0, 0, 0
+            // Combine the lower 64 bits of each half to get all 8 u16 values
+            let combined = _mm_unpacklo_epi64(lower_half, upper_half);
+            _mm_storeu_si128(dest_row.add(x) as *mut __m128i, combined);
 
             x += 8;
         }

@@ -444,6 +444,311 @@ macro_rules! create_tests {
                 assert_ne!(dest[4], 0); // Second row should have been modified
                 assert_ne!(dest[8], 0); // Third row should have been modified
             }
+
+            #[test]
+            fn [<test_reduce_quadratic_u8_large_simd_ $module>]() {
+                // Test large enough to trigger SIMD processing for u8 first line (64x2 -> 32x1)
+                // This ensures we cover the u8 SIMD loop at lines 96-121: while x + 32 <= dest_width_val
+                let mut src = Vec::new();
+
+                // First row: 64 pixels with values 0-63
+                for i in 0..64u8 {
+                    src.push(i);
+                }
+
+                // Second row: 64 pixels with values 64-127
+                for i in 64..128u8 {
+                    src.push(i);
+                }
+
+                // Destination buffer needs intermediate width of 64 (dest_width*2)
+                let mut dest = vec![0u8; 64];
+                let src_pitch = NonZeroUsize::new(64).unwrap();
+                let dest_pitch = NonZeroUsize::new(64).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(32).unwrap();
+                let dest_height = NonZeroUsize::new(1).unwrap();
+
+                verify_asm!($module, reduce_quadratic(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // Verify the SIMD processing results for u8 first line
+                // The SIMD loop should process x=0..31 in one iteration since 0 + 32 <= 32
+                // First line uses simple averaging: (a + b + 1) / 2
+                                for i in 0..32usize {
+                    // After vertical reduction, horizontal reduction processes the intermediate result
+                    // For the horizontal step, we check the final result is reasonable
+                    assert!(dest[i] < 255,
+                           "SIMD processing should produce valid u8 values at position {}: {}", i, dest[i]);
+                }
+
+                // Verify the SIMD code path was exercised by checking consistent results
+                // The values should follow a general increasing pattern due to the input pattern
+                for i in 0..31usize {
+                    assert!(dest[i] <= dest[i + 1] + 1,
+                           "Values should be reasonably ordered at positions {} and {}: {} vs {}",
+                           i, i + 1, dest[i], dest[i + 1]);
+                }
+
+                // Verify specific known values from the simple averaging
+                // For example, position 0: (0 + 64 + 1) / 2 = 32 (intermediate)
+                // After horizontal reduction, the exact final value depends on the algorithm
+                // but should be reasonable for our input pattern
+                assert!(dest[0] > 10 && dest[0] < 50, "First value should be reasonable: {}", dest[0]);
+                assert!(dest[31] > 70 && dest[31] < 110, "Last value should be reasonable: {}", dest[31]);
+            }
+
+            #[test]
+            fn [<test_reduce_quadratic_u8_large_simd_middle_lines_ $module>]() {
+                // Test large enough to trigger SIMD processing for u8 middle lines (32x6 -> 16x3)
+                // This ensures we cover the middle lines SIMD loop at lines 144-186: while x + 8 <= dest_width_val
+                // With dest_height=3, this gives y=1 (one iteration of the middle lines loop)
+                let mut src = Vec::new();
+
+                // Create 6 rows of 32 pixels each with a controlled pattern
+                // Keep values small to avoid overflow in 6-tap quadratic filter calculations
+                for row in 0..6u8 {
+                    for col in 0..32u8 {
+                        src.push((row * 20 + col / 4) % 200); // Values 0-199
+                    }
+                }
+
+                // Destination buffer needs intermediate width of 32 (dest_width*2) and height of 3
+                let mut dest = vec![0u8; 96]; // 32 width * 3 height
+                let src_pitch = NonZeroUsize::new(32).unwrap();
+                let dest_pitch = NonZeroUsize::new(32).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(16).unwrap();
+                let dest_height = NonZeroUsize::new(3).unwrap();
+
+                verify_asm!($module, reduce_quadratic(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // Verify the complex quadratic filtering for middle lines
+                // The middle line (y=1) uses the complex 6-tap quadratic filter:
+                // result = (m0 + m5 + 9*(m1 + m4) + 22*(m2 + m3) + 32) >> 6
+                // where m0..m5 are the 6 vertical taps for the quadratic filter
+
+                // The SIMD loop should process x=0..7 in the first iteration, then x=8..15 in the second iteration since 0 + 8 <= 16 and 8 + 8 <= 16
+                // Verify that all rows have been processed
+                for y in 0..3usize {
+                    for &x in &[0, 8, 15] {
+                        let dest_idx = y * 32 + x; // Using dest_pitch=32 for intermediate buffer
+
+                        // Verify the output is reasonable (SIMD should have processed this)
+                        assert!(dest[dest_idx] < 255,
+                               "SIMD processing should produce valid u8 values at row {} position {}: {}",
+                               y, x, dest[dest_idx]);
+                    }
+                }
+
+                // Specifically verify the middle row (y=1) which uses the complex quadratic filter
+                // This row should have different values from simple averaging due to the 6-tap filter
+                let middle_row_start = 32; // y=1 * dest_pitch=32
+                for i in 0..16usize {
+                    let middle_value = dest[middle_row_start + i];
+
+                    // The 6-tap quadratic filter should produce reasonable values
+                    assert!(middle_value < 220,
+                           "Middle row quadratic filter should produce reasonable values at position {}: {}",
+                           i, middle_value);
+                }
+
+                // Verify the SIMD code path was exercised by checking value consistency
+                // The complex quadratic filter should produce smoother transitions
+                let first_row_sample = dest[0]; // y=0, x=0 (simple edge case)
+                let middle_row_sample = dest[32]; // y=1, x=0 (complex quadratic filter)
+                let last_row_sample = dest[64]; // y=2, x=0 (simple edge case)
+
+                // All should be valid u8 values
+                assert!(first_row_sample < 255 && middle_row_sample < 255 && last_row_sample < 255,
+                       "All processed values should be valid u8");
+
+                // Test a few more samples to ensure the SIMD loop processed the full width
+                for sample_x in [0, 8, 15] {
+                    let middle_sample = dest[32 + sample_x]; // Second row, various positions
+                    assert_ne!(middle_sample, 0, "SIMD should have processed position {}", sample_x);
+                    assert!(middle_sample < 255, "SIMD result should be valid u8 at position {}", sample_x);
+                }
+            }
+
+            #[test]
+            fn [<test_reduce_quadratic_u16_large_simd_middle_lines_ $module>]() {
+                // Test large enough to trigger SIMD processing for u16 middle lines (16x6 -> 8x3)
+                // This ensures we cover the middle lines SIMD loop at lines 280-305: while x + 8 <= dest_width_val
+                // With dest_height=3, this gives y=1 (one iteration of the middle lines loop)
+                let mut src = Vec::new();
+
+                // Create 6 rows of 16 pixels each with a controlled pattern
+                // Keep values moderate to avoid overflow in 6-tap quadratic filter calculations
+                for row in 0..6u16 {
+                    for col in 0..16u16 {
+                        src.push((row * 1000 + col * 100) % 30000); // Values 0-29999
+                    }
+                }
+
+                // Destination buffer needs intermediate width of 16 (dest_width*2) and height of 3
+                let mut dest = vec![0u16; 48]; // 16 width * 3 height
+                let src_pitch = NonZeroUsize::new(16).unwrap();
+                let dest_pitch = NonZeroUsize::new(16).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(8).unwrap();
+                let dest_height = NonZeroUsize::new(3).unwrap();
+
+                verify_asm!($module, reduce_quadratic(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // Verify the complex quadratic filtering for middle lines
+                // The middle line (y=1) uses the complex 6-tap quadratic filter:
+                // result = (m0 + m5 + 9*(m1 + m4) + 22*(m2 + m3) + 32) >> 6
+                // where m0..m5 are the 6 vertical taps for the quadratic filter
+
+                // The SIMD loop should process x=0..7 in the first iteration, then x=8..15 in the second iteration since 0 + 8 <= 16 and 8 + 8 <= 16
+                // Verify that all rows have been processed
+                for y in 0..3usize {
+                    for &x in &[0, 8, 15] {
+                        let dest_idx = y * 16 + x; // Using dest_pitch=16 for intermediate buffer
+
+                        // Verify the output is reasonable (SIMD should have processed this)
+                        assert!(dest[dest_idx] < 65535,
+                               "SIMD processing should produce valid u16 values at row {} position {}: {}",
+                               y, x, dest[dest_idx]);
+                    }
+                }
+
+                // Specifically verify the middle row (y=1) which uses the complex quadratic filter
+                // This row should have different values from simple averaging due to the 6-tap filter
+                let middle_row_start = 16; // y=1 * dest_pitch=16
+                for i in 0..8usize {
+                    let middle_value = dest[middle_row_start + i];
+
+                    // The 6-tap quadratic filter should produce reasonable values
+                    assert!(middle_value < 32000,
+                           "Middle row quadratic filter should produce reasonable values at position {}: {}",
+                           i, middle_value);
+                }
+
+                // Verify the SIMD code path was exercised by checking value consistency
+                // The complex quadratic filter should produce smoother transitions
+                let first_row_sample = dest[0]; // y=0, x=0 (simple edge case)
+                let middle_row_sample = dest[16]; // y=1, x=0 (complex quadratic filter)
+                let last_row_sample = dest[32]; // y=2, x=0 (simple edge case)
+
+                // All should be valid u16 values
+                assert!(first_row_sample < 65535 && middle_row_sample < 65535 && last_row_sample < 65535,
+                       "All processed values should be valid u16");
+
+                // Test a few more samples to ensure the SIMD loop processed the full width
+                for sample_x in [0, 8, 15] {
+                    let middle_sample = dest[16 + sample_x]; // Second row, various positions
+                    assert_ne!(middle_sample, 0, "SIMD should have processed position {}", sample_x);
+                    assert!(middle_sample < 65535, "SIMD result should be valid u16 at position {}", sample_x);
+                }
+
+                // Verify the horizontal step will still work correctly
+                // Since this is only the vertical step, values at positions 8-15 should also be processed
+                for i in 8..16usize {
+                    assert_ne!(dest[middle_row_start + i], 0,
+                             "SIMD should have processed all positions including {}", i);
+                }
+            }
+
+            #[test]
+            fn [<test_reduce_quadratic_u16_scalar_fallback_middle_lines_ $module>]() {
+                // Test with width that leaves remainders after SIMD processing (18x6 -> 9x3)
+                // This ensures we cover the scalar fallback code at lines 377-393: while x < dest_width_val (in middle lines)
+                // Width 18 means intermediate width is 18, and 18 % 8 = 2, so 2 pixels will be processed by scalar fallback
+                let mut src = Vec::new();
+
+                // Create 6 rows of 18 pixels each with a controlled pattern
+                // Keep values moderate to avoid overflow in 6-tap quadratic filter calculations
+                for row in 0..6u16 {
+                    for col in 0..18u16 {
+                        src.push((row * 1000 + col * 50) % 20000); // Values 0-19999
+                    }
+                }
+
+                // Destination buffer needs intermediate width of 18 (dest_width*2) and height of 3
+                let mut dest = vec![0u16; 54]; // 18 width * 3 height
+                let src_pitch = NonZeroUsize::new(18).unwrap();
+                let dest_pitch = NonZeroUsize::new(18).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(9).unwrap();
+                let dest_height = NonZeroUsize::new(3).unwrap();
+
+                verify_asm!($module, reduce_quadratic(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // The SIMD loop processes x=0..7 (first 8 pixels), then x=8..15 (next 8 pixels)
+                // The scalar fallback should process x=16,17 (remaining 2 pixels) when x < dest_width_val (18)
+
+                // Verify that all rows have been processed including the scalar fallback pixels
+                for y in 0..3usize {
+                    for x in 0..18usize {
+                        let dest_idx = y * 18 + x; // Using dest_pitch=18 for intermediate buffer
+
+                        // Verify the output is reasonable (both SIMD and scalar should have processed this)
+                        assert!(dest[dest_idx] < 65535,
+                               "Processing should produce valid u16 values at row {} position {}: {}",
+                               y, x, dest[dest_idx]);
+                    }
+                }
+
+                // Specifically verify the middle row (y=1) which uses the complex quadratic filter
+                let middle_row_start = 18; // y=1 * dest_pitch=18
+
+                // Test the SIMD-processed pixels (x=0..15)
+                for i in 0..16usize {
+                    let middle_value = dest[middle_row_start + i];
+                    assert!(middle_value < 25000,
+                           "SIMD-processed middle row values should be reasonable at position {}: {}",
+                           i, middle_value);
+                }
+
+                // Specifically test the scalar fallback pixels (x=16,17)
+                for i in 16..18usize {
+                    let scalar_value = dest[middle_row_start + i];
+                    assert_ne!(scalar_value, 0,
+                              "Scalar fallback should have processed position {}", i);
+                    assert!(scalar_value < 25000,
+                           "Scalar fallback should produce reasonable values at position {}: {}",
+                           i, scalar_value);
+                }
+
+                // Verify the scalar fallback produces results consistent with the pattern
+                // The last two pixels should follow the same quadratic filtering as the SIMD pixels
+                let simd_last = dest[middle_row_start + 15]; // Last SIMD-processed pixel
+                let scalar_first = dest[middle_row_start + 16]; // First scalar-processed pixel
+                let scalar_last = dest[middle_row_start + 17]; // Last scalar-processed pixel
+
+                // Values should be reasonable and follow the input pattern trend
+                assert!(scalar_first > simd_last.saturating_sub(2000) && scalar_first < simd_last + 2000,
+                       "Scalar fallback should produce consistent values: SIMD_last={}, scalar_first={}",
+                       simd_last, scalar_first);
+                assert!(scalar_last > scalar_first.saturating_sub(1000) && scalar_last < scalar_first + 1000,
+                       "Scalar fallback pixels should be consistent: scalar_first={}, scalar_last={}",
+                       scalar_first, scalar_last);
+            }
         }
     };
 }

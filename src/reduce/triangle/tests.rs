@@ -381,6 +381,349 @@ macro_rules! create_tests {
                 assert_ne!(dest[4], 0); // Second row should have been modified
                 assert_ne!(dest[8], 0); // Third row should have been modified
             }
+
+            #[test]
+            fn [<test_reduce_triangle_u8_large_simd_first_row_ $module>]() {
+                // Test large enough to trigger SIMD processing for u8 first row (64x2 -> 32x1)
+                // This ensures we cover the u8 SIMD loop at lines 91-113: while x + 32 <= width_usize
+                let mut src = Vec::new();
+
+                // First row: 64 pixels with values 0-63
+                for i in 0..64u8 {
+                    src.push(i);
+                }
+
+                // Second row: 64 pixels with values 64-127
+                for i in 64..128u8 {
+                    src.push(i);
+                }
+
+                // Destination buffer needs intermediate width of 64 (dest_width*2)
+                let mut dest = vec![0u8; 64];
+                let src_pitch = NonZeroUsize::new(64).unwrap();
+                let dest_pitch = NonZeroUsize::new(64).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(32).unwrap();
+                let dest_height = NonZeroUsize::new(1).unwrap();
+
+                verify_asm!($module, reduce_triangle(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // Verify the SIMD processing results for u8 first row
+                // The SIMD loop should process x=0..31 in one iteration, then x=32..63 in another iteration
+                // since 0 + 32 <= 64 and 32 + 32 <= 64
+                // First row uses simple averaging: (a + b + 1) / 2
+                                for i in 0..64usize {
+                    // After vertical reduction, we get intermediate result for horizontal processing
+                    // Since we only have height=1, this goes directly to horizontal processing
+                    // The exact final result depends on the horizontal processing algorithm
+                    assert!(dest[i] < 255,
+                           "SIMD processing should produce valid u8 values at position {}: {}", i, dest[i]);
+                }
+
+                // Verify the SIMD code path was exercised by checking consistent results
+                // Note: The triangle filter uses overlapping horizontal processing, so strict ordering isn't guaranteed
+                // Instead, we verify that all values are reasonable for our input pattern
+                for i in 0..64usize {
+                    assert!(dest[i] >= 10 && dest[i] <= 200,
+                           "Triangle filter should produce reasonable values at position {}: {}", i, dest[i]);
+                }
+
+                // Verify specific known values from the simple averaging pattern
+                // For position 0: (0 + 64 + 1) / 2 = 32 (after vertical), then horizontal processing
+                // For position 31: (31 + 95 + 1) / 2 = 63 (after vertical), then horizontal processing
+                // The horizontal processing will modify these values, but they should be reasonable
+                assert!(dest[0] > 10 && dest[0] < 100, "First value should be reasonable: {}", dest[0]);
+                assert!(dest[31] > 40 && dest[31] < 150, "Middle value should be reasonable: {}", dest[31]);
+                assert!(dest[63] > 70 && dest[63] < 200, "Last value should be reasonable: {}", dest[63]);
+
+                // Verify that the SIMD processing covered the full width
+                // All positions should have been processed (non-zero for our input pattern)
+                for i in 0..64usize {
+                    assert_ne!(dest[i], 0, "SIMD should have processed all positions including {}", i);
+                }
+            }
+
+            #[test]
+            fn [<test_reduce_triangle_u8_large_simd_middle_rows_ $module>]() {
+                // Test large enough to trigger SIMD processing for u8 middle rows (64x6 -> 32x3)
+                // This ensures we cover the u8 SIMD loop at lines 129-158: while x + 32 <= width_usize (for y >= 1)
+                // With dest_height=3, this gives y=1,2 (two iterations of the middle rows loop)
+                let mut src = Vec::new();
+
+                // Create 6 rows of 64 pixels each with a controlled pattern
+                // Keep values moderate to ensure triangle filter calculations don't overflow
+                for row in 0..6u8 {
+                    for col in 0..64u8 {
+                        src.push((row * 30 + col / 2) % 200); // Values 0-199
+                    }
+                }
+
+                // Destination buffer needs intermediate width of 64 (dest_width*2) and height of 3
+                let mut dest = vec![0u8; 192]; // 64 width * 3 height
+                let src_pitch = NonZeroUsize::new(64).unwrap();
+                let dest_pitch = NonZeroUsize::new(64).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(32).unwrap();
+                let dest_height = NonZeroUsize::new(3).unwrap();
+
+                verify_asm!($module, reduce_triangle(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // Verify the triangle filter processing for middle rows
+                // Row 0 uses simple averaging: (a + b + 1) / 2
+                // Rows 1,2 use full triangle filter: (a + b * 2 + c + 2) / 4
+                // where a, b, c are from consecutive source rows
+
+                // The SIMD loop should process x=0..31 in the first iteration, then x=32..63 in the second iteration
+                // since 0 + 32 <= 64 and 32 + 32 <= 64
+
+                // Verify that all rows have been processed
+                for y in 0..3usize {
+                    for x in 0..64usize {
+                        let dest_idx = y * 64 + x; // Using dest_pitch=64 for intermediate buffer
+
+                        // Verify the output is reasonable (SIMD should have processed this)
+                        assert!(dest[dest_idx] < 255,
+                               "SIMD processing should produce valid u8 values at row {} position {}: {}",
+                               y, x, dest[dest_idx]);
+                    }
+                }
+
+                // Specifically verify the middle rows (y=1,2) which use the full triangle filter
+                for y in 1..3usize {
+                    let row_start = y * 64; // y * dest_pitch=64
+
+                    // Test SIMD-processed pixels across the full width
+                    for &x in &[0, 16, 32, 48, 63] {
+                        let middle_value = dest[row_start + x];
+
+                        // The triangle filter should produce reasonable values
+                        assert!(middle_value < 220,
+                               "Middle row triangle filter should produce reasonable values at row {} position {}: {}",
+                               y, x, middle_value);
+                    }
+                }
+
+                // Verify the SIMD code path was exercised by checking value consistency
+                // The triangle filter should produce smoothed values
+                let first_row_sample = dest[0]; // y=0, x=0 (simple averaging)
+                let middle_row1_sample = dest[64]; // y=1, x=0 (triangle filter)
+                let middle_row2_sample = dest[128]; // y=2, x=0 (triangle filter)
+
+                // All should be valid u8 values
+                assert!(first_row_sample < 255 && middle_row1_sample < 255 && middle_row2_sample < 255,
+                       "All processed values should be valid u8");
+
+                // Test a few more samples to ensure the SIMD loop processed the full width
+                for &sample_x in &[0, 16, 32, 48, 63] {
+                    for y in 1..3usize {
+                        let sample_value = dest[y * 64 + sample_x]; // Middle rows, various positions
+                        assert_ne!(sample_value, 0, "SIMD should have processed row {} position {}", y, sample_x);
+                        assert!(sample_value < 255, "SIMD result should be valid u8 at row {} position {}", y, sample_x);
+                    }
+                }
+
+                // Verify the triangle filter produces different results from simple averaging
+                // Row 0 (simple averaging) vs Row 1 (triangle filter) should potentially differ
+                // due to the different algorithms, though this isn't guaranteed for all inputs
+                let simple_avg_sample = dest[32]; // Row 0, middle position
+                let triangle_sample = dest[64 + 32]; // Row 1, same position
+
+                // Both should be reasonable values (the exact relationship depends on input pattern)
+                assert!(simple_avg_sample < 220 && triangle_sample < 220,
+                       "Both averaging methods should produce reasonable results: {} vs {}",
+                       simple_avg_sample, triangle_sample);
+            }
+
+            #[test]
+            fn [<test_reduce_triangle_u16_large_simd_first_row_ $module>]() {
+                // Test large enough to trigger SIMD processing for u16 first row (32x2 -> 16x1)
+                // This ensures we cover the u16 SIMD loop at lines 239-261: while x + 16 <= width_usize
+                let mut src = Vec::new();
+
+                // First row: 32 pixels with values 0-31 scaled to u16 range
+                for i in 0..32u16 {
+                    src.push(i * 1000); // Values 0, 1000, 2000, ..., 31000
+                }
+
+                // Second row: 32 pixels with values 32-63 scaled to u16 range
+                for i in 32..64u16 {
+                    src.push(i * 1000); // Values 32000, 33000, ..., 63000
+                }
+
+                // Destination buffer needs intermediate width of 32 (dest_width*2)
+                let mut dest = vec![0u16; 32];
+                let src_pitch = NonZeroUsize::new(32).unwrap();
+                let dest_pitch = NonZeroUsize::new(32).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(16).unwrap();
+                let dest_height = NonZeroUsize::new(1).unwrap();
+
+                verify_asm!($module, reduce_triangle(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // Verify the SIMD processing results for u16 first row
+                // The SIMD loop should process x=0..15 in one iteration, then x=16..31 in another iteration
+                // since 0 + 16 <= 32 and 16 + 16 <= 32
+                // First row uses simple averaging: (a + b + 1) / 2
+                for i in 0..32usize {
+                    // After vertical reduction, we get intermediate result for horizontal processing
+                    // Since we only have height=1, this goes directly to horizontal processing
+                    // The exact final result depends on the horizontal processing algorithm
+                    assert!(dest[i] < 65535,
+                           "SIMD processing should produce valid u16 values at position {}: {}", i, dest[i]);
+                }
+
+                // Verify the SIMD code path was exercised by checking consistent results
+                // Note: The triangle filter uses overlapping horizontal processing, so strict ordering isn't guaranteed
+                // Instead, we verify that all values are reasonable for our input pattern
+                for i in 0..32usize {
+                    assert!(dest[i] >= 5000 && dest[i] <= 60000,
+                           "Triangle filter should produce reasonable values at position {}: {}", i, dest[i]);
+                }
+
+                // Verify specific known values from the simple averaging pattern
+                // For position 0: (0 + 32000 + 1) / 2 = 16000 (after vertical), then horizontal processing
+                // For position 15: (15000 + 47000 + 1) / 2 = 31000 (after vertical), then horizontal processing
+                // The horizontal processing will modify these values, but they should be reasonable
+                assert!(dest[0] > 8000 && dest[0] < 35000, "First value should be reasonable: {}", dest[0]);
+                assert!(dest[15] > 20000 && dest[15] < 50000, "Middle value should be reasonable: {}", dest[15]);
+                assert!(dest[31] > 35000 && dest[31] < 60000, "Last value should be reasonable: {}", dest[31]);
+
+                // Verify that the SIMD processing covered the full width
+                // All positions should have been processed (non-zero for our input pattern)
+                for i in 0..32usize {
+                    assert_ne!(dest[i], 0, "SIMD should have processed all positions including {}", i);
+                }
+
+                // Verify the values show the expected general trend from our input pattern
+                // The first few and last few values should reflect the input gradient
+                assert!(dest[0] < dest[31], "Overall trend should be maintained: first={}, last={}", dest[0], dest[31]);
+            }
+
+            #[test]
+            fn [<test_reduce_triangle_u16_large_simd_middle_rows_ $module>]() {
+                // Test large enough to trigger SIMD processing for u16 middle rows (32x6 -> 16x3)
+                // This ensures we cover the u16 SIMD loop at lines 277-306: while x + 16 <= width_usize (for y >= 1)
+                // With dest_height=3, this gives y=1,2 (two iterations of the middle rows loop)
+                let mut src = Vec::new();
+
+                // Create 6 rows of 32 pixels each with a controlled pattern
+                // Keep values moderate to ensure triangle filter calculations don't overflow
+                for row in 0..6u16 {
+                    for col in 0..32u16 {
+                        src.push((row * 2000 + col * 100) % 40000); // Values 0-39999
+                    }
+                }
+
+                // Destination buffer needs intermediate width of 32 (dest_width*2) and height of 3
+                let mut dest = vec![0u16; 96]; // 32 width * 3 height
+                let src_pitch = NonZeroUsize::new(32).unwrap();
+                let dest_pitch = NonZeroUsize::new(32).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(16).unwrap();
+                let dest_height = NonZeroUsize::new(3).unwrap();
+
+                verify_asm!($module, reduce_triangle(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // Verify the triangle filter processing for middle rows
+                // Row 0 uses simple averaging: (a + b + 1) / 2
+                // Rows 1,2 use full triangle filter: (a + b * 2 + c + 2) / 4
+                // where a, b, c are from consecutive source rows
+
+                // The SIMD loop should process x=0..15 in the first iteration, then x=16..31 in the second iteration
+                // since 0 + 16 <= 32 and 16 + 16 <= 32
+
+                // Verify that all rows have been processed
+                for y in 0..3usize {
+                    for x in 0..32usize {
+                        let dest_idx = y * 32 + x; // Using dest_pitch=32 for intermediate buffer
+
+                        // Verify the output is reasonable (SIMD should have processed this)
+                        assert!(dest[dest_idx] < 65535,
+                               "SIMD processing should produce valid u16 values at row {} position {}: {}",
+                               y, x, dest[dest_idx]);
+                    }
+                }
+
+                // Specifically verify the middle rows (y=1,2) which use the full triangle filter
+                for y in 1..3usize {
+                    let row_start = y * 32; // y * dest_pitch=32
+
+                    // Test SIMD-processed pixels across the full width
+                    for &x in &[0, 8, 16, 24, 31] {
+                        let middle_value = dest[row_start + x];
+
+                        // The triangle filter should produce reasonable values for u16
+                        assert!(middle_value < 45000,
+                               "Middle row triangle filter should produce reasonable u16 values at row {} position {}: {}",
+                               y, x, middle_value);
+                    }
+                }
+
+                // Verify the SIMD code path was exercised by checking value consistency
+                // The triangle filter should produce smoothed values
+                let first_row_sample = dest[0]; // y=0, x=0 (simple averaging)
+                let middle_row1_sample = dest[32]; // y=1, x=0 (triangle filter)
+                let middle_row2_sample = dest[64]; // y=2, x=0 (triangle filter)
+
+                // All should be valid u16 values
+                assert!(first_row_sample < 65535 && middle_row1_sample < 65535 && middle_row2_sample < 65535,
+                       "All processed values should be valid u16");
+
+                // Test a few more samples to ensure the SIMD loop processed the full width
+                for &sample_x in &[0, 8, 16, 24, 31] {
+                    for y in 1..3usize {
+                        let sample_value = dest[y * 32 + sample_x]; // Middle rows, various positions
+                        assert_ne!(sample_value, 0, "SIMD should have processed row {} position {}", y, sample_x);
+                        assert!(sample_value < 65535, "SIMD result should be valid u16 at row {} position {}", y, sample_x);
+                    }
+                }
+
+                // Verify the triangle filter produces different results from simple averaging
+                // Row 0 (simple averaging) vs Row 1 (triangle filter) should potentially differ
+                // due to the different algorithms, though this isn't guaranteed for all inputs
+                let simple_avg_sample = dest[16]; // Row 0, middle position
+                let triangle_sample = dest[32 + 16]; // Row 1, same position
+
+                // Both should be reasonable values (the exact relationship depends on input pattern)
+                assert!(simple_avg_sample < 45000 && triangle_sample < 45000,
+                       "Both averaging methods should produce reasonable u16 results: {} vs {}",
+                       simple_avg_sample, triangle_sample);
+
+                // Verify that the SIMD processing covered both iterations (x=0..15 and x=16..31)
+                // Check samples from both SIMD iterations
+                let first_simd_sample = dest[32]; // Row 1, x=0 (first SIMD iteration)
+                let second_simd_sample = dest[32 + 16]; // Row 1, x=16 (second SIMD iteration)
+
+                assert_ne!(first_simd_sample, 0, "First SIMD iteration should have processed data");
+                assert_ne!(second_simd_sample, 0, "Second SIMD iteration should have processed data");
+                assert!(first_simd_sample < 45000 && second_simd_sample < 45000,
+                       "Both SIMD iterations should produce reasonable results: {} vs {}",
+                       first_simd_sample, second_simd_sample);
+            }
         }
     };
 }

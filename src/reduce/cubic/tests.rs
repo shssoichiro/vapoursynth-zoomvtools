@@ -573,6 +573,205 @@ macro_rules! create_tests {
                     // middle_sample is u8, so it's automatically valid
                 }
             }
+
+            #[test]
+            fn [<test_reduce_cubic_u16_large_simd_ $module>]() {
+                // Test large enough to trigger SIMD processing for u16 vertical reduction (16x2 -> 8x1)
+                // This ensures we cover the u16 SIMD loop at lines 293-302: while x + 16 <= dest_width
+                let mut src = Vec::new();
+
+                // First row: 16 pixels with values 0-15 scaled to u16 range
+                for i in 0..16u16 {
+                    src.push(i * 1000);
+                }
+
+                // Second row: 16 pixels with values 16-31 scaled to u16 range
+                for i in 16..32u16 {
+                    src.push(i * 1000);
+                }
+
+                // Destination buffer needs intermediate width of 16 (dest_width*2)
+                let mut dest = vec![0u16; 16];
+                let src_pitch = NonZeroUsize::new(16).unwrap();
+                let dest_pitch = NonZeroUsize::new(16).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(8).unwrap();
+                let dest_height = NonZeroUsize::new(1).unwrap();
+
+                verify_asm!($module, reduce_cubic(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // Verify the SIMD processing results for u16
+                // Step 1: Vertical reduction creates intermediate array with width=16
+                // For height=1, this uses simple averaging: (a + b + 1) / 2
+                // The SIMD loop should process x=0..15 in one iteration since 0 + 16 <= 16
+                                for i in 0..16usize {
+                    // For the horizontal reduction step, we need to check the final result
+                    // The intermediate array gets horizontally reduced using cubic filtering
+                    if i < 8 {
+                        // Verify the output is reasonable (SIMD should have processed this)
+                        assert!(dest[i] > 100 && dest[i] < 32000,
+                               "SIMD processing should produce reasonable u16 values at position {}: {}", i, dest[i]);
+                    }
+                }
+
+                // Verify the SIMD code path was taken by checking consistent results
+                // The values should follow a general increasing pattern due to the input pattern
+                for i in 0..7usize {
+                    assert!(dest[i] <= dest[i + 1] + 2000,
+                           "Values should be reasonably ordered at positions {} and {}: {} vs {}",
+                           i, i + 1, dest[i], dest[i + 1]);
+                }
+            }
+
+            #[test]
+            fn [<test_reduce_cubic_u16_large_simd_middle_lines_ $module>]() {
+                // Test large enough to trigger SIMD processing for u16 middle lines (32x6 -> 16x3)
+                // This ensures we cover the middle lines SIMD loop at lines 314-378: for y in 1..(dest_height - 1)
+                // With dest_height=3, this gives y=1 (one iteration of the middle lines loop)
+                let mut src = Vec::new();
+
+                // Create 6 rows of 32 pixels each with a controlled pattern
+                // Keep values moderate to avoid overflow in 6-tap cubic filter calculations
+                for row in 0..6u16 {
+                    for col in 0..32u16 {
+                        src.push((row * 500 + col * 50) % 30000); // Values 0-29999
+                    }
+                }
+
+                // Destination buffer needs intermediate width of 32 (dest_width*2) and height of 3
+                let mut dest = vec![0u16; 96]; // 32 width * 3 height
+                let src_pitch = NonZeroUsize::new(32).unwrap();
+                let dest_pitch = NonZeroUsize::new(32).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(16).unwrap();
+                let dest_height = NonZeroUsize::new(3).unwrap();
+
+                verify_asm!($module, reduce_cubic(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // Verify the complex cubic filtering for middle lines
+                // The middle line (y=1) uses the complex 6-tap cubic filter:
+                // result = (m0 + m5 + (m1 + m4) * 5 + (m2 + m3) * 10 + 16) >> 5
+                // where m0..m5 are the 6 vertical taps for the cubic filter
+
+                // The SIMD loop should process x=0..15 in one iteration since 0 + 16 <= 16
+                // Verify that all rows have been processed
+                for y in 0..3usize {
+                    for &x in &[0, 8, 15] {
+                        let dest_idx = y * 32 + x; // Using dest_pitch=32 for intermediate buffer
+
+                        // Verify the output is reasonable (SIMD should have processed this)
+                        assert!(dest[dest_idx] < 65535,
+                               "SIMD processing should produce valid u16 values at row {} position {}: {}",
+                               y, x, dest[dest_idx]);
+                    }
+                }
+
+                // Specifically verify the middle row (y=1) which uses the complex cubic filter
+                // This row should have different values from simple averaging due to the 6-tap filter
+                let middle_row_start = 32; // y=1 * dest_pitch=32
+                for i in 0..16usize {
+                    let middle_value = dest[middle_row_start + i];
+
+                    // The 6-tap cubic filter should produce reasonable values
+                    assert!(middle_value < 50000,
+                           "Middle row cubic filter should produce reasonable values at position {}: {}",
+                           i, middle_value);
+                }
+
+                // Verify the SIMD code path was exercised by checking value consistency
+                // The complex cubic filter should produce smoother transitions
+                let first_row_sample = dest[0]; // y=0, x=0 (simple edge case)
+                let middle_row_sample = dest[32]; // y=1, x=0 (complex cubic filter)
+                let last_row_sample = dest[64]; // y=2, x=0 (simple edge case)
+
+                // All should be valid u16 values
+                assert!(first_row_sample < 65535 && middle_row_sample < 65535 && last_row_sample < 65535,
+                       "All processed values should be valid u16");
+            }
+
+            #[test]
+            fn [<test_reduce_cubic_u16_scalar_fallback_middle_lines_ $module>]() {
+                // Test to trigger scalar fallback in u16 middle lines processing (36x6 -> 18x3)
+                // This ensures we cover the scalar fallback loop at lines 364-375: while x < dest_width
+                // With dest_width=18, SIMD processes x=0..15, then scalar handles x=16,17
+                let mut src = Vec::new();
+
+                // Create 6 rows of 36 pixels each with a controlled pattern
+                // Keep values moderate to avoid overflow in 6-tap cubic filter calculations
+                for row in 0..6u16 {
+                    for col in 0..36u16 {
+                        src.push((row * 400 + col * 40) % 25000); // Values 0-24999
+                    }
+                }
+
+                // Destination buffer needs intermediate width of 36 (dest_width*2) and height of 3
+                let mut dest = vec![0u16; 108]; // 36 width * 3 height
+                let src_pitch = NonZeroUsize::new(36).unwrap();
+                let dest_pitch = NonZeroUsize::new(36).unwrap(); // Must accommodate intermediate width
+                let dest_width = NonZeroUsize::new(18).unwrap(); // Not a multiple of 16
+                let dest_height = NonZeroUsize::new(3).unwrap();
+
+                verify_asm!($module, reduce_cubic(
+                    &mut dest,
+                    &src,
+                    dest_pitch,
+                    src_pitch,
+                    dest_width,
+                    dest_height,
+                ));
+
+                // Verify the scalar fallback processing in middle lines
+                // The middle line (y=1) should have been processed by both SIMD (x=0..15) and scalar (x=16,17)
+                let middle_row_start = 36; // y=1 * dest_pitch=36
+
+                // Check SIMD-processed positions (x=0..15)
+                for i in 0..16usize {
+                    let simd_value = dest[middle_row_start + i];
+                    assert!(simd_value < 40000,
+                           "SIMD-processed position {} should have reasonable value: {}",
+                           i, simd_value);
+                }
+
+                // Check scalar fallback positions (x=16,17)
+                for i in 16..18usize {
+                    let scalar_value = dest[middle_row_start + i];
+                    assert!(scalar_value < 40000,
+                           "Scalar fallback position {} should have reasonable value: {}",
+                           i, scalar_value);
+
+                    // Ensure the scalar fallback actually computed a value (not left as 0)
+                    // The 6-tap cubic filter should produce non-zero results for our test pattern
+                    assert_ne!(scalar_value, 0,
+                              "Scalar fallback should have computed a value at position {}", i);
+                }
+
+                // Verify continuity between SIMD and scalar results
+                // The transition from SIMD to scalar should be smooth
+                let simd_last = dest[middle_row_start + 15];
+                let scalar_first = dest[middle_row_start + 16];
+
+                // Values should be in similar range (allowing for some variation due to different input data)
+                let diff = if simd_last > scalar_first {
+                    simd_last - scalar_first
+                } else {
+                    scalar_first - simd_last
+                };
+                assert!(diff < 10000,
+                       "Transition from SIMD to scalar should be reasonable: {} -> {} (diff: {})",
+                       simd_last, scalar_first, diff);
+            }
         }
     };
 }

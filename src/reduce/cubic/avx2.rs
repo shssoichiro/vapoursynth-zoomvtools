@@ -113,8 +113,8 @@ unsafe fn reduce_cubic_vertical_u8(
 
     // Handle remaining pixels
     while x < dest_width {
-        let a = *src.add(x) as u32;
-        let b = *src.add(x + src_pitch) as u32;
+        let a = *src.add(x) as u16;
+        let b = *src.add(x + src_pitch) as u16;
         *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
         x += 1;
     }
@@ -177,12 +177,12 @@ unsafe fn reduce_cubic_vertical_u8(
 
         // Handle remaining pixels
         while x < dest_width {
-            let m0 = *src.add(src_row_offset + x - src_pitch * 2) as u32;
-            let m1 = *src.add(src_row_offset + x - src_pitch) as u32;
-            let m2 = *src.add(src_row_offset + x) as u32;
-            let m3 = *src.add(src_row_offset + x + src_pitch) as u32;
-            let m4 = *src.add(src_row_offset + x + src_pitch * 2) as u32;
-            let m5 = *src.add(src_row_offset + x + src_pitch * 3) as u32;
+            let m0 = *src.add(src_row_offset + x - src_pitch * 2) as u16;
+            let m1 = *src.add(src_row_offset + x - src_pitch) as u16;
+            let m2 = *src.add(src_row_offset + x) as u16;
+            let m3 = *src.add(src_row_offset + x + src_pitch) as u16;
+            let m4 = *src.add(src_row_offset + x + src_pitch * 2) as u16;
+            let m5 = *src.add(src_row_offset + x + src_pitch * 3) as u16;
 
             let result = (m0 + m5 + (m1 + m4) * 5 + (m2 + m3) * 10 + 16) >> 5;
             *dest_ptr.add(x) = result.min(255) as u8;
@@ -218,8 +218,8 @@ unsafe fn reduce_cubic_vertical_u8(
         }
 
         while x < dest_width {
-            let a = *src.add(src_row_offset + x) as u32;
-            let b = *src.add(src_row_offset + x + src_pitch) as u32;
+            let a = *src.add(src_row_offset + x) as u16;
+            let b = *src.add(src_row_offset + x + src_pitch) as u16;
             *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
             x += 1;
         }
@@ -241,18 +241,18 @@ unsafe fn reduce_cubic_horizontal_inplace_u8(
 
     for _y in 0..dest_height {
         // Special case start of line
-        let a = *dest_ptr as u32;
-        let b = *dest_ptr.add(1) as u32;
+        let a = *dest_ptr as u16;
+        let b = *dest_ptr.add(1) as u16;
         let src0 = ((a + b + 1) / 2) as u8;
 
         // Middle of line
         for x in 1..(dest_width - 1) {
-            let m0 = *dest_ptr.add(x * 2 - 2) as u32;
-            let m1 = *dest_ptr.add(x * 2 - 1) as u32;
-            let m2 = *dest_ptr.add(x * 2) as u32;
-            let m3 = *dest_ptr.add(x * 2 + 1) as u32;
-            let m4 = *dest_ptr.add(x * 2 + 2) as u32;
-            let m5 = *dest_ptr.add(x * 2 + 3) as u32;
+            let m0 = *dest_ptr.add(x * 2 - 2) as u16;
+            let m1 = *dest_ptr.add(x * 2 - 1) as u16;
+            let m2 = *dest_ptr.add(x * 2) as u16;
+            let m3 = *dest_ptr.add(x * 2 + 1) as u16;
+            let m4 = *dest_ptr.add(x * 2 + 2) as u16;
+            let m5 = *dest_ptr.add(x * 2 + 3) as u16;
 
             let result = (m0 + m5 + (m1 + m4) * 5 + (m2 + m3) * 10 + 16) >> 5;
             *dest_ptr.add(x) = result.min(255) as u8;
@@ -263,8 +263,8 @@ unsafe fn reduce_cubic_horizontal_inplace_u8(
         // Special case end of line
         if dest_width > 1 {
             let x = dest_width - 1;
-            let a = *dest_ptr.add(x * 2) as u32;
-            let b = *dest_ptr.add(x * 2 + 1) as u32;
+            let a = *dest_ptr.add(x * 2) as u16;
+            let b = *dest_ptr.add(x * 2 + 1) as u16;
             *dest_ptr.add(x) = ((a + b + 1) / 2) as u8;
         }
 
