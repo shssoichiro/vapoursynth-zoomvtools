@@ -93,11 +93,11 @@ jobs:
           tool: cargo-llvm-cov
 
       - name: Generate code coverage
-        run: cargo llvm-cov --lcov --output-path lcov.log
+        run: cargo llvm-cov --codecov --output-path codecov.json --ignore-filename-regex tests\.rs
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: lcov.log
+          files: codecov.json
           fail_ci_if_error: false

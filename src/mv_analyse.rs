@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::{
     cmp::min,
     num::{NonZeroU8, NonZeroUsize},
@@ -12,7 +15,7 @@ use vapoursynth::{
 };
 
 use crate::{
-    mv_plane::MVPlaneSet,
+    params::MVPlaneSet,
     params::{DctMode, DivideMode, MotionFlags, PenaltyScaling, SearchType, Subpel},
     util::Pixel,
 };

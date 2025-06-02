@@ -3,6 +3,9 @@ use std::num::NonZeroUsize;
 
 use anyhow::{Result, bail};
 
+pub const MV_DEFAULT_SCD1: usize = 400;
+pub const MV_DEFAULT_SCD2: usize = 130;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Subpel {
     Full = 1,
@@ -232,5 +235,15 @@ bitflags! {
     }
 }
 
-pub const MV_DEFAULT_SCD1: usize = 400;
-pub const MV_DEFAULT_SCD2: usize = 130;
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct MVPlaneSet: u8 {
+        const YPLANE = (1 << 0);
+        const UPLANE = (1 << 1);
+        const VPLANE = (1 << 2);
+        const YUPLANES = Self::YPLANE.bits() | Self::UPLANE.bits();
+        const YVPLANES = Self::YPLANE.bits() | Self::VPLANE.bits();
+        const UVPLANES = Self::UPLANE.bits() | Self::VPLANE.bits();
+        const YUVPLANES = Self::YPLANE.bits() | Self::UPLANE.bits() | Self::VPLANE.bits();
+    }
+}
