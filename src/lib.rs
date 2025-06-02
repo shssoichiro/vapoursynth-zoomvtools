@@ -1,4 +1,5 @@
 use anyhow::Error;
+use mv_analyse::Analyse;
 use mv_super::Super;
 use vapoursynth::{
     api::API,
@@ -11,6 +12,8 @@ use vapoursynth::{
 
 #[cfg(feature = "bench")]
 pub mod average;
+#[cfg(feature = "bench")]
+pub mod mv_analyse;
 #[cfg(feature = "bench")]
 pub mod mv_frame;
 #[cfg(feature = "bench")]
@@ -33,6 +36,8 @@ pub mod util;
 #[cfg(not(feature = "bench"))]
 mod average;
 #[cfg(not(feature = "bench"))]
+mod mv_analyse;
+#[cfg(not(feature = "bench"))]
 mod mv_frame;
 #[cfg(not(feature = "bench"))]
 mod mv_gof;
@@ -53,6 +58,84 @@ mod util;
 
 pub const PLUGIN_IDENTIFIER: &str = "com.soichiro.zoomvtools";
 pub const PLUGIN_NAME: &str = "zoomvtools";
+
+make_filter_function! {
+    AnalyseFunction, "Analyse"
+    #[allow(unused_variables)]
+    fn create_analyse<'core>(
+        _api: API,
+        _core: CoreRef<'core>,
+        super_: Node<'core>,
+        blksize: Option<i64>,
+        blksizev: Option<i64>,
+        levels: Option<i64>,
+        search: Option<i64>,
+        searchparam: Option<i64>,
+        pelsearch: Option<i64>,
+        isb: Option<i64>,
+        lambda: Option<i64>,
+        chroma: Option<i64>,
+        delta: Option<i64>,
+        truemotion: Option<i64>,
+        lsad: Option<i64>,
+        plevel: Option<i64>,
+        global: Option<i64>,
+        pnew: Option<i64>,
+        pzero: Option<i64>,
+        pglobal: Option<i64>,
+        overlap: Option<i64>,
+        overlapv: Option<i64>,
+        divide: Option<i64>,
+        badsad: Option<i64>,
+        badrange: Option<i64>,
+        opt: Option<i64>,
+        meander: Option<i64>,
+        trymany: Option<i64>,
+        fields: Option<i64>,
+        tff: Option<i64>,
+        search_coarse: Option<i64>,
+        dct: Option<i64>,
+        clip: Node<'core>,
+    ) -> Result<Option<Box<dyn Filter<'core> + 'core>>, Error> {
+        // `opt` exists for compatibility purposes, but will not be used.
+        // `clip` exists for compatibility purposes, but it was never used in the original plugin.
+
+        // TODO: test if it's a problem for compatibility that `super` is a reserved keyword
+        let mvanalyse = Analyse::new(
+            super_,
+            blksize,
+            blksizev,
+            levels,
+            search,
+            searchparam,
+            pelsearch,
+            isb,
+            lambda,
+            chroma,
+            delta,
+            truemotion,
+            lsad,
+            plevel,
+            global,
+            pnew,
+            pzero,
+            pglobal,
+            overlap,
+            overlapv,
+            divide,
+            badsad,
+            badrange,
+            meander,
+            trymany,
+            fields,
+            tff,
+            search_coarse,
+            dct,
+        )?;
+
+        Ok(Some(Box::new(mvanalyse)))
+    }
+}
 
 make_filter_function! {
     SuperFunction, "Super"
@@ -86,6 +169,7 @@ export_vapoursynth_plugin! {
         read_only: true,
     },
     [
+        AnalyseFunction::new(),
         SuperFunction::new()
     ]
 }

@@ -297,7 +297,7 @@ impl<'core> Super<'core> {
         };
 
         let bytes_per_sample = size_of::<T>();
-        let yuv_mode = if self.chroma {
+        let mode_yuv = if self.chroma {
             MVPlaneSet::YUVPLANES
         } else {
             MVPlaneSet::YPLANE
@@ -317,7 +317,7 @@ impl<'core> Super<'core> {
             self.pel,
             self.hpad,
             self.vpad,
-            yuv_mode,
+            mode_yuv,
             self.x_ratio_uv,
             self.y_ratio_uv,
             NonZeroU8::try_from(self.format.bits_per_sample())?,
@@ -339,8 +339,8 @@ impl<'core> Super<'core> {
         }
 
         let planes = [MVPlaneSet::YPLANE, MVPlaneSet::UPLANE, MVPlaneSet::VPLANE];
-        src_gof.reduce::<T>(yuv_mode, self.rfilter, &mut dest);
-        src_gof.pad::<T>(yuv_mode, &mut dest);
+        src_gof.reduce::<T>(mode_yuv, self.rfilter, &mut dest);
+        src_gof.pad::<T>(mode_yuv, &mut dest);
 
         if let Some(pel_clip) = src_pel.as_ref() {
             let src_frames = &mut src_gof.frames[0];
@@ -353,7 +353,7 @@ impl<'core> Super<'core> {
                     NonZeroUsize::new_unchecked(pel_clip.stride(plane) / bytes_per_sample)
                 };
                 let src_plane = &mut src_frames.planes[plane];
-                if (yuv_mode & planes[plane]).bits() > 0 {
+                if (mode_yuv & planes[plane]).bits() > 0 {
                     src_plane.refine_ext(
                         src_pel,
                         src_pel_pitch,
@@ -364,7 +364,7 @@ impl<'core> Super<'core> {
                 }
             }
         } else {
-            src_gof.refine::<T>(yuv_mode, self.sharp, &mut dest);
+            src_gof.refine::<T>(mode_yuv, self.sharp, &mut dest);
         }
 
         if n == 0 {
@@ -374,7 +374,7 @@ impl<'core> Super<'core> {
             props.set_int("Super_hpad", self.hpad as i64)?;
             props.set_int("Super_vpad", self.vpad as i64)?;
             props.set_int("Super_pel", usize::from(self.pel) as i64)?;
-            props.set_int("Super_modeyuv", yuv_mode.bits() as i64)?;
+            props.set_int("Super_modeyuv", mode_yuv.bits() as i64)?;
             props.set_int("Super_levels", self.levels as i64)?;
         }
 
