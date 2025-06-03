@@ -73,7 +73,7 @@ impl<T: Pixel> GroupOfPlanes<T> {
                 x_ratio_uv,
                 y_ratio_uv,
                 bits_per_sample,
-            )?);
+            ));
             pel_current = Subpel::Full;
         }
 

@@ -1,10 +1,9 @@
 use crate::{
     mv::MotionVector,
-    params::{MotionFlags, Subpel},
+    params::{DivideMode, MotionFlags, Subpel},
     util::Pixel,
 };
 use aligned::{A64, Aligned};
-use anyhow::Result;
 use smallvec::SmallVec;
 use std::num::{NonZeroU8, NonZeroUsize};
 
@@ -60,7 +59,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         x_ratio_uv: NonZeroU8,
         y_ratio_uv: NonZeroU8,
         bits_per_sample: NonZeroU8,
-    ) -> Result<Self> {
+    ) -> Self {
         debug_assert!(
             bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
                 && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
@@ -74,7 +73,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         let chroma_src_pitch =
             unsafe { NonZeroUsize::new_unchecked(blk_size_x.get() / x_ratio_uv.get() as usize) };
         let src_pitch_temp = [blk_size_x, chroma_src_pitch, chroma_src_pitch];
-        Ok(Self {
+        Self {
             pel,
             log_pel: u8::from(pel).ilog2() as u8,
             log_scale: level,
@@ -126,6 +125,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                     blk_size_y.get() / y_ratio_uv.get() as usize * src_pitch_temp[2].get(),
                 )),
             ],
-        })
+        }
     }
 }

@@ -16,6 +16,7 @@ use vapoursynth::{
 
 use crate::{
     group_of_planes::GroupOfPlanes,
+    mv_gof::MVGroupOfFrames,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
     util::Pixel,
 };
@@ -537,6 +538,129 @@ impl<'core> Analyse<'core> {
             self.divide_extra,
             self.analysis_data.bits_per_sample,
         )?;
+
+        let nref = if self.analysis_data.delta_frame > 0 {
+            let offset = if self.analysis_data.is_backward {
+                self.analysis_data.delta_frame
+            } else {
+                -self.analysis_data.delta_frame
+            };
+            n as isize + offset
+        } else {
+            // special static mode
+            // positive fixed frame number
+            -self.analysis_data.delta_frame
+        };
+
+        let src = self
+            .node
+            .get_frame_filter(context, n)
+            .ok_or(anyhow!("Analyse: get_frame_filter past end of video"))?;
+        let src_props = src.props();
+
+        let mut src_top_field = match src_props.get_int("_Field") {
+            Ok(field) => field > 0,
+            Err(_) if self.fields && self.tff.is_none() => {
+                bail!(
+                    "Analyse: _Field property not found in input frame. Therefore, you must pass tff argument."
+                );
+            }
+            _ => false,
+        };
+        // if tff was passed, it overrides _Field.
+        if let Some(tff) = self.tff {
+            src_top_field = (tff as u8 ^ (n % 2) as u8) > 0;
+        }
+
+        if nref >= 0 && (nref as usize) < self.node.info().num_frames {
+            let mut ref_top_field = false;
+            let ref_ = self
+                .node
+                .get_frame_filter(context, nref as usize)
+                .ok_or(anyhow!("Analyse: get_frame_filter ref past end of video"))?;
+            let ref_props = ref_.props();
+            ref_top_field = match ref_props.get_int("_Field") {
+                Ok(field) => field > 0,
+                Err(_) if self.fields && self.tff.is_none() => {
+                    bail!(
+                        "Analyse: _Field property not found in input frame. Therefore, you must pass tff argument."
+                    );
+                }
+                _ => false,
+            };
+
+            // if tff was passed, it overrides _Field.
+            if let Some(tff) = self.tff {
+                ref_top_field = (tff as u8 ^ (n % 2) as u8) > 0;
+            }
+
+            let mut field_shift = 0;
+            if self.fields
+                && self.analysis_data.pel > Subpel::Full
+                && (self.analysis_data.delta_frame % 2) > 0
+            {
+                // vertical shift of fields for fieldbased video at finest level pel2
+                field_shift = if src_top_field && !ref_top_field {
+                    (u8::from(self.analysis_data.pel) as usize / 2) as isize
+                } else if ref_top_field && !src_top_field {
+                    -((u8::from(self.analysis_data.pel) as usize / 2) as isize)
+                } else {
+                    0
+                };
+            }
+
+            let src_pitch = [
+                // SAFETY: stride cannot be 0
+                unsafe { NonZeroUsize::new_unchecked(src.stride(0)) },
+                // SAFETY: stride cannot be 0
+                unsafe { NonZeroUsize::new_unchecked(src.stride(1)) },
+                // SAFETY: stride cannot be 0
+                unsafe { NonZeroUsize::new_unchecked(src.stride(2)) },
+            ];
+            let ref_pitch = [
+                // SAFETY: stride cannot be 0
+                unsafe { NonZeroUsize::new_unchecked(ref_.stride(0)) },
+                // SAFETY: stride cannot be 0
+                unsafe { NonZeroUsize::new_unchecked(ref_.stride(1)) },
+                // SAFETY: stride cannot be 0
+                unsafe { NonZeroUsize::new_unchecked(ref_.stride(2)) },
+            ];
+            let src_gof = MVGroupOfFrames::new(
+                self.super_levels,
+                self.analysis_data.width,
+                self.analysis_data.height,
+                self.super_pel,
+                self.super_hpad,
+                self.super_vpad,
+                self.super_mode_yuv,
+                self.analysis_data.x_ratio_uv,
+                self.analysis_data.y_ratio_uv,
+                self.analysis_data.bits_per_sample,
+                &src_pitch,
+                self.format,
+            )?;
+            let ref_gof = MVGroupOfFrames::new(
+                self.super_levels,
+                self.analysis_data.width,
+                self.analysis_data.height,
+                self.super_pel,
+                self.super_hpad,
+                self.super_vpad,
+                self.super_mode_yuv,
+                self.analysis_data.x_ratio_uv,
+                self.analysis_data.y_ratio_uv,
+                self.analysis_data.bits_per_sample,
+                &ref_pitch,
+                self.format,
+            )?;
+
+            todo!()
+        } else {
+            todo!()
+        }
+
+        // TODO: u8 or T?
+        // let mut vectors = Vec::<u8>::new();
 
         todo!()
     }
