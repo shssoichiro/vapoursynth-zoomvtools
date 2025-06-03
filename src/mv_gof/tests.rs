@@ -50,7 +50,7 @@ fn test_mvgof_struct_fields() {
 
     // Test basic structure properties
     assert_eq!(gof.level_count, level_count);
-    assert_eq!(gof.frames.len(), level_count as usize);
+    assert_eq!(gof.frames.len(), level_count);
     assert_eq!(gof.pel, pel);
     assert_eq!(gof.x_ratio_uv, x_ratio_uv);
     assert_eq!(gof.y_ratio_uv, y_ratio_uv);
@@ -113,7 +113,7 @@ fn test_mvgof_different_level_counts() {
 
         assert!(result.is_ok(), "Should create with {} levels", level_count);
         let gof = result.unwrap();
-        assert_eq!(gof.frames.len(), level_count as usize);
+        assert_eq!(gof.frames.len(), level_count);
         assert_eq!(gof.level_count, level_count);
     }
 }

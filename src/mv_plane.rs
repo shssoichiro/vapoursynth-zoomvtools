@@ -54,7 +54,7 @@ impl MVPlane {
         plane_offset: usize,
         pitch: NonZeroUsize,
     ) -> Result<Self> {
-        let pel_val = usize::from(pel);
+        let pel_val = u8::from(pel) as usize;
         let padded_width = width.saturating_add(2 * hpad);
         let padded_height = height.saturating_add(2 * vpad);
         let offset_padding = pitch.get() * vpad + hpad;
@@ -618,7 +618,7 @@ pub fn plane_super_offset(
     if level == 0 {
         offset = 0;
     } else {
-        let pel = usize::from(pel);
+        let pel = u8::from(pel) as usize;
         let plane_pitch_val = plane_pitch.get();
         let src_height_val = src_height.get();
         let y_ratio_uv_val = y_ratio_uv.get() as usize;

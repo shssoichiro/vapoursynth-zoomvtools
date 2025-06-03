@@ -65,7 +65,7 @@ impl MVGroupOfFrames {
             frames: Default::default(),
         };
 
-        let mut frames = Vec::with_capacity(level_count as usize);
+        let mut frames = Vec::with_capacity(level_count);
 
         for i in 0..level_count {
             let width_i = plane_width_luma(this.width[0], i, this.x_ratio_uv, this.hpad[0]);
@@ -105,7 +105,7 @@ impl MVGroupOfFrames {
     }
 
     pub fn reduce<T: Pixel>(&mut self, mode: MVPlaneSet, filter: ReduceFilter, frame: &mut Frame) {
-        for i in 0..(self.level_count as usize - 1) {
+        for i in 0..(self.level_count - 1) {
             self.frames[i]
                 .clone()
                 .reduce_to::<T>(&mut self.frames[i + 1], mode, filter, frame);

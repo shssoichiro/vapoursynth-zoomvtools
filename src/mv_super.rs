@@ -197,7 +197,7 @@ impl<'core> Super<'core> {
             };
 
             if pel >= Subpel::Half {
-                let pel = NonZeroUsize::from(pel);
+                let pel = NonZeroU8::from(pel).into();
                 if pelclip_w == width.saturating_mul(pel) && pelclip_h == height.saturating_mul(pel)
                 {
                     (true, false)
@@ -378,7 +378,7 @@ impl<'core> Super<'core> {
             props.set_int("Super_height", self.height.get() as i64)?;
             props.set_int("Super_hpad", self.hpad as i64)?;
             props.set_int("Super_vpad", self.vpad as i64)?;
-            props.set_int("Super_pel", usize::from(self.pel) as i64)?;
+            props.set_int("Super_pel", u8::from(self.pel) as i64)?;
             props.set_int("Super_modeyuv", mode_yuv.bits() as i64)?;
             props.set_int("Super_levels", self.levels as i64)?;
         }

@@ -5,10 +5,11 @@ use anyhow::{Result, anyhow};
 use crate::{
     params::{DivideMode, MotionFlags, Subpel},
     plane_of_blocks::PlaneOfBlocks,
+    util::Pixel,
 };
 
 #[derive(Debug, Clone)]
-pub struct GroupOfPlanes {
+pub struct GroupOfPlanes<T: Pixel> {
     pub blk_size_x: NonZeroUsize,
     pub blk_size_y: NonZeroUsize,
     pub level_count: usize,
@@ -17,10 +18,10 @@ pub struct GroupOfPlanes {
     pub x_ratio_uv: NonZeroU8,
     pub y_ratio_uv: NonZeroU8,
     pub divide_extra: DivideMode,
-    pub planes: Vec<PlaneOfBlocks>,
+    pub planes: Vec<PlaneOfBlocks<T>>,
 }
 
-impl GroupOfPlanes {
+impl<T: Pixel> GroupOfPlanes<T> {
     pub fn new(
         blk_size_x: NonZeroUsize,
         blk_size_y: NonZeroUsize,
@@ -36,7 +37,7 @@ impl GroupOfPlanes {
         divide_extra: DivideMode,
         bits_per_sample: NonZeroU8,
     ) -> Result<Self> {
-        let mut planes = Vec::with_capacity(level_count as usize);
+        let mut planes = Vec::with_capacity(level_count);
 
         let mut pel_current = pel;
         let mut motion_flags_current = motion_flags;

@@ -1,5 +1,5 @@
 use bitflags::bitflags;
-use std::num::NonZeroUsize;
+use std::num::NonZeroU8;
 
 use anyhow::{Result, bail};
 
@@ -26,7 +26,7 @@ impl TryFrom<i64> for Subpel {
     }
 }
 
-impl From<Subpel> for usize {
+impl From<Subpel> for u8 {
     fn from(value: Subpel) -> Self {
         match value {
             Subpel::Full => 1,
@@ -36,10 +36,10 @@ impl From<Subpel> for usize {
     }
 }
 
-impl From<Subpel> for NonZeroUsize {
+impl From<Subpel> for NonZeroU8 {
     fn from(value: Subpel) -> Self {
         // SAFETY: the int value of this enum can never be zero
-        unsafe { NonZeroUsize::new_unchecked(usize::from(value)) }
+        unsafe { NonZeroU8::new_unchecked(u8::from(value)) }
     }
 }
 

@@ -19,6 +19,8 @@ pub mod average;
 #[cfg(feature = "bench")]
 pub mod group_of_planes;
 #[cfg(feature = "bench")]
+pub mod mv;
+#[cfg(feature = "bench")]
 pub mod mv_analyse;
 #[cfg(feature = "bench")]
 pub mod mv_frame;
@@ -45,6 +47,8 @@ pub mod util;
 mod average;
 #[cfg(not(feature = "bench"))]
 mod group_of_planes;
+#[cfg(not(feature = "bench"))]
+mod mv;
 #[cfg(not(feature = "bench"))]
 mod mv_analyse;
 #[cfg(not(feature = "bench"))]

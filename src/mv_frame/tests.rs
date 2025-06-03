@@ -543,11 +543,11 @@ fn test_mvframe_subpel_window_offsets() {
         )
         .unwrap();
 
-        let expected_windows = usize::from(pel) * usize::from(pel);
+        let expected_windows = u8::from(pel) * u8::from(pel);
         for plane in &frame.planes {
             assert_eq!(
                 plane.subpel_window_offsets.len(),
-                expected_windows,
+                expected_windows as usize,
                 "Pel {:?} should create {} subpel windows",
                 pel,
                 expected_windows

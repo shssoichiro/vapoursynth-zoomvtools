@@ -522,7 +522,7 @@ impl<'core> Analyse<'core> {
         context: vapoursynth::plugins::FrameContext,
         n: usize,
     ) -> Result<FrameRef<'core>> {
-        let vector_fields = GroupOfPlanes::new(
+        let vector_fields = GroupOfPlanes::<T>::new(
             self.analysis_data.blk_size_x,
             self.analysis_data.blk_size_y,
             self.analysis_data.level_count,
