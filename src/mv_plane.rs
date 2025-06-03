@@ -499,12 +499,12 @@ impl MVPlane {
 /// The calculated height for the luma plane at the specified level
 pub fn plane_height_luma(
     src_height: NonZeroUsize,
-    level: u16,
-    y_ratio_uv: NonZeroUsize,
+    level: usize,
+    y_ratio_uv: NonZeroU8,
     vpad: usize,
 ) -> NonZeroUsize {
     let mut height = src_height.get();
-    let y_ratio_uv_val = y_ratio_uv.get();
+    let y_ratio_uv_val = y_ratio_uv.get() as usize;
 
     for _i in 1..=level {
         height = if vpad >= y_ratio_uv_val {
@@ -548,12 +548,12 @@ pub fn plane_height_luma(
 /// The calculated width for the luma plane at the specified level
 pub fn plane_width_luma(
     src_width: NonZeroUsize,
-    level: u16,
-    x_ratio_uv: NonZeroUsize,
+    level: usize,
+    x_ratio_uv: NonZeroU8,
     hpad: usize,
 ) -> NonZeroUsize {
     let mut width = src_width.get();
-    let x_ratio_uv_val = x_ratio_uv.get();
+    let x_ratio_uv_val = x_ratio_uv.get() as usize;
 
     for _i in 1..=level {
         width = if hpad >= x_ratio_uv_val {
@@ -604,11 +604,11 @@ pub fn plane_width_luma(
 pub fn plane_super_offset(
     chroma: bool,
     src_height: NonZeroUsize,
-    level: u16,
+    level: usize,
     pel: Subpel,
     vpad: usize,
     plane_pitch: NonZeroUsize,
-    y_ratio_uv: NonZeroUsize,
+    y_ratio_uv: NonZeroU8,
 ) -> usize {
     // storing subplanes in superframes may be implemented by various ways
     let mut height; // luma or chroma
@@ -621,7 +621,7 @@ pub fn plane_super_offset(
         let pel = usize::from(pel);
         let plane_pitch_val = plane_pitch.get();
         let src_height_val = src_height.get();
-        let y_ratio_uv_val = y_ratio_uv.get();
+        let y_ratio_uv_val = y_ratio_uv.get() as usize;
         offset = pel * pel * plane_pitch_val * (src_height_val + vpad * 2);
 
         for i in 1..level {
@@ -631,7 +631,7 @@ pub fn plane_super_offset(
             // at the specific level `i` starting from the original source dimensions.
             height = if chroma {
                 plane_height_luma(
-                    src_height.saturating_mul(y_ratio_uv),
+                    src_height.saturating_mul(y_ratio_uv.into()),
                     i,
                     y_ratio_uv,
                     vpad * y_ratio_uv_val,

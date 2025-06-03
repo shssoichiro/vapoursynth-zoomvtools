@@ -17,6 +17,8 @@ mod tests;
 #[cfg(feature = "bench")]
 pub mod average;
 #[cfg(feature = "bench")]
+pub mod group_of_planes;
+#[cfg(feature = "bench")]
 pub mod mv_analyse;
 #[cfg(feature = "bench")]
 pub mod mv_frame;
@@ -31,6 +33,8 @@ pub mod pad;
 #[cfg(feature = "bench")]
 pub mod params;
 #[cfg(feature = "bench")]
+pub mod plane_of_blocks;
+#[cfg(feature = "bench")]
 pub mod reduce;
 #[cfg(feature = "bench")]
 pub mod refine;
@@ -39,6 +43,8 @@ pub mod util;
 
 #[cfg(not(feature = "bench"))]
 mod average;
+#[cfg(not(feature = "bench"))]
+mod group_of_planes;
 #[cfg(not(feature = "bench"))]
 mod mv_analyse;
 #[cfg(not(feature = "bench"))]
@@ -53,6 +59,8 @@ mod mv_super;
 mod pad;
 #[cfg(not(feature = "bench"))]
 mod params;
+#[cfg(not(feature = "bench"))]
+mod plane_of_blocks;
 #[cfg(not(feature = "bench"))]
 mod reduce;
 #[cfg(not(feature = "bench"))]

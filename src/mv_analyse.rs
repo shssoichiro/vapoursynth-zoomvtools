@@ -15,8 +15,8 @@ use vapoursynth::{
 };
 
 use crate::{
-    params::MVPlaneSet,
-    params::{DctMode, DivideMode, MotionFlags, PenaltyScaling, SearchType, Subpel},
+    group_of_planes::GroupOfPlanes,
+    params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
     util::Pixel,
 };
 
@@ -86,7 +86,7 @@ pub struct Analyse<'core> {
     super_vpad: usize,
     super_pel: Subpel,
     super_mode_yuv: MVPlaneSet,
-    super_levels: u16,
+    super_levels: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -103,13 +103,13 @@ struct MVAnalysisData {
     /// pixel refinement of the motion estimation
     pub pel: Subpel,
     /// number of level for the hierarchal search
-    pub level_count: u16,
+    pub level_count: usize,
     /// difference between the index of the reference and the index of the current frame
     pub delta_frame: isize,
     /// direction of the search ( forward / backward )
     pub is_backward: bool,
     /// diverse flags to set up the search
-    pub motion_flags: u8,
+    pub motion_flags: MotionFlags,
     /// Width of the frame
     pub width: NonZeroUsize,
     /// Height of the frame
@@ -125,9 +125,9 @@ struct MVAnalysisData {
     /// Number of bits per pixel
     pub bits_per_sample: NonZeroU8,
     /// ratio of luma plane height to chroma plane height
-    pub y_ratio_uv: NonZeroUsize,
+    pub y_ratio_uv: NonZeroU8,
     /// ratio of luma plane width to chroma plane width
-    pub x_ratio_uv: NonZeroUsize,
+    pub x_ratio_uv: NonZeroU8,
     /// Horizontal padding
     pub h_padding: usize,
     /// Vertical padding
@@ -285,12 +285,12 @@ impl<'core> Analyse<'core> {
         bad_sad = (bad_sad as usize * (blk_size_x * blk_size_y) / 64) as u32;
 
         // TODO: Why are we using this instead of just checking the variables directly?
-        let mut motion_flags = 0;
+        let mut motion_flags = MotionFlags::empty();
         if is_backward {
-            motion_flags |= MotionFlags::IS_BACKWARD.bits();
+            motion_flags |= MotionFlags::IS_BACKWARD;
         }
         if chroma {
-            motion_flags |= MotionFlags::USE_CHROMA_MOTION.bits();
+            motion_flags |= MotionFlags::USE_CHROMA_MOTION;
         }
 
         let mode_yuv = if chroma {
@@ -331,8 +331,8 @@ impl<'core> Analyse<'core> {
             },
         };
 
-        let x_ratio_uv = NonZeroUsize::new(1 << format.sub_sampling_w()).unwrap();
-        let y_ratio_uv = NonZeroUsize::new(1 << format.sub_sampling_h()).unwrap();
+        let x_ratio_uv = NonZeroU8::new(1 << format.sub_sampling_w()).unwrap();
+        let y_ratio_uv = NonZeroU8::new(1 << format.sub_sampling_h()).unwrap();
 
         // I like that this is called `evil`, but I don't really know a better way to handle it.
         let evil = match super_.get_frame(0) {
@@ -382,7 +382,7 @@ impl<'core> Analyse<'core> {
             .map_err(|_| anyhow!(super_props_err2))?,
         )
         .unwrap();
-        let super_levels = u16::try_from(
+        let super_levels = usize::try_from(
             super_props
                 .get_int("Super_levels")
                 .map_err(|_| anyhow!(super_props_err))?,
@@ -391,9 +391,8 @@ impl<'core> Analyse<'core> {
         if super_hpad >= super_height.get() / 2 {
             bail!(super_props_err2);
         }
-        // I don't know why `bitflags` had to give its methods complicated names
-        // instead of just naming them "and" and "or".
-        if mode_yuv.bits() & super_mode_yuv.bits() != mode_yuv.bits() {
+
+        if mode_yuv & super_mode_yuv != mode_yuv {
             bail!("Analyse: super clip does not contain needed colour data.");
         }
 
@@ -411,7 +410,7 @@ impl<'core> Analyse<'core> {
             levels_max += 1;
         }
         let level_count = match levels.filter(|l| *l > 0) {
-            Some(levels) => min(levels_max, levels as u16),
+            Some(levels) => min(levels_max, levels as usize),
             None => levels_max,
         };
         debug_assert!(level_count > 0);
@@ -523,6 +522,22 @@ impl<'core> Analyse<'core> {
         context: vapoursynth::plugins::FrameContext,
         n: usize,
     ) -> Result<FrameRef<'core>> {
+        let vector_fields = GroupOfPlanes::new(
+            self.analysis_data.blk_size_x,
+            self.analysis_data.blk_size_y,
+            self.analysis_data.level_count,
+            self.analysis_data.pel,
+            self.analysis_data.motion_flags,
+            self.analysis_data.overlap_x,
+            self.analysis_data.overlap_y,
+            self.analysis_data.blk_x,
+            self.analysis_data.blk_y,
+            self.analysis_data.x_ratio_uv,
+            self.analysis_data.y_ratio_uv,
+            self.divide_extra,
+            self.analysis_data.bits_per_sample,
+        )?;
+
         todo!()
     }
 }

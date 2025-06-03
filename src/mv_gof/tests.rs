@@ -21,8 +21,8 @@ fn test_mvgof_struct_fields() {
     let hpad = 8;
     let vpad = 8;
     let yuv_mode = MVPlaneSet::YPLANE; // Use single plane to simplify
-    let x_ratio_uv = NonZeroUsize::new(1).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(1).unwrap();
+    let x_ratio_uv = NonZeroU8::new(1).unwrap();
+    let y_ratio_uv = NonZeroU8::new(1).unwrap();
     let bits_per_sample = NonZeroU8::new(8).unwrap();
     let pitch = [
         NonZeroUsize::new(80).unwrap(),
@@ -87,8 +87,8 @@ fn test_mvgof_different_level_counts() {
         let hpad = 8;
         let vpad = 8;
         let yuv_mode = MVPlaneSet::YPLANE;
-        let x_ratio_uv = NonZeroUsize::new(1).unwrap();
-        let y_ratio_uv = NonZeroUsize::new(1).unwrap();
+        let x_ratio_uv = NonZeroU8::new(1).unwrap();
+        let y_ratio_uv = NonZeroU8::new(1).unwrap();
         let bits_per_sample = NonZeroU8::new(8).unwrap();
         let pitch = [
             NonZeroUsize::new(80).unwrap(),
@@ -135,8 +135,8 @@ fn test_mvgof_debug_and_clone() {
     let hpad = 4;
     let vpad = 4;
     let yuv_mode = MVPlaneSet::YPLANE;
-    let x_ratio_uv = NonZeroUsize::new(1).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(1).unwrap();
+    let x_ratio_uv = NonZeroU8::new(1).unwrap();
+    let y_ratio_uv = NonZeroU8::new(1).unwrap();
     let bits_per_sample = NonZeroU8::new(8).unwrap();
     let pitch = [
         NonZeroUsize::new(40).unwrap(),

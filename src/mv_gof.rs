@@ -18,38 +18,40 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct MVGroupOfFrames {
-    level_count: u16,
+    level_count: usize,
     width: [NonZeroUsize; 3],
     height: [NonZeroUsize; 3],
     pel: Subpel,
     hpad: [usize; 3],
     vpad: [usize; 3],
-    x_ratio_uv: NonZeroUsize,
-    y_ratio_uv: NonZeroUsize,
+    x_ratio_uv: NonZeroU8,
+    y_ratio_uv: NonZeroU8,
     pub frames: Box<[MVFrame]>,
 }
 
 impl MVGroupOfFrames {
     pub fn new(
-        level_count: u16,
+        level_count: usize,
         width: NonZeroUsize,
         height: NonZeroUsize,
         pel: Subpel,
         hpad: usize,
         vpad: usize,
         yuv_mode: MVPlaneSet,
-        x_ratio_uv: NonZeroUsize,
-        y_ratio_uv: NonZeroUsize,
+        x_ratio_uv: NonZeroU8,
+        y_ratio_uv: NonZeroU8,
         bits_per_sample: NonZeroU8,
         pitch: &[NonZeroUsize; 3],
         format: Format,
     ) -> Result<Self> {
         // SAFETY: Width must be at least the value of its ratio
-        let chroma_width = unsafe { NonZeroUsize::new_unchecked(width.get() / x_ratio_uv.get()) };
+        let chroma_width =
+            unsafe { NonZeroUsize::new_unchecked(width.get() / x_ratio_uv.get() as usize) };
         // SAFETY: Height must be at least the value of its ratio
-        let chroma_height = unsafe { NonZeroUsize::new_unchecked(height.get() / y_ratio_uv.get()) };
-        let chroma_hpad = hpad / x_ratio_uv.get();
-        let chroma_vpad = vpad / y_ratio_uv.get();
+        let chroma_height =
+            unsafe { NonZeroUsize::new_unchecked(height.get() / y_ratio_uv.get() as usize) };
+        let chroma_hpad = hpad / x_ratio_uv.get() as usize;
+        let chroma_vpad = vpad / y_ratio_uv.get() as usize;
 
         let mut this = Self {
             level_count,

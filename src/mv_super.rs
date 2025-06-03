@@ -45,7 +45,7 @@ pub struct Super<'core> {
     /// enough (coarser levels are not used).
     ///
     /// Default `0` = auto, all levels are produced
-    levels: u16,
+    levels: usize,
     /// If set to true, it allows to also prepare chroma planes in super clip.
     chroma: bool,
     /// subpixel interpolation method for pel=2,4.
@@ -81,8 +81,8 @@ pub struct Super<'core> {
     format: Format<'core>,
     super_width: NonZeroUsize,
     super_height: NonZeroUsize,
-    x_ratio_uv: NonZeroUsize,
-    y_ratio_uv: NonZeroUsize,
+    x_ratio_uv: NonZeroU8,
+    y_ratio_uv: NonZeroU8,
     is_pelclip_padded: bool,
 }
 
@@ -102,7 +102,7 @@ impl<'core> Super<'core> {
         let hpad = hpad.map(usize::try_from).unwrap_or(Ok(16))?;
         let vpad = vpad.map(usize::try_from).unwrap_or(Ok(16))?;
         let pel = pel.map(Subpel::try_from).unwrap_or(Ok(Subpel::Half))?;
-        let mut levels = levels.map(u16::try_from).unwrap_or(Ok(0))?;
+        let mut levels = levels.map(usize::try_from).unwrap_or(Ok(0))?;
         let mut chroma = chroma.map(|chroma| chroma > 0).unwrap_or(true);
         let sharp = sharp
             .map(SubpelMethod::try_from)
@@ -152,14 +152,16 @@ impl<'core> Super<'core> {
         // SAFETY: operation cannot result in zero
         let (x_ratio_uv, y_ratio_uv) = unsafe {
             (
-                NonZeroUsize::new_unchecked(1 << format.sub_sampling_w()),
-                NonZeroUsize::new_unchecked(1 << format.sub_sampling_h()),
+                NonZeroU8::new_unchecked(1 << format.sub_sampling_w()),
+                NonZeroU8::new_unchecked(1 << format.sub_sampling_h()),
             )
         };
 
-        let mut levels_max = 0u16;
-        while plane_height_luma(height, levels_max, y_ratio_uv, vpad).get() >= y_ratio_uv.get() * 2
-            && plane_width_luma(width, levels_max, x_ratio_uv, hpad).get() >= x_ratio_uv.get() * 2
+        let mut levels_max = 0;
+        while plane_height_luma(height, levels_max, y_ratio_uv, vpad).get()
+            >= y_ratio_uv.get() as usize * 2
+            && plane_width_luma(width, levels_max, x_ratio_uv, hpad).get()
+                >= x_ratio_uv.get() as usize * 2
         {
             levels_max += 1;
         }
@@ -356,7 +358,7 @@ impl<'core> Super<'core> {
                     NonZeroUsize::new_unchecked(pel_clip.stride(plane) / bytes_per_sample)
                 };
                 let src_plane = &mut src_frames.planes[plane];
-                if (mode_yuv & planes[plane]).bits() > 0 {
+                if !(mode_yuv & planes[plane]).is_empty() {
                     src_plane.refine_ext(
                         src_pel,
                         src_pel_pitch,

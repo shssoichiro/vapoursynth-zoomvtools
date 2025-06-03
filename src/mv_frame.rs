@@ -26,18 +26,20 @@ impl MVFrame {
         hpad: usize,
         vpad: usize,
         yuv_mode: MVPlaneSet,
-        x_ratio_uv: NonZeroUsize,
-        y_ratio_uv: NonZeroUsize,
+        x_ratio_uv: NonZeroU8,
+        y_ratio_uv: NonZeroU8,
         bits_per_sample: NonZeroU8,
         plane_offsets: &SmallVec<[usize; 3]>,
         pitch: &[NonZeroUsize; 3],
     ) -> Result<Self> {
         // SAFETY: Width must be at least the value of its ratio
-        let chroma_width = unsafe { NonZeroUsize::new_unchecked(width.get() / x_ratio_uv.get()) };
+        let chroma_width =
+            unsafe { NonZeroUsize::new_unchecked(width.get() / x_ratio_uv.get() as usize) };
         // SAFETY: Height must be at least the value of its ratio
-        let chroma_height = unsafe { NonZeroUsize::new_unchecked(height.get() / y_ratio_uv.get()) };
-        let chroma_hpad = hpad / x_ratio_uv.get();
-        let chroma_vpad = vpad / y_ratio_uv.get();
+        let chroma_height =
+            unsafe { NonZeroUsize::new_unchecked(height.get() / y_ratio_uv.get() as usize) };
+        let chroma_hpad = hpad / x_ratio_uv.get() as usize;
+        let chroma_vpad = vpad / y_ratio_uv.get() as usize;
 
         let width = [width, chroma_width, chroma_width];
         let height = [height, chroma_height, chroma_height];

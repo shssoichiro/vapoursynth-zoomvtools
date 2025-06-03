@@ -29,7 +29,7 @@ fn test_new_with_specified_args(
     hpad: usize,
     vpad: usize,
     pel: u8,
-    levels: u16,
+    levels: usize,
     chroma: bool,
     sharp: u8,
     rfilter: u8,

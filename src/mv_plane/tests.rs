@@ -496,7 +496,7 @@ fn test_mvplane_offset_calculations() {
 #[test]
 fn test_plane_height_luma_level_0() {
     let src_height = NonZeroUsize::new(100).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 8;
 
     let result = plane_height_luma(src_height, 0, y_ratio_uv, vpad);
@@ -508,7 +508,7 @@ fn test_plane_height_luma_level_0() {
 #[test]
 fn test_plane_height_luma_downscaling() {
     let src_height = NonZeroUsize::new(200).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 4; // vpad < y_ratio_uv
 
     // Level 1: height = ((200 / 2) / 2) * 2 = 50 * 2 = 100
@@ -523,7 +523,7 @@ fn test_plane_height_luma_downscaling() {
 #[test]
 fn test_plane_height_luma_with_large_vpad() {
     let src_height = NonZeroUsize::new(200).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 8; // vpad >= y_ratio_uv
 
     // Level 1: height = (200 / 2).div_ceil(2) * 2 = 100.div_ceil(2) * 2 = 50 * 2 = 100
@@ -534,7 +534,7 @@ fn test_plane_height_luma_with_large_vpad() {
 #[test]
 fn test_plane_height_luma_multiple_levels() {
     let src_height = NonZeroUsize::new(1600).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(1).unwrap(); // 4:4:4 format
+    let y_ratio_uv = NonZeroU8::new(1).unwrap(); // 4:4:4 format
     let vpad = 0;
 
     // Level 1: height = ((1600 / 1) / 2) * 1 = 800
@@ -553,7 +553,7 @@ fn test_plane_height_luma_multiple_levels() {
 #[test]
 fn test_plane_height_luma_4_2_0_format() {
     let src_height = NonZeroUsize::new(480).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap(); // 4:2:0 format
+    let y_ratio_uv = NonZeroU8::new(2).unwrap(); // 4:2:0 format
     let vpad = 0;
 
     // Level 1: height = ((480 / 2) / 2) * 2 = 120 * 2 = 240
@@ -568,7 +568,7 @@ fn test_plane_height_luma_4_2_0_format() {
 #[test]
 fn test_plane_width_luma_level_0() {
     let src_width = NonZeroUsize::new(100).unwrap();
-    let x_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let x_ratio_uv = NonZeroU8::new(2).unwrap();
     let hpad = 8;
 
     let result = plane_width_luma(src_width, 0, x_ratio_uv, hpad);
@@ -580,7 +580,7 @@ fn test_plane_width_luma_level_0() {
 #[test]
 fn test_plane_width_luma_downscaling() {
     let src_width = NonZeroUsize::new(400).unwrap();
-    let x_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let x_ratio_uv = NonZeroU8::new(2).unwrap();
     let hpad = 1; // hpad < x_ratio_uv
 
     // Level 1: width = ((400 / 2) / 2) * 2 = 100 * 2 = 200
@@ -595,7 +595,7 @@ fn test_plane_width_luma_downscaling() {
 #[test]
 fn test_plane_width_luma_with_large_hpad() {
     let src_width = NonZeroUsize::new(400).unwrap();
-    let x_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let x_ratio_uv = NonZeroU8::new(2).unwrap();
     let hpad = 4; // hpad >= x_ratio_uv
 
     // Level 1: width = (400 / 2).div_ceil(2) * 2 = 200.div_ceil(2) * 2 = 100 * 2 = 200
@@ -606,7 +606,7 @@ fn test_plane_width_luma_with_large_hpad() {
 #[test]
 fn test_plane_width_luma_4_4_4_format() {
     let src_width = NonZeroUsize::new(1920).unwrap();
-    let x_ratio_uv = NonZeroUsize::new(1).unwrap(); // 4:4:4 format
+    let x_ratio_uv = NonZeroU8::new(1).unwrap(); // 4:4:4 format
     let hpad = 0;
 
     // Level 1: width = ((1920 / 1) / 2) * 1 = 960
@@ -621,7 +621,7 @@ fn test_plane_width_luma_4_4_4_format() {
 #[test]
 fn test_plane_width_luma_4_2_0_format() {
     let src_width = NonZeroUsize::new(640).unwrap();
-    let x_ratio_uv = NonZeroUsize::new(2).unwrap(); // 4:2:0 format
+    let x_ratio_uv = NonZeroU8::new(2).unwrap(); // 4:2:0 format
     let hpad = 1;
 
     // Level 1: width = ((640 / 2) / 2) * 2 = 160 * 2 = 320
@@ -637,7 +637,7 @@ fn test_plane_width_luma_4_2_0_format() {
 fn test_plane_super_offset_level_0() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let plane_pitch = NonZeroUsize::new(120).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 8;
 
     // Level 0 should always return offset 0
@@ -668,7 +668,7 @@ fn test_plane_super_offset_level_0() {
 fn test_plane_super_offset_level_1_luma() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let plane_pitch = NonZeroUsize::new(120).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 8;
     let pel = Subpel::Full;
 
@@ -682,7 +682,7 @@ fn test_plane_super_offset_level_1_luma() {
 fn test_plane_super_offset_level_1_chroma() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let plane_pitch = NonZeroUsize::new(120).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 8;
     let pel = Subpel::Full;
 
@@ -696,7 +696,7 @@ fn test_plane_super_offset_level_1_chroma() {
 fn test_plane_super_offset_half_pel() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let plane_pitch = NonZeroUsize::new(120).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 8;
     let pel = Subpel::Half;
 
@@ -710,7 +710,7 @@ fn test_plane_super_offset_half_pel() {
 fn test_plane_super_offset_quarter_pel() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let plane_pitch = NonZeroUsize::new(120).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 8;
     let pel = Subpel::Quarter;
 
@@ -724,7 +724,7 @@ fn test_plane_super_offset_quarter_pel() {
 fn test_plane_super_offset_multiple_levels() {
     let src_height = NonZeroUsize::new(200).unwrap();
     let plane_pitch = NonZeroUsize::new(240).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 4;
     let pel = Subpel::Full;
 
@@ -741,7 +741,7 @@ fn test_plane_super_offset_multiple_levels() {
 fn test_plane_super_offset_chroma_vs_luma() {
     let src_height = NonZeroUsize::new(200).unwrap();
     let plane_pitch = NonZeroUsize::new(240).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 4;
     let pel = Subpel::Full;
 
@@ -759,7 +759,7 @@ fn test_plane_super_offset_realistic_video_dimensions() {
     // Test with realistic HD video dimensions
     let src_height = NonZeroUsize::new(1080).unwrap();
     let plane_pitch = NonZeroUsize::new(1920).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap(); // 4:2:0
+    let y_ratio_uv = NonZeroU8::new(2).unwrap(); // 4:2:0
     let vpad = 16;
     let pel = Subpel::Quarter;
 
@@ -775,7 +775,7 @@ fn test_plane_super_offset_realistic_video_dimensions() {
 fn test_plane_height_width_consistency() {
     // Test that height and width functions behave consistently
     let src_dim = NonZeroUsize::new(320).unwrap();
-    let ratio_uv = NonZeroUsize::new(2).unwrap();
+    let ratio_uv = NonZeroU8::new(2).unwrap();
     let pad = 8;
 
     let height = plane_height_luma(src_dim, 1, ratio_uv, pad);

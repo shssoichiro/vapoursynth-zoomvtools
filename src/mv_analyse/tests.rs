@@ -221,7 +221,7 @@ fn test_analyse_new_defaults() {
     );
 
     // Verify motion flags
-    let expected_flags = MotionFlags::USE_CHROMA_MOTION.bits();
+    let expected_flags = MotionFlags::USE_CHROMA_MOTION;
     assert_eq!(
         analyse.analysis_data.motion_flags, expected_flags,
         "Motion flags should include chroma"
@@ -890,7 +890,7 @@ fn test_analyse_new_backward_motion() {
         analyse.analysis_data.is_backward,
         "Is_backward should be true"
     );
-    let expected_flags = MotionFlags::IS_BACKWARD.bits() | MotionFlags::USE_CHROMA_MOTION.bits();
+    let expected_flags = MotionFlags::IS_BACKWARD | MotionFlags::USE_CHROMA_MOTION;
     assert_eq!(
         analyse.analysis_data.motion_flags, expected_flags,
         "Motion flags should include backward"
@@ -941,7 +941,7 @@ fn test_analyse_new_chroma_disabled() {
         MVPlaneSet::YPLANE,
         "YUV mode should be Y-plane only"
     );
-    let expected_flags = 0; // No chroma flag
+    let expected_flags = MotionFlags::empty(); // No chroma flag
     assert_eq!(
         analyse.analysis_data.motion_flags, expected_flags,
         "Motion flags should not include chroma"

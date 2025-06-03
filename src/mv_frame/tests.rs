@@ -11,8 +11,8 @@ fn create_test_params() -> (
     usize,
     usize,
     MVPlaneSet,
-    NonZeroUsize,
-    NonZeroUsize,
+    NonZeroU8,
+    NonZeroU8,
     NonZeroU8,
     SmallVec<[usize; 3]>,
     [NonZeroUsize; 3],
@@ -23,8 +23,8 @@ fn create_test_params() -> (
     let hpad = 8;
     let vpad = 8;
     let yuv_mode = MVPlaneSet::YUVPLANES;
-    let x_ratio_uv = NonZeroUsize::new(2).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let x_ratio_uv = NonZeroU8::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let bits_per_sample = NonZeroU8::new(8).unwrap();
     let plane_offsets = SmallVec::from([0, 1000, 2000]);
     let pitch = [
@@ -161,8 +161,8 @@ fn test_mvframe_new_chroma_calculation() {
     let hpad = 8;
     let vpad = 8;
     let yuv_mode = MVPlaneSet::YUVPLANES;
-    let x_ratio_uv = NonZeroUsize::new(2).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let x_ratio_uv = NonZeroU8::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let bits_per_sample = NonZeroU8::new(8).unwrap();
     let plane_offsets = SmallVec::from([0, 1000, 2000]);
     let pitch = [
@@ -207,8 +207,8 @@ fn test_mvframe_new_padding_calculation() {
     let hpad = 16;
     let vpad = 12;
     let yuv_mode = MVPlaneSet::YUVPLANES;
-    let x_ratio_uv = NonZeroUsize::new(2).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let x_ratio_uv = NonZeroU8::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let bits_per_sample = NonZeroU8::new(8).unwrap();
     let plane_offsets = SmallVec::from([0, 1000, 2000]);
     let pitch = [
@@ -294,8 +294,8 @@ fn test_mvframe_new_edge_case_small_dimensions() {
     let hpad = 0;
     let vpad = 0;
     let yuv_mode = MVPlaneSet::YUVPLANES;
-    let x_ratio_uv = NonZeroUsize::new(2).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(2).unwrap();
+    let x_ratio_uv = NonZeroU8::new(2).unwrap();
+    let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let bits_per_sample = NonZeroU8::new(8).unwrap();
     let plane_offsets = SmallVec::from([0, 1000, 2000]);
     let pitch = [
@@ -399,8 +399,8 @@ fn test_mvframe_new_property_based(
     let hpad = hpad as usize;
     let vpad = vpad as usize;
     let yuv_mode = MVPlaneSet::YPLANE; // Use single plane to simplify test
-    let x_ratio_uv = NonZeroUsize::new(1).unwrap();
-    let y_ratio_uv = NonZeroUsize::new(1).unwrap();
+    let x_ratio_uv = NonZeroU8::new(1).unwrap();
+    let y_ratio_uv = NonZeroU8::new(1).unwrap();
     let bits_per_sample = NonZeroU8::new(bits).unwrap();
     let plane_offsets = SmallVec::from([0, 1000, 2000]);
     let pitch = [

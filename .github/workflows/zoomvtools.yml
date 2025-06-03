@@ -51,6 +51,7 @@ jobs:
       matrix:
         platform: [ubuntu-latest]
     # FIXME: run tests on ARM and Windows
+    # FIXME: the github runners don't have AVX2, so the AVX2 tests don't run in CI. facepalm. maybe I should've hosted this on Gitlab :dogelul:
 
     runs-on: ${{ matrix.platform }}
     container: shssoichiro/av1an-ci:latest
