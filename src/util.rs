@@ -44,6 +44,7 @@ pub trait Pixel:
     + PartialEq
     + Eq
 {
+    #[must_use]
     fn from_or_max(value: u32) -> Self;
 }
 
@@ -83,6 +84,7 @@ where
 }
 
 pub trait MaxValue {
+    #[must_use]
     fn max_value() -> Self;
 }
 

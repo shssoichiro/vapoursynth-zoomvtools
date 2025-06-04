@@ -185,6 +185,7 @@ impl From<DctMode> for u8 {
 }
 
 impl DctMode {
+    #[must_use]
     pub fn uses_satd(&self) -> bool {
         matches!(
             self,

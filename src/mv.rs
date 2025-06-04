@@ -6,6 +6,7 @@ pub struct MotionVector {
 }
 
 impl MotionVector {
+    #[must_use]
     pub fn zero() -> Self {
         MotionVector {
             x: 0,

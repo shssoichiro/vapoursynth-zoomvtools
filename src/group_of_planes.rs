@@ -116,7 +116,7 @@ impl<T: Pixel> GroupOfPlanes<T> {
         meander: bool,
         try_many: bool,
         search_type_coarse: SearchType,
-    ) -> MvsOutput {
+    ) -> Result<MvsOutput> {
         let mut vectors = MvsOutput {
             validity: true,
             blocks: self.init_output_blocks(),
@@ -171,20 +171,21 @@ impl<T: Pixel> GroupOfPlanes<T> {
             bad_range,
             meander,
             try_many_level,
-        );
+        )?;
 
         // Refining the search until we reach the highest detail interpolation.
         for i in (0..(self.level_count - 1)).rev() {
             todo!()
         }
 
-        vectors
+        Ok(vectors)
     }
 
     pub fn extra_divide(&self, vectors: &mut MvsOutput) {
         todo!()
     }
 
+    #[must_use]
     pub(crate) fn init_output_blocks(&self) -> Vec<Vec<u8>> {
         let mut output = Vec::with_capacity(self.level_count);
         for i in (0..self.level_count).rev() {

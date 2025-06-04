@@ -675,7 +675,7 @@ impl<'core> Analyse<'core> {
                 self.meander,
                 self.try_many,
                 self.search_type_coarse,
-            );
+            )?;
             if self.divide_extra != DivideMode::None {
                 vector_fields.extra_divide(&mut vectors);
             }

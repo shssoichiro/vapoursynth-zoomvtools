@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-aligned = "0.4.2"
 anyhow = "1.0.98"
 bitflags = "2.9.1"
 cfg-if = "1.0.0"
@@ -67,6 +66,7 @@ unsafe_op_in_unsafe_fn = "allow"
 [lints.clippy]
 # This can result in worse performance. It should probably be allow by default...
 manual_div_ceil = "allow"
+must_use_candidate = "warn"
 needless_range_loop = "allow"
 too_many_arguments = "allow"
 undocumented_unsafe_blocks = "warn"

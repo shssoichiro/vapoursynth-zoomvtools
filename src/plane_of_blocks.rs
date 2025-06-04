@@ -2,9 +2,9 @@ use crate::{
     mv::MotionVector,
     mv_frame::MVFrame,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
-    util::Pixel,
+    util::{Pixel, plane_with_padding},
 };
-use aligned::{A64, Aligned};
+use anyhow::Result;
 use smallvec::SmallVec;
 use std::{
     cmp::min,
@@ -44,10 +44,10 @@ pub struct PlaneOfBlocks<T: Pixel> {
     very_big_sad: NonZeroUsize,
 
     // TODO: We might want to move these away from this struct
-    dct_src: Aligned<A64, SmallVec<[T; MAX_BLOCK_SIZE]>>,
-    dct_ref: Aligned<A64, SmallVec<[T; MAX_BLOCK_SIZE]>>,
+    dct_src: SmallVec<[T; MAX_BLOCK_SIZE]>,
+    dct_ref: SmallVec<[T; MAX_BLOCK_SIZE]>,
     src_pitch_temp: [NonZeroUsize; 3],
-    src_temp: [Aligned<A64, SmallVec<[T; MAX_BLOCK_SIZE]>>; 3],
+    src_temp: [SmallVec<[T; MAX_BLOCK_SIZE]>; 3],
 
     // Stuff that's not initialized until MV search
     dct_mode: Option<DctMode>,
@@ -55,17 +55,28 @@ pub struct PlaneOfBlocks<T: Pixel> {
     bad_sad: u64,
     bad_range: usize,
     zero_mv_field_shifted: MotionVector,
-    ///absolute x coordinate of the origin of the block in the reference frame
-    x: [isize; 3],
-    ///absolute y coordinate of the origin of the block in the reference frame
-    y: [isize; 3],
+    /// absolute x coordinate of the origin of the block in the reference frame
+    x: [usize; 3],
+    /// absolute y coordinate of the origin of the block in the reference frame
+    y: [usize; 3],
     src_pitch: [NonZeroUsize; 3],
     ref_pitch: [NonZeroUsize; 3],
     search_type: SearchType,
     search_param: usize,
+    penalty_zero: u16,
+    penalty_global: u16,
+    penalty_new: u16,
+    bad_count: usize,
+    try_many: bool,
+    sum_luma_change: i64,
+    /// direction of scan (1 is left to rught, -1 is right to left)
+    blk_scan_dir: i8,
+    lambda: u32,
+    lambda_sad: u32,
 }
 
 impl<T: Pixel> PlaneOfBlocks<T> {
+    #[must_use]
     pub fn new(
         blk_x: NonZeroUsize,
         blk_y: NonZeroUsize,
@@ -122,28 +133,19 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             very_big_sad: blk_size_x
                 .saturating_mul(blk_size_y)
                 .saturating_mul(unsafe { NonZeroUsize::new_unchecked(1 << bits_per_sample.get()) }),
-            dct_src: Aligned(SmallVec::from_elem(
-                T::from(0),
-                blk_size_y.get() * dct_pitch.get(),
-            )),
-            dct_ref: Aligned(SmallVec::from_elem(
-                T::from(0),
-                blk_size_y.get() * dct_pitch.get(),
-            )),
+            dct_src: SmallVec::from_elem(T::from(0), blk_size_y.get() * dct_pitch.get()),
+            dct_ref: SmallVec::from_elem(T::from(0), blk_size_y.get() * dct_pitch.get()),
             src_pitch_temp,
             src_temp: [
-                Aligned(SmallVec::from_elem(
-                    T::from(0),
-                    blk_size_y.get() * src_pitch_temp[0].get(),
-                )),
-                Aligned(SmallVec::from_elem(
+                SmallVec::from_elem(T::from(0), blk_size_y.get() * src_pitch_temp[0].get()),
+                SmallVec::from_elem(
                     T::from(0),
                     blk_size_y.get() / y_ratio_uv.get() as usize * src_pitch_temp[1].get(),
-                )),
-                Aligned(SmallVec::from_elem(
+                ),
+                SmallVec::from_elem(
                     T::from(0),
                     blk_size_y.get() / y_ratio_uv.get() as usize * src_pitch_temp[2].get(),
-                )),
+                ),
             ],
             // fields that get filled in during search
             dct_mode: Default::default(),
@@ -157,6 +159,15 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             ref_pitch: src_pitch_temp,
             search_type: SearchType::Hex2,
             search_param: Default::default(),
+            penalty_zero: Default::default(),
+            penalty_global: Default::default(),
+            bad_count: Default::default(),
+            try_many: Default::default(),
+            sum_luma_change: Default::default(),
+            blk_scan_dir: Default::default(),
+            penalty_new: Default::default(),
+            lambda: Default::default(),
+            lambda_sad: Default::default(),
         }
     }
 
@@ -167,15 +178,15 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_frame_data: &Frame,
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        search_type_smallest: SearchType,
-        search_param_smallest: usize,
+        search_type: SearchType,
+        search_param: usize,
         lambda: u32,
         lambda_sad: u32,
         penalty_new: u16,
         penalty_level: PenaltyScaling,
         out: &mut MvsOutput,
         global_mv: &mut MotionVector,
-        field_shift_cur: isize,
+        field_shift: isize,
         dct_mode: DctMode,
         mean_luma_change: &mut i32,
         penalty_zero: u16,
@@ -183,30 +194,30 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         bad_sad: u64,
         bad_range: usize,
         meander: bool,
-        try_many_level: bool,
-    ) -> MvsOutput {
+        try_many: bool,
+    ) -> Result<()> {
         let args = SearchMvsArgs {
             out_idx,
             src_frame,
             src_frame_data,
             ref_frame,
             ref_frame_data,
-            search_type: search_type_smallest,
-            search_param: search_param_smallest,
+            search_type,
+            search_param,
             lambda,
             lambda_sad,
             penalty_new,
             penalty_level,
             out,
             global_mv,
-            field_shift: field_shift_cur,
+            field_shift,
             mean_luma_change,
             penalty_zero,
             penalty_global,
             bad_sad,
             bad_range,
             meander,
-            try_many_level,
+            try_many,
         };
         match (u8::from(dct_mode), self.log_pel) {
             (0, 0) => self.search_mvs_internal::<0, 0>(args),
@@ -249,7 +260,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     fn search_mvs_internal<const DCT_MODE: u8, const LOG_PEL: usize>(
         &mut self,
         args: SearchMvsArgs,
-    ) -> MvsOutput {
+    ) -> Result<()> {
         let SearchMvsArgs {
             out_idx,
             src_frame,
@@ -271,9 +282,10 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             bad_sad,
             bad_range,
             meander,
-            try_many_level,
+            try_many,
         } = args;
 
+        // TODO: Do we really need to be setting all of these as fields on the struct?
         self.dct_mode = Some(DctMode::try_from(DCT_MODE as i64).unwrap());
         self.dct_weight_16 = min(
             16,
@@ -294,12 +306,12 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         };
 
         let blk_data = &mut out.blocks[out_idx];
-        self.y[0] = src_frame.planes[0].vpad as isize;
+        self.y[0] = src_frame.planes[0].vpad;
         if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
-            self.y[1] = src_frame.planes[1].vpad as isize;
+            self.y[1] = src_frame.planes[1].vpad;
         }
         if (src_frame.yuv_mode & MVPlaneSet::VPLANE).bits() > 0 {
-            self.y[2] = src_frame.planes[2].vpad as isize;
+            self.y[2] = src_frame.planes[2].vpad;
         }
         self.src_pitch[0] = src_frame.planes[0].pitch;
         if self.chroma {
@@ -313,10 +325,99 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         }
         self.search_type = search_type;
         self.search_param = search_param;
+        let mut lambda_level = lambda / (1u32 << LOG_PEL).pow(2);
+        if penalty_level == PenaltyScaling::Linear {
+            lambda_level *= self.scale as u32;
+        } else if penalty_level == PenaltyScaling::Quadratic {
+            lambda_level *= self.scale.pow(2) as u32;
+        }
+        self.penalty_zero = penalty_zero;
+        self.penalty_global = penalty_global;
+        self.bad_count = 0;
+        self.try_many = try_many;
+        self.sum_luma_change = 0;
 
-        todo!()
+        // Functions using float must not be used here
+        // TODO: why?
+        let mut blk_data_offset = 0;
+        for blk_y in 0..self.blk_y.get() {
+            self.blk_scan_dir = if blk_y % 2 == 0 || !meander { 1 } else { -1 };
+            // meander (alternate) scan blocks (even row left to right, odd row right to left)
+            let blk_x_start = if blk_y % 2 == 0 || !meander {
+                0
+            } else {
+                self.blk_x.get() - 1
+            };
+            if self.blk_scan_dir == 1 {
+                self.x[0] = src_frame.planes[0].hpad;
+                if self.chroma {
+                    self.x[1] = src_frame.planes[1].hpad;
+                    self.x[2] = src_frame.planes[2].hpad;
+                }
+            } else {
+                // start with rightmost block, but it is already set at prev row
+                self.x[0] = src_frame.planes[0].hpad
+                    + (self.blk_size_x.get() - self.overlap_x) * (self.blk_x.get() - 1);
+                if self.chroma {
+                    self.x[1] = src_frame.planes[1].hpad
+                        + (self.blk_size_x.get() - self.overlap_x) / self.x_ratio_uv.get() as usize
+                            * (self.blk_x.get() - 1);
+                    self.x[2] = src_frame.planes[2].hpad
+                        + (self.blk_size_x.get() - self.overlap_x) / self.x_ratio_uv.get() as usize
+                            * (self.blk_x.get() - 1);
+                }
+            }
+
+            for iblk_x in 0..self.blk_x.get() {
+                let blk_x = blk_x_start as isize + iblk_x as isize * self.blk_scan_dir as isize;
+                let blk_idx = (blk_y * self.blk_x.get()) as isize + blk_x;
+
+                let mut src_offset = [0; 3];
+                src_offset[0] = src_frame.planes[0].get_pel_offset(self.x[0], self.y[0]);
+                if self.chroma {
+                    src_offset[1] = src_frame.planes[1].get_pel_offset(self.x[1], self.y[1]);
+                    src_offset[2] = src_frame.planes[2].get_pel_offset(self.x[2], self.y[2]);
+                }
+                // In the C version they copy to a temp aligned array here.
+                // I don't think we need that since we are not using x264's ASM,
+                // and it's probably better for performance to not need to copy the data.
+                let mut src_pitch = [0; 3];
+                src_pitch[0] = src_frame.planes[0].pitch.get();
+                if self.chroma {
+                    src_pitch[1] = src_frame.planes[1].pitch.get();
+                    src_pitch[2] = src_frame.planes[2].pitch.get();
+                }
+
+                // TODO: (from C) should these be scaled by pel?
+                self.lambda = if blk_y == 0 { 0 } else { lambda_level };
+                self.penalty_new = penalty_new;
+                self.lambda_sad = lambda_sad;
+
+                // decreased padding of coarse levels
+                let hpad_scaled = src_frame.planes[0].hpad >> self.log_scale;
+                let vpad_scaled = src_frame.planes[0].vpad >> self.log_scale;
+
+                // compute search boundaries
+                todo!();
+            }
+            blk_data_offset += self.blk_x.get();
+            self.y[0] += self.blk_size_y.get() - self.overlap_y;
+            if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
+                self.y[0] += (self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv;
+            }
+            if (src_frame.yuv_mode & MVPlaneSet::VPLANE).bits() > 0 {
+                self.y[0] += (self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv;
+            }
+        }
+
+        if self.smallest_plane {
+            *mean_luma_change = (self.sum_luma_change / self.blk_count.get() as i64) as i32;
+        }
+
+        Ok(())
     }
 
+    #[must_use]
     pub(crate) fn get_array_size(&self, divide: DivideMode) -> NonZeroUsize {
         let mut len = self.blk_count;
         if self.log_scale == 0 && divide != DivideMode::None {
@@ -355,5 +456,5 @@ struct SearchMvsArgs<'a> {
     pub bad_sad: u64,
     pub bad_range: usize,
     pub meander: bool,
-    pub try_many_level: bool,
+    pub try_many: bool,
 }

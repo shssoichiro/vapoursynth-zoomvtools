@@ -477,6 +477,11 @@ impl MVPlane {
 
         self.is_refined = true;
     }
+
+    #[must_use]
+    pub fn get_pel_offset(&self, x: usize, y: usize) -> usize {
+        self.subpel_window_offsets[0] + x + y * self.pitch.get()
+    }
 }
 
 /// Calculates the height of a luma plane at a specific hierarchical level.
@@ -497,6 +502,7 @@ impl MVPlane {
 ///
 /// # Returns
 /// The calculated height for the luma plane at the specified level
+#[must_use]
 pub fn plane_height_luma(
     src_height: NonZeroUsize,
     level: usize,
@@ -546,6 +552,7 @@ pub fn plane_height_luma(
 ///
 /// # Returns
 /// The calculated width for the luma plane at the specified level
+#[must_use]
 pub fn plane_width_luma(
     src_width: NonZeroUsize,
     level: usize,
@@ -601,6 +608,7 @@ pub fn plane_width_luma(
 ///
 /// # Returns
 /// The pixel offset where the specified plane begins in the superframe
+#[must_use]
 pub fn plane_super_offset(
     chroma: bool,
     src_height: NonZeroUsize,
