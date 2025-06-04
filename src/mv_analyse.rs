@@ -60,13 +60,13 @@ pub struct Analyse<'core> {
     penalty_global: u16,
     /// Usage of block DCT (frequency spectrum) for block difference (SAD) calculation.
     /// In particular it can improve motion vector estimation around luma flicker and fades.
-    dctmode: DctMode,
+    dct_mode: DctMode,
     /// Divice blocks on subblocks with median motion
     divide_extra: DivideMode,
     /// SAD threshold to make more wide second search for bad vectors.
     /// Value is scaled to block size 8x8.
     /// Default is 10000 (disabling value), recommended is about 1000-2000.
-    bad_sad: u32,
+    bad_sad: u64,
     /// the range (radius) of wide search for bad blocks.
     /// Default is 24 (image pixel units).
     /// Use positive value for UMH search and negative for Exhaustive search.
@@ -194,7 +194,7 @@ impl<'core> Analyse<'core> {
         let mut lambda_sad =
             lsad.map(u32::try_from)
                 .unwrap_or(Ok(if truemotion { 1200 } else { 400 }))?;
-        let mut bad_sad = badsad.map(u32::try_from).unwrap_or(Ok(10_000))?;
+        let mut bad_sad = badsad.map(u64::try_from).unwrap_or(Ok(10_000))?;
         let is_backward = isb.map(|isb| isb > 0).unwrap_or(false);
         let delta_frame = delta.map(isize::try_from).unwrap_or(Ok(1))?;
         let mut pel_search = pelsearch.map(usize::try_from).unwrap_or(Ok(0))?;
@@ -280,10 +280,10 @@ impl<'core> Analyse<'core> {
         };
         let pixel_max = (1u32 << bits_per_sample.get()) - 1;
         lambda_sad = (lambda_sad as f32 * pixel_max as f32 / 255.0 + 0.5) as u32;
-        bad_sad = (bad_sad as f32 * pixel_max as f32 / 255.0 + 0.5) as u32;
+        bad_sad = (bad_sad as f32 * pixel_max as f32 / 255.0 + 0.5) as u64;
         lambda = (lambda as f32 * pixel_max as f32 / 255.0 + 0.5) as u32;
         lambda_sad = (lambda_sad as usize * (blk_size_x * blk_size_y) / 64) as u32;
-        bad_sad = (bad_sad as usize * (blk_size_x * blk_size_y) / 64) as u32;
+        bad_sad = bad_sad * (blk_size_x * blk_size_y) as u64 / 64;
 
         // TODO: Why are we using this instead of just checking the variables directly?
         let mut motion_flags = MotionFlags::empty();
@@ -497,7 +497,7 @@ impl<'core> Analyse<'core> {
             penalty_new,
             penalty_zero,
             penalty_global,
-            dctmode,
+            dct_mode: dctmode,
             divide_extra,
             bad_sad,
             bad_range: badrange.map(usize::try_from).unwrap_or(Ok(24))?,
@@ -519,11 +519,11 @@ impl<'core> Analyse<'core> {
 
     fn get_frame_internal<T: Pixel>(
         &self,
-        core: vapoursynth::core::CoreRef<'core>,
+        _core: vapoursynth::core::CoreRef<'core>,
         context: vapoursynth::plugins::FrameContext,
         n: usize,
     ) -> Result<FrameRef<'core>> {
-        let vector_fields = GroupOfPlanes::<T>::new(
+        let mut vector_fields = GroupOfPlanes::<T>::new(
             self.analysis_data.blk_size_x,
             self.analysis_data.blk_size_y,
             self.analysis_data.level_count,
@@ -573,13 +573,12 @@ impl<'core> Analyse<'core> {
         }
 
         if nref >= 0 && (nref as usize) < self.node.info().num_frames {
-            let mut ref_top_field = false;
             let ref_ = self
                 .node
                 .get_frame_filter(context, nref as usize)
                 .ok_or(anyhow!("Analyse: get_frame_filter ref past end of video"))?;
             let ref_props = ref_.props();
-            ref_top_field = match ref_props.get_int("_Field") {
+            let mut ref_top_field = match ref_props.get_int("_Field") {
                 Ok(field) => field > 0,
                 Err(_) if self.fields && self.tff.is_none() => {
                     bail!(
@@ -654,13 +653,36 @@ impl<'core> Analyse<'core> {
                 self.format,
             )?;
 
-            todo!()
+            let mut vectors = vector_fields.search_mvs(
+                &src_gof,
+                &src,
+                &ref_gof,
+                &ref_,
+                self.search_type,
+                self.search_param,
+                self.pel_search,
+                self.lambda,
+                self.lambda_sad,
+                self.penalty_new,
+                self.penalty_level,
+                self.global,
+                field_shift,
+                self.dct_mode,
+                self.penalty_zero,
+                self.penalty_global,
+                self.bad_sad,
+                self.bad_range,
+                self.meander,
+                self.try_many,
+                self.search_type_coarse,
+            );
+            if self.divide_extra != DivideMode::None {
+                vector_fields.extra_divide(&mut vectors);
+            }
         } else {
+            // too close to the beginning or end to do anything
             todo!()
         }
-
-        // TODO: u8 or T?
-        // let mut vectors = Vec::<u8>::new();
 
         todo!()
     }

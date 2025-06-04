@@ -2,7 +2,7 @@
 pub struct MotionVector {
     pub x: isize,
     pub y: isize,
-    pub sad: Option<u64>,
+    pub sad: i64,
 }
 
 impl MotionVector {
@@ -10,7 +10,13 @@ impl MotionVector {
         MotionVector {
             x: 0,
             y: 0,
-            sad: None,
+            sad: -1,
         }
+    }
+}
+
+impl Default for MotionVector {
+    fn default() -> Self {
+        Self::zero()
     }
 }

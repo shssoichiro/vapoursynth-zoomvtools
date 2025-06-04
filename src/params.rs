@@ -166,6 +166,24 @@ impl TryFrom<i64> for DctMode {
     }
 }
 
+impl From<DctMode> for u8 {
+    fn from(value: DctMode) -> Self {
+        match value {
+            DctMode::Spatial => 0,
+            DctMode::Dct => 1,
+            DctMode::MixedSpatialDct => 2,
+            DctMode::AdaptiveSpatialMixed => 3,
+            DctMode::AdaptiveSpatialDct => 4,
+            DctMode::Satd => 5,
+            DctMode::MixedSatdDct => 6,
+            DctMode::AdaptiveSatdMixed => 7,
+            DctMode::AdaptiveSatdDct => 8,
+            DctMode::MixedSadEqSatdDct => 9,
+            DctMode::AdaptiveSatdLuma => 10,
+        }
+    }
+}
+
 impl DctMode {
     pub fn uses_satd(&self) -> bool {
         matches!(

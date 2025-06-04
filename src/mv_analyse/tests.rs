@@ -98,7 +98,7 @@ fn test_analyse_new_defaults() {
         "Default penalty_global should be 0"
     );
     assert_eq!(
-        analyse.dctmode,
+        analyse.dct_mode,
         DctMode::Spatial,
         "Default dctmode should be Spatial"
     );

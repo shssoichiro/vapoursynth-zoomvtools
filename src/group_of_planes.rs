@@ -1,10 +1,13 @@
 use std::num::{NonZeroU8, NonZeroUsize};
 
 use anyhow::{Result, anyhow};
+use vapoursynth::frame::Frame;
 
 use crate::{
-    params::{DivideMode, MotionFlags, Subpel},
-    plane_of_blocks::PlaneOfBlocks,
+    mv::MotionVector,
+    mv_gof::MVGroupOfFrames,
+    params::{DctMode, DivideMode, MotionFlags, PenaltyScaling, SearchType, Subpel},
+    plane_of_blocks::{MvsOutput, PlaneOfBlocks},
     util::Pixel,
 };
 
@@ -88,5 +91,108 @@ impl<T: Pixel> GroupOfPlanes<T> {
             divide_extra,
             planes,
         })
+    }
+
+    pub fn search_mvs(
+        &mut self,
+        src_gof: &MVGroupOfFrames,
+        src_frame_data: &Frame,
+        ref_gof: &MVGroupOfFrames,
+        ref_frame_data: &Frame,
+        search_type: SearchType,
+        search_param: usize,
+        pel_search: usize,
+        lambda: u32,
+        lambda_sad: u32,
+        penalty_new: u16,
+        penalty_level: PenaltyScaling,
+        global: bool,
+        field_shift: isize,
+        dct_mode: DctMode,
+        penalty_zero: u16,
+        mut penalty_global: u16,
+        bad_sad: u64,
+        bad_range: usize,
+        meander: bool,
+        try_many: bool,
+        search_type_coarse: SearchType,
+    ) -> MvsOutput {
+        let mut vectors = MvsOutput {
+            validity: true,
+            blocks: self.init_output_blocks(),
+        };
+
+        let field_shift_cur = if self.level_count - 1 == 0 {
+            field_shift
+        } else {
+            0
+        };
+
+        let mut global_mv = MotionVector::zero();
+        if !global {
+            penalty_global = penalty_zero
+        }
+
+        // Search the motion vectors, for the low details interpolations first
+        let mut mean_luma_change = 0;
+        let search_type_smallest = if self.level_count == 1
+            || [SearchType::Horizontal, SearchType::Vertical].contains(&search_type)
+        {
+            search_type
+        } else {
+            search_type_coarse
+        };
+        let search_param_smallest = if self.level_count == 1 {
+            pel_search
+        } else {
+            search_param
+        };
+        let try_many_level = try_many && self.level_count > 1;
+        self.planes[self.level_count - 1].search_mvs(
+            0,
+            &src_gof.frames[self.level_count - 1],
+            src_frame_data,
+            &ref_gof.frames[self.level_count - 1],
+            ref_frame_data,
+            search_type_smallest,
+            search_param_smallest,
+            lambda,
+            lambda_sad,
+            penalty_new,
+            penalty_level,
+            &mut vectors,
+            &mut global_mv,
+            field_shift_cur,
+            dct_mode,
+            &mut mean_luma_change,
+            penalty_zero,
+            penalty_global,
+            bad_sad,
+            bad_range,
+            meander,
+            try_many_level,
+        );
+
+        // Refining the search until we reach the highest detail interpolation.
+        for i in (0..(self.level_count - 1)).rev() {
+            todo!()
+        }
+
+        vectors
+    }
+
+    pub fn extra_divide(&self, vectors: &mut MvsOutput) {
+        todo!()
+    }
+
+    pub(crate) fn init_output_blocks(&self) -> Vec<Vec<u8>> {
+        let mut output = Vec::with_capacity(self.level_count);
+        for i in (0..self.level_count).rev() {
+            output.push(vec![
+                0;
+                self.planes[i].get_array_size(self.divide_extra).get()
+            ]);
+        }
+        output
     }
 }
