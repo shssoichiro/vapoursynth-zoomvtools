@@ -2,7 +2,7 @@ use crate::{
     mv::MotionVector,
     mv_frame::MVFrame,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
-    util::{Pixel, luma_mean, plane_with_padding},
+    util::{Pixel, luma_sum, plane_with_padding},
 };
 use anyhow::Result;
 use smallvec::SmallVec;
@@ -443,13 +443,13 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 blk_data_offset += 1;
 
                 if self.smallest_plane {
-                    self.sum_luma_change += luma_mean(
+                    self.sum_luma_change += luma_sum(
                         self.blk_size_x,
                         self.blk_size_y,
                         self.get_ref_block::<LOG_PEL>(ref_frame, ref_frame_data, 0, 0)?,
                         self.ref_pitch[0],
                     ) as i64
-                        - luma_mean(
+                        - luma_sum(
                             self.blk_size_x,
                             self.blk_size_y,
                             plane_with_padding::<T>(src_frame_data, 0)?,

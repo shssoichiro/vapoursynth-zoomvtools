@@ -28,13 +28,16 @@ pub fn refine_horizontal_bilinear<T: Pixel>(
 ) {
     let mut offset = 0;
     for _j in 0..height.get() {
+        let src_row = &src[offset..][..width.get()];
+        let dest_row = &mut dest[offset..][..width.get()];
+
         for i in 0..width.get() - 1 {
-            let a: u32 = src[offset + i].into();
-            let b: u32 = src[offset + i + 1].into();
-            dest[offset + i] = T::from_or_max((a + b + 1) / 2);
+            let a: u32 = src_row[i].into();
+            let b: u32 = src_row[i + 1].into();
+            dest_row[i] = T::from_or_max((a + b + 1) / 2);
         }
         // last column
-        dest[offset + width.get() - 1] = src[offset + width.get() - 1];
+        dest_row[width.get() - 1] = src_row[width.get() - 1];
 
         offset += pitch.get();
     }

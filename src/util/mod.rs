@@ -1,16 +1,16 @@
+mod plane;
 #[cfg(test)]
 mod tests;
 
-use anyhow::{Result, bail};
-use core::slice;
+pub use plane::*;
+
 use std::{
     convert::TryFrom,
-    mem::transmute,
     num::NonZeroUsize,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
-use vapoursynth::{frame::Frame, prelude::Component};
+use vapoursynth::prelude::Component;
 
 #[cfg(target_arch = "x86_64")]
 cpufeatures::new!(cpuid_avx2, "avx2");
@@ -149,94 +149,90 @@ pub fn vs_bitblt<T: Pixel>(
     }
 }
 
-/// Gets a slice to the plane's data including its padding.
-/// The `plane` function in Vapoursynth fails if a plane has padding,
-/// but we need access to the padding, so we use this function to do so.
-pub fn plane_with_padding<'a, T: Pixel>(frame: &'a Frame, plane: usize) -> Result<&'a [T]> {
-    if frame.format().plane_count() < plane + 1 {
-        bail!("Tried to get plane not present in frame");
-    }
-
-    let data_ptr = frame.data_ptr(plane);
-    let stride = frame.stride(plane);
-    let height = frame.height(plane);
-    let bytes_per_pixel = size_of::<T>();
-
-    // SAFETY: We know the layout of the plane
-    Ok(unsafe {
-        slice::from_raw_parts(
-            transmute::<*const u8, *const T>(data_ptr),
-            stride * height / bytes_per_pixel,
-        )
-    })
-}
-
-/// Gets a slice to the plane's data including its padding.
-/// The `plane` function in Vapoursynth fails if a plane has padding,
-/// but we need access to the padding, so we use this function to do so.
-pub fn plane_with_padding_mut<'a, T: Pixel>(
-    frame: &'a mut Frame,
-    plane: usize,
-) -> Result<&'a mut [T]> {
-    if frame.format().plane_count() < plane + 1 {
-        bail!("Tried to get plane not present in frame");
-    }
-
-    let data_ptr = frame.data_ptr_mut(plane);
-    let stride = frame.stride(plane);
-    let height = frame.height(plane);
-    let bytes_per_pixel = size_of::<T>();
-
-    // SAFETY: We know the layout of the plane
-    Ok(unsafe {
-        slice::from_raw_parts_mut(
-            transmute::<*mut u8, *mut T>(data_ptr),
-            stride * height / bytes_per_pixel,
-        )
-    })
-}
-
-/// Gets both immutable and mutable slices to the same plane's data including its padding.
-/// This function allows safe access to both source and destination views of the same plane
-/// data without violating Rust's borrowing rules by using raw pointers internally.
+/// Calculates the sum of luminance values in a rectangular block of pixels.
 ///
-/// This is specifically designed to eliminate the need for cloning plane data when we need
-/// to read from one part and write to another part of the same plane.
+/// This function computes the total sum of all pixel values within a specified
+/// rectangular region. It's commonly used in video processing algorithms such as
+/// motion estimation, where the sum of absolute differences (SAD) or similar
+/// metrics require efficient block summation.
 ///
-/// # Safety
-/// The caller must ensure that the returned slices do not overlap in their actual usage.
-/// While both slices reference the same underlying memory, they should be used to access
-/// different logical regions (e.g., source data vs destination data within the plane).
-pub unsafe fn plane_with_padding_split<'a, T: Pixel>(
-    frame: &'a mut Frame,
-    plane: usize,
-) -> Result<(&'a [T], &'a mut [T])> {
-    if frame.format().plane_count() < plane + 1 {
-        bail!("Tried to get plane not present in frame");
-    }
-
-    let data_ptr = frame.data_ptr_mut(plane);
-    let stride = frame.stride(plane);
-    let height = frame.height(plane);
-    let bytes_per_pixel = size_of::<T>();
-    let total_len = stride * height / bytes_per_pixel;
-
-    // SAFETY: We create two slices from the same memory region, but the caller
-    // is responsible for ensuring they don't overlap in actual usage.
-    // This is similar to how split_at_mut works, but for the same logical data.
-    unsafe {
-        let src_slice = slice::from_raw_parts(transmute::<*mut u8, *const T>(data_ptr), total_len);
-        let dest_slice =
-            slice::from_raw_parts_mut(transmute::<*mut u8, *mut T>(data_ptr), total_len);
-        Ok((src_slice, dest_slice))
-    }
-}
-
-pub fn luma_mean<T: Pixel>(
+/// The function is highly optimized using const generics for a predefined set of
+/// common block sizes, allowing the compiler to generate specialized code for each
+/// supported dimension combination.
+///
+/// # Parameters
+/// - `width`: Width of the block in pixels (must be supported size)
+/// - `height`: Height of the block in pixels (must be supported size)
+/// - `src`: Source pixel buffer containing the image data
+/// - `src_pitch`: Number of pixels per row in the source buffer (stride), including any padding
+///
+/// # Returns
+/// The sum of all pixel values in the specified block as a `u64`. The wide integer
+/// type prevents overflow even for large blocks with high bit-depth pixels.
+///
+/// # Supported Block Sizes
+/// This function supports the following (width, height) combinations:
+/// - `(4, 4)`, `(8, 4)`, `(8, 8)`
+/// - `(16, 2)`, `(16, 8)`, `(16, 16)`
+/// - `(32, 16)`, `(32, 32)`
+/// - `(64, 32)`, `(64, 64)`
+/// - `(128, 64)`, `(128, 128)`
+///
+/// # Panics
+/// Panics if the `(width, height)` combination is not in the supported list above.
+/// The function will call `unreachable!()` for unsupported block sizes.
+///
+/// # Performance
+/// The use of const generics allows the compiler to unroll loops and optimize
+/// memory access patterns for each specific block size, providing better
+/// performance than a generic implementation.
+///
+/// # Example
+/// ```rust,ignore
+/// use std::num::NonZeroUsize;
+///
+/// let width = NonZeroUsize::new(8).unwrap();
+/// let height = NonZeroUsize::new(8).unwrap();
+/// let src_pitch = NonZeroUsize::new(16).unwrap(); // 16 pixels per row
+/// let pixels: Vec<u8> = vec![128; 16 * 8]; // 8 rows of 16 pixels each
+///
+/// let sum = luma_sum(width, height, &pixels, src_pitch);
+/// // sum = 128 * 8 * 8 = 8192 for this 8x8 block
+/// ```
+pub fn luma_sum<T: Pixel>(
     width: NonZeroUsize,
     height: NonZeroUsize,
     src: &[T],
     src_pitch: NonZeroUsize,
 ) -> u64 {
-    todo!()
+    match (width.get(), height.get()) {
+        (4, 4) => luma_sum_impl::<T, 4, 4>(src, src_pitch),
+        (8, 4) => luma_sum_impl::<T, 8, 4>(src, src_pitch),
+        (8, 8) => luma_sum_impl::<T, 8, 8>(src, src_pitch),
+        (16, 2) => luma_sum_impl::<T, 16, 2>(src, src_pitch),
+        (16, 8) => luma_sum_impl::<T, 16, 8>(src, src_pitch),
+        (16, 16) => luma_sum_impl::<T, 16, 16>(src, src_pitch),
+        (32, 16) => luma_sum_impl::<T, 32, 16>(src, src_pitch),
+        (32, 32) => luma_sum_impl::<T, 32, 32>(src, src_pitch),
+        (64, 32) => luma_sum_impl::<T, 64, 32>(src, src_pitch),
+        (64, 64) => luma_sum_impl::<T, 64, 64>(src, src_pitch),
+        (128, 64) => luma_sum_impl::<T, 128, 64>(src, src_pitch),
+        (128, 128) => luma_sum_impl::<T, 128, 128>(src, src_pitch),
+        _ => unreachable!("unsupported block size"),
+    }
+}
+
+fn luma_sum_impl<T: Pixel, const WIDTH: usize, const HEIGHT: usize>(
+    src: &[T],
+    src_pitch: NonZeroUsize,
+) -> u64 {
+    let mut luma_sum = 0u64;
+    for j in 0..HEIGHT {
+        let src_row = &src[j * src_pitch.get()..][..WIDTH];
+        for &pix in src_row {
+            let pixel_value: u64 = pix.into();
+            luma_sum += pixel_value;
+        }
+    }
+    luma_sum
 }

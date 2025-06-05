@@ -40,15 +40,18 @@ pub fn refine_horizontal_wiener<T: Pixel>(
     let mut offset = 0;
 
     for _j in 0..height.get() {
+        let src_row = &src[offset..][..width.get()];
+        let dest_row = &mut dest[offset..][..width.get()];
+
         // Handle first two pixels with bilinear interpolation (if width >= 2)
         if width.get() >= 2 {
-            let a: u32 = src[offset].into();
-            let b: u32 = src[offset + 1].into();
-            dest[offset] = T::from_or_max((a + b + 1) / 2);
+            let a: u32 = src_row[0].into();
+            let b: u32 = src_row[1].into();
+            dest_row[0] = T::from_or_max((a + b + 1) / 2);
 
             if width.get() >= 3 {
-                let c: u32 = src[offset + 2].into();
-                dest[offset + 1] = T::from_or_max((b + c + 1) / 2);
+                let c: u32 = src_row[2].into();
+                dest_row[1] = T::from_or_max((b + c + 1) / 2);
             }
         }
 
@@ -61,12 +64,12 @@ pub fn refine_horizontal_wiener<T: Pixel>(
         };
 
         for i in wiener_start..wiener_end {
-            let mut m0: i32 = src[offset + i - 2].into();
-            let m1: i32 = src[offset + i - 1].into();
-            let mut m2: i32 = src[offset + i].into();
-            let m3: i32 = src[offset + i + 1].into();
-            let m4: i32 = src[offset + i + 2].into();
-            let m5: i32 = src[offset + i + 3].into();
+            let mut m0: i32 = src_row[i - 2].into();
+            let m1: i32 = src_row[i - 1].into();
+            let mut m2: i32 = src_row[i].into();
+            let m3: i32 = src_row[i + 1].into();
+            let m4: i32 = src_row[i + 2].into();
+            let m5: i32 = src_row[i + 3].into();
 
             m2 = (m2 + m3) * 4;
 
@@ -76,19 +79,19 @@ pub fn refine_horizontal_wiener<T: Pixel>(
             m0 += m5 + m2 + 16;
             m0 >>= 5;
 
-            dest[offset + i] = T::from_or_max(max(0, min(m0, pixel_max)) as u32);
+            dest_row[i] = T::from_or_max(max(0, min(m0, pixel_max)) as u32);
         }
 
         // Handle last few pixels with bilinear interpolation
         for i in wiener_end..(width.get() - 1).min(width.get()) {
-            let a: u32 = src[offset + i].into();
-            let b: u32 = src[offset + i + 1].into();
-            dest[offset + i] = T::from_or_max((a + b + 1) / 2);
+            let a: u32 = src_row[i].into();
+            let b: u32 = src_row[i + 1].into();
+            dest_row[i] = T::from_or_max((a + b + 1) / 2);
         }
 
         // Copy last pixel
         if width.get() > 0 {
-            dest[offset + width.get() - 1] = src[offset + width.get() - 1];
+            dest_row[width.get() - 1] = src_row[width.get() - 1];
         }
         offset += pitch.get();
     }
