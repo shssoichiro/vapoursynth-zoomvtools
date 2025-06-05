@@ -2,18 +2,20 @@ use crate::{
     mv::MotionVector,
     mv_frame::MVFrame,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
-    util::{Pixel, plane_with_padding},
+    util::{Pixel, luma_mean, plane_with_padding},
 };
 use anyhow::Result;
 use smallvec::SmallVec;
 use std::{
-    cmp::min,
+    cmp::{max, min},
     num::{NonZeroU8, NonZeroUsize},
 };
 use vapoursynth::frame::Frame;
 
 // max block width * max block height
 const MAX_BLOCK_SIZE: usize = 128 * 128;
+// right now 5 should be enough (TSchniede)
+const MAX_PREDICTOR: usize = 5;
 
 #[derive(Debug, Clone)]
 pub struct PlaneOfBlocks<T: Pixel> {
@@ -73,6 +75,13 @@ pub struct PlaneOfBlocks<T: Pixel> {
     blk_scan_dir: i8,
     lambda: u32,
     lambda_sad: u32,
+    dx_max: isize,
+    dy_max: isize,
+    dx_min: isize,
+    dy_min: isize,
+    predictor: MotionVector,
+    predictors: [MotionVector; MAX_PREDICTOR],
+    best_mv: MotionVector,
 }
 
 impl<T: Pixel> PlaneOfBlocks<T> {
@@ -168,6 +177,13 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             penalty_new: Default::default(),
             lambda: Default::default(),
             lambda_sad: Default::default(),
+            dx_max: Default::default(),
+            dy_max: Default::default(),
+            dx_min: Default::default(),
+            dy_min: Default::default(),
+            predictor: Default::default(),
+            predictors: Default::default(),
+            best_mv: Default::default(),
         }
     }
 
@@ -369,8 +385,9 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             }
 
             for iblk_x in 0..self.blk_x.get() {
-                let blk_x = blk_x_start as isize + iblk_x as isize * self.blk_scan_dir as isize;
-                let blk_idx = (blk_y * self.blk_x.get()) as isize + blk_x;
+                let blk_x =
+                    (blk_x_start as isize + iblk_x as isize * self.blk_scan_dir as isize) as usize;
+                let blk_idx = (blk_y * self.blk_x.get()) + blk_x;
 
                 let mut src_offset = [0; 3];
                 src_offset[0] = src_frame.planes[0].get_pel_offset(self.x[0], self.y[0]);
@@ -398,9 +415,69 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 let vpad_scaled = src_frame.planes[0].vpad >> self.log_scale;
 
                 // compute search boundaries
-                todo!();
+                self.dx_max = ((src_frame.planes[0].padded_width.get()
+                    - self.x[0]
+                    - self.blk_size_x.get()
+                    - src_frame.planes[0].hpad
+                    + hpad_scaled)
+                    << LOG_PEL) as isize;
+                self.dy_max = ((src_frame.planes[0].padded_height.get()
+                    - self.y[0]
+                    - self.blk_size_y.get()
+                    - src_frame.planes[0].vpad
+                    + vpad_scaled)
+                    << LOG_PEL) as isize;
+                self.dx_min =
+                    -(((self.x[0] - src_frame.planes[0].hpad + hpad_scaled) as isize) << LOG_PEL);
+                self.dy_min =
+                    -(((self.y[0] - src_frame.planes[0].vpad + vpad_scaled) as isize) << LOG_PEL);
+
+                // search the MV
+                self.predictor = self.clip_mv(self.vectors[blk_idx]);
+                self.predictors[4] = self.clip_mv(MotionVector::zero());
+
+                self.pseudo_epz_search::<DCT_MODE, LOG_PEL>();
+
+                // write the results
+                blk_data[blk_data_offset] = self.best_mv;
+                blk_data_offset += 1;
+
+                if self.smallest_plane {
+                    self.sum_luma_change += luma_mean(
+                        self.blk_size_x,
+                        self.blk_size_y,
+                        self.get_ref_block::<LOG_PEL>(ref_frame, ref_frame_data, 0, 0)?,
+                        self.ref_pitch[0],
+                    ) as i64
+                        - luma_mean(
+                            self.blk_size_x,
+                            self.blk_size_y,
+                            plane_with_padding::<T>(src_frame_data, 0)?,
+                            self.src_pitch[0],
+                        ) as i64;
+                }
+
+                // increment indexes
+                if iblk_x < self.blk_x.get() - 1 {
+                    self.x[0] = (self.x[0] as isize
+                        + (self.blk_size_x.get() - self.overlap_x) as isize
+                            * self.blk_scan_dir as isize) as usize;
+                    if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
+                        self.x[1] = (self.x[1] as isize
+                            + ((self.blk_size_x.get() - self.overlap_x) >> self.log_x_ratio_uv)
+                                as isize
+                                * self.blk_scan_dir as isize)
+                            as usize;
+                    }
+                    if (src_frame.yuv_mode & MVPlaneSet::VPLANE).bits() > 0 {
+                        self.x[2] = (self.x[2] as isize
+                            + ((self.blk_size_x.get() - self.overlap_x) >> self.log_x_ratio_uv)
+                                as isize
+                                * self.blk_scan_dir as isize)
+                            as usize;
+                    }
+                }
             }
-            blk_data_offset += self.blk_x.get();
             self.y[0] += self.blk_size_y.get() - self.overlap_y;
             if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
                 self.y[0] += (self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv;
@@ -426,13 +503,53 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         }
         len
     }
+
+    #[must_use]
+    fn clip_mv(&self, v: MotionVector) -> MotionVector {
+        MotionVector {
+            x: self.clip_mv_x(v.x),
+            y: self.clip_mv_y(v.y),
+            sad: v.sad,
+        }
+    }
+
+    #[must_use]
+    fn clip_mv_x(&self, x: isize) -> isize {
+        min(max(x, self.dx_min), self.dx_max - 1)
+    }
+
+    #[must_use]
+    fn clip_mv_y(&self, y: isize) -> isize {
+        min(max(y, self.dy_min), self.dy_max - 1)
+    }
+
+    fn pseudo_epz_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self) {
+        todo!()
+    }
+
+    fn get_ref_block<'a, const LOG_PEL: usize>(
+        &self,
+        ref_frame: &MVFrame,
+        ref_frame_data: &'a Frame,
+        vx: usize,
+        vy: usize,
+    ) -> Result<&'a [T]> {
+        let plane = plane_with_padding(ref_frame_data, 0)?;
+        let mvplane = &ref_frame.planes[0];
+        let offset = match LOG_PEL {
+            0 => mvplane.get_absolute_offset_pel1(self.x[0] + vx, self.y[0] + vy),
+            1 => mvplane.get_absolute_offset_pel2(self.x[0] * 2 + vx, self.y[0] * 2 + vy),
+            2 => mvplane.get_absolute_offset_pel4(self.x[0] * 4 + vx, self.y[0] * 4 + vy),
+            _ => unreachable!(),
+        };
+        Ok(&plane[offset..])
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct MvsOutput {
     pub validity: bool,
-    // TODO: return u8 or T?
-    pub blocks: Vec<Vec<u8>>,
+    pub blocks: Vec<Vec<MotionVector>>,
 }
 // This only exists so we don't have 500 lines of code building a jump table.
 struct SearchMvsArgs<'a> {

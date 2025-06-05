@@ -231,3 +231,12 @@ pub unsafe fn plane_with_padding_split<'a, T: Pixel>(
         Ok((src_slice, dest_slice))
     }
 }
+
+pub fn luma_mean<T: Pixel>(
+    width: NonZeroUsize,
+    height: NonZeroUsize,
+    src: &[T],
+    src_pitch: NonZeroUsize,
+) -> u64 {
+    todo!()
+}

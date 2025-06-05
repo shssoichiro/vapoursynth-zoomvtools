@@ -186,11 +186,11 @@ impl<T: Pixel> GroupOfPlanes<T> {
     }
 
     #[must_use]
-    pub(crate) fn init_output_blocks(&self) -> Vec<Vec<u8>> {
+    pub(crate) fn init_output_blocks(&self) -> Vec<Vec<MotionVector>> {
         let mut output = Vec::with_capacity(self.level_count);
         for i in (0..self.level_count).rev() {
             output.push(vec![
-                0;
+                Default::default();
                 self.planes[i].get_array_size(self.divide_extra).get()
             ]);
         }

@@ -482,6 +482,27 @@ impl MVPlane {
     pub fn get_pel_offset(&self, x: usize, y: usize) -> usize {
         self.subpel_window_offsets[0] + x + y * self.pitch.get()
     }
+
+    #[must_use]
+    pub fn get_absolute_offset_pel1(&self, x: usize, y: usize) -> usize {
+        self.subpel_window_offsets[0] + x + y * self.pitch.get()
+    }
+
+    #[must_use]
+    pub fn get_absolute_offset_pel2(&self, mut x: usize, mut y: usize) -> usize {
+        let idx = (x & 1) | ((y & 1) << 1);
+        x >>= 1;
+        y >>= 1;
+        self.subpel_window_offsets[idx] + x + y * self.pitch.get()
+    }
+
+    #[must_use]
+    pub fn get_absolute_offset_pel4(&self, mut x: usize, mut y: usize) -> usize {
+        let idx = (x & 3) | ((y & 3) << 2);
+        x >>= 2;
+        y >>= 2;
+        self.subpel_window_offsets[idx] + x + y * self.pitch.get()
+    }
 }
 
 /// Calculates the height of a luma plane at a specific hierarchical level.
