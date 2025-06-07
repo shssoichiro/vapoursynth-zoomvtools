@@ -51,7 +51,6 @@ jobs:
       matrix:
         platform: [ubuntu-latest]
     # FIXME: run tests on ARM and Windows
-    # FIXME: the github runners don't have AVX2, so the AVX2 tests don't run in CI. facepalm. maybe I should've hosted this on Gitlab :dogelul:
 
     runs-on: ${{ matrix.platform }}
     container: shssoichiro/av1an-ci:latest
@@ -77,28 +76,30 @@ jobs:
       - name: Generate docs
         run: cargo doc --no-deps
 
-  code-coverage:
-    needs: [test]
-    runs-on: ubuntu-latest
-    container: shssoichiro/av1an-ci:latest
+  # FIXME: the github runners don't have AVX2, so the AVX2 tests don't run in CI.
+  # This means that coverage will be inaccurate. I'll just run it locally until we find a fix.
+  # code-coverage:
+  #   needs: [test]
+  #   runs-on: ubuntu-latest
+  #   container: shssoichiro/av1an-ci:latest
 
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install stable
-        uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Install stable
+  #       uses: dtolnay/rust-toolchain@stable
+  #     - uses: Swatinem/rust-cache@v2
 
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-llvm-cov
+  #     - name: Install cargo-llvm-cov
+  #       uses: taiki-e/install-action@v2
+  #       with:
+  #         tool: cargo-llvm-cov
 
-      - name: Generate code coverage
-        run: cargo llvm-cov --codecov --output-path codecov.json --ignore-filename-regex tests\.rs
+  #     - name: Generate code coverage
+  #       run: cargo llvm-cov --codecov --output-path codecov.json --ignore-filename-regex tests\.rs
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: codecov.json
-          fail_ci_if_error: false
+  #     - name: Upload coverage to Codecov
+  #       uses: codecov/codecov-action@v5
+  #       with:
+  #         token: ${{ secrets.CODECOV_TOKEN }}
+  #         files: codecov.json
+  #         fail_ci_if_error: false

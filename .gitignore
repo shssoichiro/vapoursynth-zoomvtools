@@ -3,3 +3,4 @@
 /.code
 /.idea
 lcov.*
+codecov.json
