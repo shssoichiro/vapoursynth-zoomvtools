@@ -17,6 +17,8 @@ mod tests;
 #[cfg(feature = "bench")]
 pub mod average;
 #[cfg(feature = "bench")]
+pub mod dct;
+#[cfg(feature = "bench")]
 pub mod group_of_planes;
 #[cfg(feature = "bench")]
 pub mod mv;
@@ -45,6 +47,8 @@ pub mod util;
 
 #[cfg(not(feature = "bench"))]
 mod average;
+#[cfg(not(feature = "bench"))]
+mod dct;
 #[cfg(not(feature = "bench"))]
 mod group_of_planes;
 #[cfg(not(feature = "bench"))]

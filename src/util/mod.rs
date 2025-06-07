@@ -5,6 +5,7 @@ mod tests;
 pub use plane::*;
 
 use std::{
+    cmp::{max, min},
     convert::TryFrom,
     num::NonZeroUsize,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
@@ -235,4 +236,9 @@ fn luma_sum_impl<T: Pixel, const WIDTH: usize, const HEIGHT: usize>(
         }
     }
     luma_sum
+}
+
+/// find the median between a, b and c
+pub fn median<T: Ord + Copy>(a: T, b: T, c: T) -> T {
+    max(min(a, b), min(max(a, b), c))
 }

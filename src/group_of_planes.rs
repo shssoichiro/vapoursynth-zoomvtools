@@ -11,7 +11,7 @@ use crate::{
     util::Pixel,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct GroupOfPlanes<T: Pixel> {
     pub blk_size_x: NonZeroUsize,
     pub blk_size_y: NonZeroUsize,
@@ -112,7 +112,7 @@ impl<T: Pixel> GroupOfPlanes<T> {
         penalty_zero: u16,
         mut penalty_global: u16,
         bad_sad: u64,
-        bad_range: usize,
+        bad_range: isize,
         meander: bool,
         try_many: bool,
         search_type_coarse: SearchType,

@@ -479,29 +479,29 @@ impl MVPlane {
     }
 
     #[must_use]
-    pub fn get_pel_offset(&self, x: usize, y: usize) -> usize {
-        self.subpel_window_offsets[0] + x + y * self.pitch.get()
+    pub fn get_pel_offset(&self, x: isize, y: isize) -> usize {
+        (self.subpel_window_offsets[0] as isize + x + y * self.pitch.get() as isize) as usize
     }
 
     #[must_use]
-    pub fn get_absolute_offset_pel1(&self, x: usize, y: usize) -> usize {
-        self.subpel_window_offsets[0] + x + y * self.pitch.get()
+    pub fn get_absolute_offset_pel1(&self, x: isize, y: isize) -> usize {
+        (self.subpel_window_offsets[0] as isize + x + y * self.pitch.get() as isize) as usize
     }
 
     #[must_use]
-    pub fn get_absolute_offset_pel2(&self, mut x: usize, mut y: usize) -> usize {
-        let idx = (x & 1) | ((y & 1) << 1);
+    pub fn get_absolute_offset_pel2(&self, mut x: isize, mut y: isize) -> usize {
+        let idx = ((x & 1) | ((y & 1) << 1)) as usize;
         x >>= 1;
         y >>= 1;
-        self.subpel_window_offsets[idx] + x + y * self.pitch.get()
+        (self.subpel_window_offsets[idx] as isize + x + y * self.pitch.get() as isize) as usize
     }
 
     #[must_use]
-    pub fn get_absolute_offset_pel4(&self, mut x: usize, mut y: usize) -> usize {
-        let idx = (x & 3) | ((y & 3) << 2);
+    pub fn get_absolute_offset_pel4(&self, mut x: isize, mut y: isize) -> usize {
+        let idx = ((x & 3) | ((y & 3) << 2)) as usize;
         x >>= 2;
         y >>= 2;
-        self.subpel_window_offsets[idx] + x + y * self.pitch.get()
+        (self.subpel_window_offsets[idx] as isize + x + y * self.pitch.get() as isize) as usize
     }
 }
 

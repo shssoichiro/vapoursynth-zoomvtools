@@ -1,8 +1,9 @@
 use crate::{
+    dct::DctHelper,
     mv::MotionVector,
     mv_frame::MVFrame,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
-    util::{Pixel, luma_sum, plane_with_padding},
+    util::{Pixel, luma_sum, median, plane_with_padding},
 };
 use anyhow::Result;
 use smallvec::SmallVec;
@@ -17,7 +18,7 @@ const MAX_BLOCK_SIZE: usize = 128 * 128;
 // right now 5 should be enough (TSchniede)
 const MAX_PREDICTOR: usize = 5;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PlaneOfBlocks<T: Pixel> {
     pel: Subpel,
     log_pel: u8,
@@ -46,6 +47,7 @@ pub struct PlaneOfBlocks<T: Pixel> {
     very_big_sad: NonZeroUsize,
 
     // TODO: We might want to move these away from this struct
+    dct: Option<DctHelper>,
     dct_src: SmallVec<[T; MAX_BLOCK_SIZE]>,
     dct_ref: SmallVec<[T; MAX_BLOCK_SIZE]>,
     src_pitch_temp: [NonZeroUsize; 3],
@@ -55,12 +57,12 @@ pub struct PlaneOfBlocks<T: Pixel> {
     dct_mode: Option<DctMode>,
     dct_weight_16: u32,
     bad_sad: u64,
-    bad_range: usize,
+    bad_range: isize,
     zero_mv_field_shifted: MotionVector,
     /// absolute x coordinate of the origin of the block in the reference frame
-    x: [usize; 3],
+    x: [isize; 3],
     /// absolute y coordinate of the origin of the block in the reference frame
-    y: [usize; 3],
+    y: [isize; 3],
     src_pitch: [NonZeroUsize; 3],
     ref_pitch: [NonZeroUsize; 3],
     search_type: SearchType,
@@ -82,6 +84,12 @@ pub struct PlaneOfBlocks<T: Pixel> {
     predictor: MotionVector,
     predictors: [MotionVector; MAX_PREDICTOR],
     best_mv: MotionVector,
+    src_offset: [usize; 3],
+    src_luma: u64,
+    min_cost: i64,
+    blk_x_i: usize,
+    blk_y_i: usize,
+    blk_idx: usize,
 }
 
 impl<T: Pixel> PlaneOfBlocks<T> {
@@ -142,6 +150,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             very_big_sad: blk_size_x
                 .saturating_mul(blk_size_y)
                 .saturating_mul(unsafe { NonZeroUsize::new_unchecked(1 << bits_per_sample.get()) }),
+            dct: None,
             dct_src: SmallVec::from_elem(T::from(0), blk_size_y.get() * dct_pitch.get()),
             dct_ref: SmallVec::from_elem(T::from(0), blk_size_y.get() * dct_pitch.get()),
             src_pitch_temp,
@@ -184,6 +193,12 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             predictor: Default::default(),
             predictors: Default::default(),
             best_mv: Default::default(),
+            src_offset: Default::default(),
+            src_luma: Default::default(),
+            min_cost: Default::default(),
+            blk_idx: Default::default(),
+            blk_x_i: Default::default(),
+            blk_y_i: Default::default(),
         }
     }
 
@@ -208,7 +223,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         penalty_zero: u16,
         penalty_global: u16,
         bad_sad: u64,
-        bad_range: usize,
+        bad_range: isize,
         meander: bool,
         try_many: bool,
     ) -> Result<()> {
@@ -302,6 +317,13 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         } = args;
 
         // TODO: Do we really need to be setting all of these as fields on the struct?
+        if (1..=4).contains(&DCT_MODE) {
+            self.dct = Some(DctHelper::new(
+                self.blk_size_x,
+                self.blk_size_y,
+                self.bits_per_sample,
+            )?);
+        }
         self.dct_mode = Some(DctMode::try_from(DCT_MODE as i64).unwrap());
         self.dct_weight_16 = min(
             16,
@@ -322,12 +344,12 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         };
 
         let blk_data = &mut out.blocks[out_idx];
-        self.y[0] = src_frame.planes[0].vpad;
+        self.y[0] = src_frame.planes[0].vpad as isize;
         if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
-            self.y[1] = src_frame.planes[1].vpad;
+            self.y[1] = src_frame.planes[1].vpad as isize;
         }
         if (src_frame.yuv_mode & MVPlaneSet::VPLANE).bits() > 0 {
-            self.y[2] = src_frame.planes[2].vpad;
+            self.y[2] = src_frame.planes[2].vpad as isize;
         }
         self.src_pitch[0] = src_frame.planes[0].pitch;
         if self.chroma {
@@ -357,6 +379,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         // TODO: why?
         let mut blk_data_offset = 0;
         for blk_y in 0..self.blk_y.get() {
+            self.blk_y_i = blk_y;
             self.blk_scan_dir = if blk_y % 2 == 0 || !meander { 1 } else { -1 };
             // meander (alternate) scan blocks (even row left to right, odd row right to left)
             let blk_x_start = if blk_y % 2 == 0 || !meander {
@@ -365,44 +388,44 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 self.blk_x.get() - 1
             };
             if self.blk_scan_dir == 1 {
-                self.x[0] = src_frame.planes[0].hpad;
+                self.x[0] = src_frame.planes[0].hpad as isize;
                 if self.chroma {
-                    self.x[1] = src_frame.planes[1].hpad;
-                    self.x[2] = src_frame.planes[2].hpad;
+                    self.x[1] = src_frame.planes[1].hpad as isize;
+                    self.x[2] = src_frame.planes[2].hpad as isize;
                 }
             } else {
                 // start with rightmost block, but it is already set at prev row
-                self.x[0] = src_frame.planes[0].hpad
-                    + (self.blk_size_x.get() - self.overlap_x) * (self.blk_x.get() - 1);
+                self.x[0] = (src_frame.planes[0].hpad
+                    + (self.blk_size_x.get() - self.overlap_x) * (self.blk_x.get() - 1))
+                    as isize;
                 if self.chroma {
-                    self.x[1] = src_frame.planes[1].hpad
+                    self.x[1] = (src_frame.planes[1].hpad
                         + (self.blk_size_x.get() - self.overlap_x) / self.x_ratio_uv.get() as usize
-                            * (self.blk_x.get() - 1);
-                    self.x[2] = src_frame.planes[2].hpad
+                            * (self.blk_x.get() - 1)) as isize;
+                    self.x[2] = (src_frame.planes[2].hpad
                         + (self.blk_size_x.get() - self.overlap_x) / self.x_ratio_uv.get() as usize
-                            * (self.blk_x.get() - 1);
+                            * (self.blk_x.get() - 1)) as isize;
                 }
             }
 
             for iblk_x in 0..self.blk_x.get() {
                 let blk_x =
                     (blk_x_start as isize + iblk_x as isize * self.blk_scan_dir as isize) as usize;
-                let blk_idx = (blk_y * self.blk_x.get()) + blk_x;
+                self.blk_x_i = blk_x;
+                self.blk_idx = (blk_y * self.blk_x.get()) + blk_x;
 
-                let mut src_offset = [0; 3];
-                src_offset[0] = src_frame.planes[0].get_pel_offset(self.x[0], self.y[0]);
+                self.src_offset[0] = src_frame.planes[0].get_pel_offset(self.x[0], self.y[0]);
                 if self.chroma {
-                    src_offset[1] = src_frame.planes[1].get_pel_offset(self.x[1], self.y[1]);
-                    src_offset[2] = src_frame.planes[2].get_pel_offset(self.x[2], self.y[2]);
+                    self.src_offset[1] = src_frame.planes[1].get_pel_offset(self.x[1], self.y[1]);
+                    self.src_offset[2] = src_frame.planes[2].get_pel_offset(self.x[2], self.y[2]);
                 }
                 // In the C version they copy to a temp aligned array here.
                 // I don't think we need that since we are not using x264's ASM,
                 // and it's probably better for performance to not need to copy the data.
-                let mut src_pitch = [0; 3];
-                src_pitch[0] = src_frame.planes[0].pitch.get();
+                self.src_pitch[0] = src_frame.planes[0].pitch;
                 if self.chroma {
-                    src_pitch[1] = src_frame.planes[1].pitch.get();
-                    src_pitch[2] = src_frame.planes[2].pitch.get();
+                    self.src_pitch[1] = src_frame.planes[1].pitch;
+                    self.src_pitch[2] = src_frame.planes[2].pitch;
                 }
 
                 // TODO: (from C) should these be scaled by pel?
@@ -415,28 +438,35 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 let vpad_scaled = src_frame.planes[0].vpad >> self.log_scale;
 
                 // compute search boundaries
-                self.dx_max = ((src_frame.planes[0].padded_width.get()
+                self.dx_max = (src_frame.planes[0].padded_width.get() as isize
                     - self.x[0]
-                    - self.blk_size_x.get()
-                    - src_frame.planes[0].hpad
-                    + hpad_scaled)
-                    << LOG_PEL) as isize;
-                self.dy_max = ((src_frame.planes[0].padded_height.get()
+                    - self.blk_size_x.get() as isize
+                    - src_frame.planes[0].hpad as isize
+                    + hpad_scaled as isize)
+                    << LOG_PEL;
+                self.dy_max = (src_frame.planes[0].padded_height.get() as isize
                     - self.y[0]
-                    - self.blk_size_y.get()
-                    - src_frame.planes[0].vpad
-                    + vpad_scaled)
-                    << LOG_PEL) as isize;
-                self.dx_min =
-                    -(((self.x[0] - src_frame.planes[0].hpad + hpad_scaled) as isize) << LOG_PEL);
-                self.dy_min =
-                    -(((self.y[0] - src_frame.planes[0].vpad + vpad_scaled) as isize) << LOG_PEL);
+                    - self.blk_size_y.get() as isize
+                    - src_frame.planes[0].vpad as isize
+                    + vpad_scaled as isize)
+                    << LOG_PEL;
+                self.dx_min = -((self.x[0] - src_frame.planes[0].hpad as isize
+                    + hpad_scaled as isize)
+                    << LOG_PEL);
+                self.dy_min = -((self.y[0] - src_frame.planes[0].vpad as isize
+                    + vpad_scaled as isize)
+                    << LOG_PEL);
 
                 // search the MV
-                self.predictor = self.clip_mv(self.vectors[blk_idx]);
+                self.predictor = self.clip_mv(self.vectors[self.blk_idx]);
                 self.predictors[4] = self.clip_mv(MotionVector::zero());
 
-                self.pseudo_epz_search::<DCT_MODE, LOG_PEL>();
+                self.pseudo_epz_search::<DCT_MODE, LOG_PEL>(
+                    src_frame,
+                    src_frame_data,
+                    ref_frame,
+                    ref_frame_data,
+                )?;
 
                 // write the results
                 blk_data[blk_data_offset] = self.best_mv;
@@ -459,31 +489,28 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
                 // increment indexes
                 if iblk_x < self.blk_x.get() - 1 {
-                    self.x[0] = (self.x[0] as isize
-                        + (self.blk_size_x.get() - self.overlap_x) as isize
-                            * self.blk_scan_dir as isize) as usize;
+                    self.x[0] += (self.blk_size_x.get() - self.overlap_x) as isize
+                        * self.blk_scan_dir as isize;
                     if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
-                        self.x[1] = (self.x[1] as isize
-                            + ((self.blk_size_x.get() - self.overlap_x) >> self.log_x_ratio_uv)
-                                as isize
-                                * self.blk_scan_dir as isize)
-                            as usize;
+                        self.x[1] += ((self.blk_size_x.get() - self.overlap_x)
+                            >> self.log_x_ratio_uv) as isize
+                            * self.blk_scan_dir as isize;
                     }
                     if (src_frame.yuv_mode & MVPlaneSet::VPLANE).bits() > 0 {
-                        self.x[2] = (self.x[2] as isize
-                            + ((self.blk_size_x.get() - self.overlap_x) >> self.log_x_ratio_uv)
-                                as isize
-                                * self.blk_scan_dir as isize)
-                            as usize;
+                        self.x[2] += ((self.blk_size_x.get() - self.overlap_x)
+                            >> self.log_x_ratio_uv) as isize
+                            * self.blk_scan_dir as isize;
                     }
                 }
             }
-            self.y[0] += self.blk_size_y.get() - self.overlap_y;
+            self.y[0] += (self.blk_size_y.get() - self.overlap_y) as isize;
             if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
-                self.y[0] += (self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv;
+                self.y[0] +=
+                    ((self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv) as isize;
             }
             if (src_frame.yuv_mode & MVPlaneSet::VPLANE).bits() > 0 {
-                self.y[0] += (self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv;
+                self.y[0] +=
+                    ((self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv) as isize;
             }
         }
 
@@ -523,16 +550,294 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         min(max(y, self.dy_min), self.dy_max - 1)
     }
 
-    fn pseudo_epz_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self) {
-        todo!()
+    fn pseudo_epz_search<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        src_frame: &MVFrame,
+        src_frame_data: &Frame,
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+    ) -> Result<()> {
+        let src_plane_y = plane_with_padding(src_frame_data, 0)?;
+        let src_plane_u = if self.chroma {
+            plane_with_padding(src_frame_data, 1)?
+        } else {
+            &[]
+        };
+        let src_plane_v = if self.chroma {
+            plane_with_padding(src_frame_data, 2)?
+        } else {
+            &[]
+        };
+
+        self.fetch_predictors();
+
+        if (1..=4).contains(&DCT_MODE) {
+            // make dct of source block
+            // don't do the slow dct conversion if SATD used
+            self.dct.as_ref().unwrap().bytes_2d();
+        }
+
+        if DCT_MODE >= 3 {
+            // most use it and it should be fast anyway
+            // TODO: Do we only need this for modes 3 and 4?
+            self.src_luma = luma_sum(
+                self.blk_size_x,
+                self.blk_size_y,
+                &src_plane_y[self.src_offset[0]..],
+                self.src_pitch[0],
+            )
+        }
+
+        // We treat zero alone
+        // Do we bias zero with not taking into account distorsion ?
+        self.best_mv.x = self.zero_mv_field_shifted.x;
+        self.best_mv.y = self.zero_mv_field_shifted.y;
+        let zero_mv_blocks = [
+            self.get_ref_block::<LOG_PEL>(
+                ref_frame,
+                ref_frame_data,
+                0,
+                self.zero_mv_field_shifted.y,
+            )?,
+            if self.chroma {
+                self.get_ref_block_u::<LOG_PEL>(ref_frame, ref_frame_data, 0, 0)?
+            } else {
+                &[]
+            },
+            if self.chroma {
+                self.get_ref_block_v::<LOG_PEL>(ref_frame, ref_frame_data, 0, 0)?
+            } else {
+                &[]
+            },
+        ];
+        let mut sad = self.sad_luma::<DCT_MODE>(
+            src_plane_y,
+            self.src_pitch[0],
+            zero_mv_blocks[0],
+            self.ref_pitch[0],
+        );
+        if self.chroma {
+            sad += self.sad_chroma(
+                src_plane_u,
+                self.src_pitch[1],
+                zero_mv_blocks[1],
+                self.ref_pitch[1],
+            );
+            sad += self.sad_chroma(
+                src_plane_v,
+                self.src_pitch[2],
+                zero_mv_blocks[2],
+                self.ref_pitch[2],
+            );
+        }
+        self.best_mv.sad = sad as i64;
+        self.min_cost = (sad + ((self.penalty_zero as u64 * sad) >> 8)) as i64;
+
+        let mut best_mv_many = [MotionVector::zero(); 8];
+        let mut min_cost_many = [0; 8];
+        if self.try_many {
+            // refine around zero
+            self.refine::<DCT_MODE, LOG_PEL>();
+            best_mv_many[0] = self.best_mv;
+            min_cost_many[0] = self.min_cost;
+        }
+
+        // Global MV predictor
+        self.global_mv_predictor = self.clip_mv(self.global_mv_predictor);
+        let global_pred_blocks = [
+            self.get_ref_block::<LOG_PEL>(
+                ref_frame,
+                ref_frame_data,
+                self.global_mv_predictor.x,
+                self.global_mv_predictor.y,
+            )?,
+            if self.chroma {
+                self.get_ref_block_u::<LOG_PEL>(
+                    ref_frame,
+                    ref_frame_data,
+                    self.global_mv_predictor.x,
+                    self.global_mv_predictor.y,
+                )?
+            } else {
+                &[]
+            },
+            if self.chroma {
+                self.get_ref_block_v::<LOG_PEL>(
+                    ref_frame,
+                    ref_frame_data,
+                    self.global_mv_predictor.x,
+                    self.global_mv_predictor.y,
+                )?
+            } else {
+                &[]
+            },
+        ];
+        let mut sad = self.sad_luma::<DCT_MODE>(
+            src_plane_y,
+            self.src_pitch[0],
+            global_pred_blocks[0],
+            self.ref_pitch[0],
+        );
+        if self.chroma {
+            sad += self.sad_chroma(
+                src_plane_u,
+                self.src_pitch[1],
+                global_pred_blocks[1],
+                self.ref_pitch[1],
+            );
+            sad += self.sad_chroma(
+                src_plane_v,
+                self.src_pitch[2],
+                global_pred_blocks[2],
+                self.ref_pitch[2],
+            );
+        }
+        let cost = (sad + ((self.penalty_global as u64 * sad) >> 8)) as i64;
+
+        if cost < self.min_cost || self.try_many {
+            self.best_mv.x = self.global_mv_predictor.x;
+            self.best_mv.y = self.global_mv_predictor.y;
+            self.best_mv.sad = sad as i64;
+            self.min_cost = cost;
+        }
+        if self.try_many {
+            // refine around global
+            self.refine::<DCT_MODE, LOG_PEL>();
+            best_mv_many[1] = self.best_mv;
+            min_cost_many[1] = self.min_cost;
+        }
+        let pred_blocks = [
+            self.get_ref_block::<LOG_PEL>(
+                ref_frame,
+                ref_frame_data,
+                self.predictor.x,
+                self.predictor.y,
+            )?,
+            if self.chroma {
+                self.get_ref_block_u::<LOG_PEL>(
+                    ref_frame,
+                    ref_frame_data,
+                    self.predictor.x,
+                    self.predictor.y,
+                )?
+            } else {
+                &[]
+            },
+            if self.chroma {
+                self.get_ref_block_v::<LOG_PEL>(
+                    ref_frame,
+                    ref_frame_data,
+                    self.predictor.x,
+                    self.predictor.y,
+                )?
+            } else {
+                &[]
+            },
+        ];
+        let mut sad = self.sad_luma::<DCT_MODE>(
+            src_plane_y,
+            self.src_pitch[0],
+            pred_blocks[0],
+            self.ref_pitch[0],
+        );
+        if self.chroma {
+            sad += self.sad_chroma(
+                src_plane_u,
+                self.src_pitch[1],
+                pred_blocks[1],
+                self.ref_pitch[1],
+            );
+            sad += self.sad_chroma(
+                src_plane_v,
+                self.src_pitch[2],
+                pred_blocks[2],
+                self.ref_pitch[2],
+            );
+        }
+        let cost = sad;
+
+        if (cost as i64) < self.min_cost || self.try_many {
+            self.best_mv.x = self.predictor.x;
+            self.best_mv.y = self.predictor.y;
+            self.best_mv.sad = sad as i64;
+            self.min_cost = cost as i64;
+        }
+        if self.try_many {
+            // refine around predictor
+            self.refine::<DCT_MODE, LOG_PEL>();
+            best_mv_many[2] = self.best_mv;
+            min_cost_many[2] = self.min_cost;
+        }
+
+        // then all the other predictors
+        let npred = 4;
+        for i in 0..npred {
+            if self.try_many {
+                self.min_cost = self.very_big_sad.get() as i64 + 1;
+            }
+            self.check_mv0::<DCT_MODE, LOG_PEL>(self.predictors[i].x, self.predictors[i].y);
+
+            if self.try_many {
+                // refine around predictor
+                self.refine::<DCT_MODE, LOG_PEL>();
+                best_mv_many[i + 3] = self.best_mv;
+                min_cost_many[i + 3] = self.min_cost;
+            }
+        }
+
+        if self.try_many {
+            self.min_cost = self.very_big_sad.get() as i64 + 1;
+            for i in 0..(npred + 3) {
+                if min_cost_many[i] < self.min_cost {
+                    self.best_mv = best_mv_many[i];
+                    self.min_cost = min_cost_many[i];
+                }
+            }
+        } else {
+            self.refine::<DCT_MODE, LOG_PEL>();
+        }
+
+        let found_sad = self.best_mv.sad;
+        const BADCOUNT_LIMIT: u64 = 16;
+        if self.blk_idx > 1
+            && found_sad
+                > ((self.bad_sad + self.bad_sad * self.bad_count as u64 / BADCOUNT_LIMIT) as i64)
+        {
+            // bad vector, try wide search with some soft limit of bad cured vectors (time consumed)
+            self.bad_count += 1;
+
+            if self.bad_range > 0 {
+                // UMH, good mv not found so try around zero
+                self.umh_search::<DCT_MODE, LOG_PEL>(self.bad_range * (1 << LOG_PEL), 0, 0);
+            } else if self.bad_range < 0 {
+                // ESA
+                for i in (1..(-self.bad_range * (1 << LOG_PEL))).step_by(1 << LOG_PEL) {
+                    // at radius
+                    self.expanding_search::<DCT_MODE, LOG_PEL>(i, 1 << LOG_PEL, 0, 0);
+                    if self.best_mv.sad < found_sad / 4 {
+                        // stop search if good MV is found
+                        break;
+                    }
+                }
+            }
+
+            for i in 1..(1 << LOG_PEL) {
+                // small radius
+                self.expanding_search::<DCT_MODE, LOG_PEL>(i, 1, self.best_mv.x, self.best_mv.y);
+            }
+        }
+
+        // store the result
+        self.vectors[self.blk_idx] = self.best_mv;
+        Ok(())
     }
 
     fn get_ref_block<'a, const LOG_PEL: usize>(
         &self,
         ref_frame: &MVFrame,
         ref_frame_data: &'a Frame,
-        vx: usize,
-        vy: usize,
+        vx: isize,
+        vy: isize,
     ) -> Result<&'a [T]> {
         let plane = plane_with_padding(ref_frame_data, 0)?;
         let mvplane = &ref_frame.planes[0];
@@ -543,6 +848,177 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             _ => unreachable!(),
         };
         Ok(&plane[offset..])
+    }
+    fn get_ref_block_u<'a, const LOG_PEL: usize>(
+        &self,
+        ref_frame: &MVFrame,
+        ref_frame_data: &'a Frame,
+        vx: isize,
+        vy: isize,
+    ) -> Result<&'a [T]> {
+        self.get_ref_block_chroma::<LOG_PEL>(ref_frame, ref_frame_data, vx, vy, 1)
+    }
+
+    fn get_ref_block_v<'a, const LOG_PEL: usize>(
+        &self,
+        ref_frame: &MVFrame,
+        ref_frame_data: &'a Frame,
+        vx: isize,
+        vy: isize,
+    ) -> Result<&'a [T]> {
+        self.get_ref_block_chroma::<LOG_PEL>(ref_frame, ref_frame_data, vx, vy, 2)
+    }
+
+    fn get_ref_block_chroma<'a, const LOG_PEL: usize>(
+        &self,
+        ref_frame: &MVFrame,
+        ref_frame_data: &'a Frame,
+        vx: isize,
+        vy: isize,
+        plane_idx: usize,
+    ) -> Result<&'a [T]> {
+        let xbias = if vx < 0 { -1 } else { 1 } * ((1 << self.log_x_ratio_uv) - 1);
+        let ybias = if vy < 0 { -1 } else { 1 } * ((1 << self.log_y_ratio_uv) - 1);
+
+        let plane = plane_with_padding(ref_frame_data, plane_idx)?;
+        let mvplane = &ref_frame.planes[plane_idx];
+        let offset = match LOG_PEL {
+            0 => mvplane.get_absolute_offset_pel1(
+                self.x[plane_idx] + ((vx + xbias) >> self.log_x_ratio_uv),
+                self.y[plane_idx] + ((vy + ybias) >> self.log_y_ratio_uv),
+            ),
+            1 => mvplane.get_absolute_offset_pel2(
+                self.x[plane_idx] * 2 + ((vx + xbias) >> self.log_x_ratio_uv),
+                self.y[plane_idx] * 2 + ((vy + ybias) >> self.log_y_ratio_uv),
+            ),
+            2 => mvplane.get_absolute_offset_pel4(
+                self.x[plane_idx] * 4 + ((vx + xbias) >> self.log_x_ratio_uv),
+                self.y[plane_idx] * 4 + ((vy + ybias) >> self.log_y_ratio_uv),
+            ),
+            _ => unreachable!(),
+        };
+        Ok(&plane[offset..])
+    }
+
+    fn fetch_predictors(&mut self) {
+        // Left (or right) predictor
+        if (self.blk_scan_dir == 1 && self.blk_x_i > 0)
+            || (self.blk_scan_dir == -1 && self.blk_x_i < self.blk_x.get() - 1)
+        {
+            self.predictors[1] = self.clip_mv(
+                self.vectors[(self.blk_idx as isize - self.blk_scan_dir as isize) as usize],
+            );
+        } else {
+            self.predictors[1] = self.clip_mv(self.zero_mv_field_shifted);
+        }
+
+        // Up predictor
+        if self.blk_y_i > 0 {
+            self.predictors[2] = self.clip_mv(self.vectors[self.blk_idx - self.blk_x.get()]);
+        } else {
+            self.predictors[2] = self.clip_mv(self.zero_mv_field_shifted);
+        }
+
+        // bottom-right pridictor (from coarse level)
+        if (self.blk_y_i < self.blk_y.get() - 1)
+            && ((self.blk_scan_dir == 1 && self.blk_x_i < self.blk_x.get() - 1)
+                || (self.blk_scan_dir == -1 && self.blk_x_i > 0))
+        {
+            self.predictors[3] = self.clip_mv(
+                self.vectors[((self.blk_idx + self.blk_x.get()) as isize
+                    + self.blk_scan_dir as isize) as usize],
+            );
+        } else if (self.blk_y_i > 0)
+            && ((self.blk_scan_dir == 1 && self.blk_x_i < self.blk_x.get() - 1)
+                || (self.blk_scan_dir == -1 && self.blk_x_i > 0))
+        {
+            // Up-right predictor
+            self.predictors[3] = self.clip_mv(
+                self.vectors[(self.blk_idx as isize - self.blk_x.get() as isize
+                    + self.blk_scan_dir as isize) as usize],
+            );
+        } else {
+            self.predictors[3] = self.clip_mv(self.zero_mv_field_shifted);
+        }
+
+        // Median predictor
+        if self.blk_y_i > 0 {
+            // replaced 1 by 0 - Fizick
+            self.predictors[0].x = median(
+                self.predictors[1].x,
+                self.predictors[2].x,
+                self.predictors[3].x,
+            );
+            self.predictors[0].y = median(
+                self.predictors[1].y,
+                self.predictors[2].y,
+                self.predictors[3].y,
+            );
+            // but it is not true median vector (x and y may be mixed) and not its sad.
+            // we really do not know SAD, here is more safe estimation especially for
+            // phaseshift method
+            self.predictors[0].sad = max(
+                self.predictors[1].sad,
+                max(self.predictors[2].sad, self.predictors[3].sad),
+            );
+        } else {
+            // but for top line we have only predictor[1] left
+            self.predictors[0] = self.predictors[1];
+        }
+
+        // if there are no other planes, predictor is the median
+        if self.smallest_plane {
+            self.predictor = self.predictors[0];
+        }
+        let scale = self.lambda_sad as i64 / (self.lambda_sad as i64 + (self.predictor.sad >> 1));
+        self.lambda = (self.lambda as i64 * scale * scale) as u32;
+    }
+
+    fn sad_luma<const DCT_MODE: u8>(
+        &self,
+        src_plane: &[T],
+        src_pitch: NonZeroUsize,
+        zero_mv_blocks: &[T],
+        ref_pitch: NonZeroUsize,
+    ) -> u64 {
+        todo!()
+    }
+
+    fn sad_chroma(
+        &self,
+        src_plane: &[T],
+        src_pitch: NonZeroUsize,
+        zero_mv_blocks: &[T],
+        ref_pitch: NonZeroUsize,
+    ) -> u64 {
+        todo!()
+    }
+
+    fn refine<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self) {
+        todo!()
+    }
+
+    fn check_mv0<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, x: isize, y: isize) {
+        todo!()
+    }
+
+    fn umh_search<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        me_range: isize,
+        omx: isize,
+        omy: isize,
+    ) {
+        todo!()
+    }
+
+    fn expanding_search<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        r: isize,
+        s: isize,
+        mvx: isize,
+        mvy: isize,
+    ) {
+        todo!()
     }
 }
 
@@ -571,7 +1047,7 @@ struct SearchMvsArgs<'a> {
     pub penalty_zero: u16,
     pub penalty_global: u16,
     pub bad_sad: u64,
-    pub bad_range: usize,
+    pub bad_range: isize,
     pub meander: bool,
     pub try_many: bool,
 }

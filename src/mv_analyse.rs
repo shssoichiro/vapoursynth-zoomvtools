@@ -70,7 +70,7 @@ pub struct Analyse<'core> {
     /// the range (radius) of wide search for bad blocks.
     /// Default is 24 (image pixel units).
     /// Use positive value for UMH search and negative for Exhaustive search.
-    bad_range: usize,
+    bad_range: isize,
     /// Alternate blocks scan in rows from left to right and from right to left. Default is True
     meander: bool,
     /// try to start searches around many predictors. Default is false.
@@ -500,7 +500,7 @@ impl<'core> Analyse<'core> {
             dct_mode: dctmode,
             divide_extra,
             bad_sad,
-            bad_range: badrange.map(usize::try_from).unwrap_or(Ok(24))?,
+            bad_range: badrange.map(isize::try_from).unwrap_or(Ok(24))?,
             meander: meander.map(|meander| meander > 0).unwrap_or(true),
             try_many: trymany.map(|trymany| trymany > 0).unwrap_or(false),
             fields: fields.map(|fields| fields > 0).unwrap_or(false),
