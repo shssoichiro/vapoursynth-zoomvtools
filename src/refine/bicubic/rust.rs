@@ -43,13 +43,13 @@ pub fn refine_horizontal_bicubic<T: Pixel>(
 
         let a: u32 = src_row[0].into();
         let b: u32 = src_row[1].into();
-        dest_row[0] = T::from_or_max((a + b + 1) / 2);
+        dest_row[0] = T::from_u32_or_max_value((a + b + 1) / 2);
         for i in 1..(width.get() - 3) {
             let a: i32 = src_row[i - 1].into();
             let b: i32 = src_row[i].into();
             let c: i32 = src_row[i + 1].into();
             let d: i32 = src_row[i + 2].into();
-            dest_row[i] = T::from_or_max(min(
+            dest_row[i] = T::from_u32_or_max_value(min(
                 pixel_max,
                 max(0, (-(a + d) + (b + c) * 9 + 8) >> 4) as u32,
             ));
@@ -58,7 +58,7 @@ pub fn refine_horizontal_bicubic<T: Pixel>(
         for i in (width.get() - 3)..(width.get() - 1) {
             let a: u32 = src_row[i].into();
             let b: u32 = src_row[i + 1].into();
-            dest_row[i] = T::from_or_max((a + b + 1) / 2);
+            dest_row[i] = T::from_u32_or_max_value((a + b + 1) / 2);
         }
 
         dest_row[width.get() - 1] = src_row[width.get() - 1];
@@ -103,7 +103,7 @@ pub fn refine_vertical_bicubic<T: Pixel>(
     for i in 0..width.get() {
         let a: u32 = src[offset + i].into();
         let b: u32 = src[offset + i + pitch.get()].into();
-        dest[offset + i] = T::from_or_max((a + b + 1) / 2);
+        dest[offset + i] = T::from_u32_or_max_value((a + b + 1) / 2);
     }
     offset += pitch.get();
 
@@ -113,7 +113,7 @@ pub fn refine_vertical_bicubic<T: Pixel>(
             let b: i32 = src[offset + i].into();
             let c: i32 = src[offset + i + pitch.get()].into();
             let d: i32 = src[offset + i + pitch.get() * 2].into();
-            dest[offset + i] = T::from_or_max(min(
+            dest[offset + i] = T::from_u32_or_max_value(min(
                 pixel_max,
                 max(0, (-(a + d) + (b + c) * 9 + 8) >> 4) as u32,
             ));
@@ -125,7 +125,7 @@ pub fn refine_vertical_bicubic<T: Pixel>(
         for i in 0..width.get() {
             let a: u32 = src[offset + i].into();
             let b: u32 = src[offset + i + pitch.get()].into();
-            dest[offset + i] = T::from_or_max((a + b + 1) / 2);
+            dest[offset + i] = T::from_u32_or_max_value((a + b + 1) / 2);
         }
 
         offset += pitch.get();

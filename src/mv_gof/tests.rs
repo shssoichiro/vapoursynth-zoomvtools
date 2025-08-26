@@ -2,6 +2,8 @@ use super::*;
 use crate::tests::create_test_env;
 use vapoursynth::format::PresetFormat;
 
+// FIXME: One of these tests is intermittently segfaulting.
+
 #[test]
 fn test_mvgof_struct_fields() {
     // Test that the struct can be created and basic field access works

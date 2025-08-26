@@ -25,16 +25,22 @@ pub fn reduce_bilinear<T: Pixel>(
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
-    reduce_bilinear_vertical(
-        dest,
-        src,
-        dest_pitch,
-        src_pitch,
-        // SAFETY: non-zero constant
-        dest_width.saturating_mul(unsafe { NonZeroUsize::new_unchecked(2) }),
-        dest_height,
-    );
-    reduce_bilinear_horizontal_inplace(dest, dest_pitch, dest_width, dest_height);
+    // For performance reasons, check the array bounds once at the start of the loop.
+    assert!(src.len() >= src_pitch.get() * dest_height.get() * 2);
+    assert!(dest.len() >= dest_pitch.get() * dest_height.get());
+
+    // SAFETY: Validated bounds above
+    unsafe {
+        reduce_bilinear_vertical(
+            dest,
+            src,
+            dest_pitch,
+            src_pitch,
+            dest_width.saturating_mul(NonZeroUsize::new_unchecked(2)),
+            dest_height,
+        );
+        reduce_bilinear_horizontal_inplace(dest, dest_pitch, dest_width, dest_height);
+    }
 }
 
 /// Applies vertical bilinear filtering to reduce image height by 2x.
@@ -43,42 +49,45 @@ pub fn reduce_bilinear<T: Pixel>(
 /// vertically. It uses different weights for edge pixels versus middle pixels
 /// to maintain image quality. Edge lines use simple averaging, while middle
 /// lines use a weighted filter that considers 4 vertical neighbors.
-fn reduce_bilinear_vertical<T: Pixel>(
-    mut dest: &mut [T],
+unsafe fn reduce_bilinear_vertical<T: Pixel>(
+    dest: &mut [T],
     src: &[T],
     dest_pitch: NonZeroUsize,
     src_pitch: NonZeroUsize,
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
+    let mut dest = dest.as_mut_ptr();
+    let src = src.as_ptr();
+
     // Special case for first line
     for x in 0..dest_width.get() {
-        let a: u32 = src[x].into();
-        let b: u32 = src[x + src_pitch.get()].into();
-        dest[x] = T::from_or_max((a + b + 1) / 2);
+        let a: u32 = (*src.add(x)).into();
+        let b: u32 = (*src.add(x + src_pitch.get())).into();
+        *dest.add(x) = T::from_u32_or_max_value((a + b + 1) / 2);
     }
-    dest = &mut dest[dest_pitch.get()..];
+    dest = dest.add(dest_pitch.get());
 
     // Middle lines
     for y in 1..(dest_height.get() - 1) {
-        let src_row_offset = y * 2 * src_pitch.get();
+        let src_row = src.add(y * 2 * src_pitch.get());
         for x in 0..dest_width.get() {
-            let a: u32 = src[src_row_offset + x - src_pitch.get()].into();
-            let b: u32 = src[src_row_offset + x].into();
-            let c: u32 = src[src_row_offset + x + src_pitch.get()].into();
-            let d: u32 = src[src_row_offset + x + src_pitch.get() * 2].into();
-            dest[x] = T::from_or_max((a + (b + c) * 3 + d + 4) / 8);
+            let a: u32 = (*src_row.offset(x as isize - src_pitch.get() as isize)).into();
+            let b: u32 = (*src_row.add(x)).into();
+            let c: u32 = (*src_row.add(x + src_pitch.get())).into();
+            let d: u32 = (*src_row.add(x + src_pitch.get() * 2)).into();
+            *dest.add(x) = T::from_u32_or_max_value((a + (b + c) * 3 + d + 4) / 8);
         }
-        dest = &mut dest[dest_pitch.get()..];
+        dest = dest.add(dest_pitch.get());
     }
 
     // Special case for last line
     if dest_height.get() > 1 {
-        let src_row_offset = (dest_height.get() - 1) * 2 * src_pitch.get();
+        let src_row = src.add((dest_height.get() - 1) * 2 * src_pitch.get());
         for x in 0..dest_width.get() {
-            let a: u32 = src[src_row_offset + x].into();
-            let b: u32 = src[src_row_offset + x + src_pitch.get()].into();
-            dest[x] = T::from_or_max((a + b + 1) / 2);
+            let a: u32 = (*src_row.add(x)).into();
+            let b: u32 = (*src_row.add(x + src_pitch.get())).into();
+            *dest.add(x) = T::from_u32_or_max_value((a + b + 1) / 2);
         }
     }
 }
@@ -89,37 +98,41 @@ fn reduce_bilinear_vertical<T: Pixel>(
 /// horizontally on the already vertically-filtered data. It modifies the buffer
 /// in-place, using different weights for edge pixels versus middle pixels.
 /// Edge columns use simple averaging, while middle columns use a weighted filter.
-fn reduce_bilinear_horizontal_inplace<T: Pixel>(
-    mut dest: &mut [T],
+unsafe fn reduce_bilinear_horizontal_inplace<T: Pixel>(
+    dest: &mut [T],
     dest_pitch: NonZeroUsize,
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
+    let mut dest = dest.as_mut_ptr();
+
     for _y in 0..dest_height.get() {
         // Special case start of line
-        let a: u32 = dest[0].into();
-        let b: u32 = dest[1].into();
+        let a: u32 = (*dest).into();
+        let b: u32 = (*dest.add(1)).into();
         let src0 = (a + b + 1) / 2;
 
         // Middle of line
         for x in 1..(dest_width.get() - 1) {
-            let a: u32 = dest[x * 2 - 1].into();
-            let b: u32 = dest[x * 2].into();
-            let c: u32 = dest[x * 2 + 1].into();
-            let d: u32 = dest[x * 2 + 2].into();
-            dest[x] = T::from_or_max((a + (b + c) * 3 + d + 4) / 8);
+            let dest_row = dest.add(x * 2);
+            let a: u32 = (*dest_row.sub(1)).into();
+            let b: u32 = (*dest_row).into();
+            let c: u32 = (*dest_row.add(1)).into();
+            let d: u32 = (*dest_row.add(2)).into();
+            *dest.add(x) = T::from_u32_or_max_value((a + (b + c) * 3 + d + 4) / 8);
         }
 
-        dest[0] = T::from_or_max(src0);
+        *dest = T::from_u32_or_max_value(src0);
 
         // Special case end of line
         if dest_width.get() > 1 {
             let x = dest_width.get() - 1;
-            let a: u32 = dest[x * 2].into();
-            let b: u32 = dest[x * 2 + 1].into();
-            dest[x] = T::from_or_max((a + b + 1) / 2);
+            let dest_row = dest.add(x * 2);
+            let a: u32 = (*dest_row).into();
+            let b: u32 = (*dest_row.add(1)).into();
+            *dest.add(x) = T::from_u32_or_max_value((a + b + 1) / 2);
         }
 
-        dest = &mut dest[dest_pitch.get()..];
+        dest = dest.add(dest_pitch.get());
     }
 }

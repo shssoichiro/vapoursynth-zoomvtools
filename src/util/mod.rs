@@ -51,7 +51,7 @@ pub trait Pixel:
     + Eq
 {
     #[must_use]
-    fn from_or_max(value: u32) -> Self;
+    fn from_u32_or_max_value(value: u32) -> Self;
 }
 
 impl<T> Pixel for T
@@ -85,7 +85,7 @@ where
         + PartialEq
         + Eq,
 {
-    fn from_or_max(value: u32) -> Self {
+    fn from_u32_or_max_value(value: u32) -> Self {
         Self::try_from(value).unwrap_or_else(|_| {
             // If conversion fails (shouldn't happen with our inputs), fallback to max
             Self::max_value()

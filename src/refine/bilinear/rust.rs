@@ -34,7 +34,7 @@ pub fn refine_horizontal_bilinear<T: Pixel>(
         for i in 0..width.get() - 1 {
             let a: u32 = src_row[i].into();
             let b: u32 = src_row[i + 1].into();
-            dest_row[i] = T::from_or_max((a + b + 1) / 2);
+            dest_row[i] = T::from_u32_or_max_value((a + b + 1) / 2);
         }
         // last column
         dest_row[width.get() - 1] = src_row[width.get() - 1];
@@ -72,7 +72,7 @@ pub fn refine_vertical_bilinear<T: Pixel>(
         for i in 0..width.get() {
             let a: u32 = src[offset + i].into();
             let b: u32 = src[offset + i + pitch.get()].into();
-            dest[offset + i] = T::from_or_max((a + b + 1) / 2);
+            dest[offset + i] = T::from_u32_or_max_value((a + b + 1) / 2);
         }
         offset += pitch.get();
     }
@@ -114,12 +114,12 @@ pub fn refine_diagonal_bilinear<T: Pixel>(
             let c: u32 = src[offset + i + pitch.get()].into();
             let d: u32 = src[offset + i + pitch.get() + 1].into();
 
-            dest[offset + i] = T::from_or_max((a + b + c + d + 2) / 4);
+            dest[offset + i] = T::from_u32_or_max_value((a + b + c + d + 2) / 4);
         }
         // last column
         let a: u32 = src[offset + width.get() - 1].into();
         let b: u32 = src[offset + width.get() - 1 + pitch.get()].into();
-        dest[offset + width.get() - 1] = T::from_or_max((a + b + 1) / 2);
+        dest[offset + width.get() - 1] = T::from_u32_or_max_value((a + b + 1) / 2);
 
         offset += pitch.get();
     }
@@ -128,7 +128,7 @@ pub fn refine_diagonal_bilinear<T: Pixel>(
     for i in 0..width.get() - 1 {
         let a: u32 = src[offset + i].into();
         let b: u32 = src[offset + i + 1].into();
-        dest[offset + i] = T::from_or_max((a + b + 1) / 2);
+        dest[offset + i] = T::from_u32_or_max_value((a + b + 1) / 2);
     }
     // last pixel
     dest[offset + width.get() - 1] = src[offset + width.get() - 1];

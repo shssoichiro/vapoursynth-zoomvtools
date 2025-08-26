@@ -34,6 +34,10 @@ pub fn reduce_bilinear<T: Pixel>(
     dest_width: NonZeroUsize,
     dest_height: NonZeroUsize,
 ) {
+    // Check the array bounds once at the start of the loop.
+    assert!(src.len() >= src_pitch.get() * dest_height.get() * 2);
+    assert!(dest.len() >= dest_pitch.get() * dest_height.get());
+
     match size_of::<T>() {
         1 => unsafe {
             reduce_bilinear_vertical_u8(
