@@ -77,29 +77,29 @@ impl MVFrame {
         frame: &mut Frame,
     ) {
         for i in 0..3 {
-            if let Some(plane) = self.planes.get(i) {
-                if (mode.bits() & (1 << i)) > 0 {
-                    let reduced_pitch = reduced_frame.planes[i].pitch;
-                    let (width, height) = (
-                        reduced_frame.planes[i].width,
-                        reduced_frame.planes[i].height,
+            if let Some(plane) = self.planes.get(i)
+                && (mode.bits() & (1 << i)) > 0
+            {
+                let reduced_pitch = reduced_frame.planes[i].pitch;
+                let (width, height) = (
+                    reduced_frame.planes[i].width,
+                    reduced_frame.planes[i].height,
+                );
+                // Use the new helper function to avoid cloning the source data
+                // SAFETY: The windows inside each plane are set up so that they do not overlap.
+                unsafe {
+                    let (src, dest) = plane_with_padding_split::<T>(frame, i)
+                        .expect("Super: plane should exist but does not");
+                    plane.reduce_to::<T>(
+                        &mut reduced_frame.planes[i],
+                        filter,
+                        dest,
+                        src,
+                        reduced_pitch,
+                        self.planes[i].pitch,
+                        width,
+                        height,
                     );
-                    // Use the new helper function to avoid cloning the source data
-                    // SAFETY: The windows inside each plane are set up so that they do not overlap.
-                    unsafe {
-                        let (src, dest) = plane_with_padding_split::<T>(frame, i)
-                            .expect("Super: plane should exist but does not");
-                        plane.reduce_to::<T>(
-                            &mut reduced_frame.planes[i],
-                            filter,
-                            dest,
-                            src,
-                            reduced_pitch,
-                            self.planes[i].pitch,
-                            width,
-                            height,
-                        );
-                    }
                 }
             }
         }
@@ -107,13 +107,13 @@ impl MVFrame {
 
     pub(crate) fn pad<T: Pixel>(&mut self, mode: MVPlaneSet, frame: &mut Frame) {
         for i in 0..3 {
-            if let Some(plane) = self.planes.get_mut(i) {
-                if (mode.bits() & (1 << i)) > 0 {
-                    plane.pad(
-                        plane_with_padding_mut::<T>(frame, i)
-                            .expect("Super: source plane should exist but does not"),
-                    );
-                }
+            if let Some(plane) = self.planes.get_mut(i)
+                && (mode.bits() & (1 << i)) > 0
+            {
+                plane.pad(
+                    plane_with_padding_mut::<T>(frame, i)
+                        .expect("Super: source plane should exist but does not"),
+                );
             }
         }
     }
@@ -125,14 +125,14 @@ impl MVFrame {
         frame: &mut Frame,
     ) {
         for i in 0..3 {
-            if let Some(plane) = self.planes.get_mut(i) {
-                if (mode.bits() & (1 << i)) > 0 {
-                    plane.refine::<T>(
-                        subpel,
-                        plane_with_padding_mut::<T>(frame, i)
-                            .expect("Super: source plane should exist but does not"),
-                    );
-                }
+            if let Some(plane) = self.planes.get_mut(i)
+                && (mode.bits() & (1 << i)) > 0
+            {
+                plane.refine::<T>(
+                    subpel,
+                    plane_with_padding_mut::<T>(frame, i)
+                        .expect("Super: source plane should exist but does not"),
+                );
             }
         }
     }

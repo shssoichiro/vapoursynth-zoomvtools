@@ -1,14 +1,15 @@
+mod math;
 mod plane;
 #[cfg(test)]
 mod tests;
 
+pub use math::*;
 pub use plane::*;
 
 use std::{
-    cmp::{max, min},
     convert::TryFrom,
     num::NonZeroUsize,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Shl, Shr, Sub, SubAssign},
 };
 
 use vapoursynth::prelude::Component;
@@ -23,22 +24,26 @@ pub trait Pixel:
     Component
     + Clone
     + Copy
-    + Add<Self>
+    + Add<Self, Output = Self>
     + AddAssign<Self>
-    + Sub<Self>
+    + Sub<Self, Output = Self>
     + SubAssign<Self>
-    + Mul<Self>
+    + Mul<Self, Output = Self>
     + MulAssign<Self>
-    + Div<Self>
+    + Div<Self, Output = Self>
     + DivAssign<Self>
+    + Shl<u8, Output = Self>
+    + Shr<usize, Output = Self>
     + Into<u16>
     + Into<i32>
     + Into<u32>
     + Into<u64>
+    + Into<f32>
     + From<u8>
     + TryFrom<u16>
     + TryFrom<u32>
     + TryFrom<u64>
+    + FromFloatLossy
     + MaxValue
     + PartialOrd
     + Ord
@@ -54,22 +59,26 @@ where
     T: Component
         + Clone
         + Copy
-        + Add<Self>
+        + Add<Self, Output = Self>
         + AddAssign<Self>
-        + Sub<Self>
+        + Sub<Self, Output = Self>
         + SubAssign<Self>
-        + Mul<Self>
+        + Mul<Self, Output = Self>
         + MulAssign<Self>
-        + Div<Self>
+        + Div<Self, Output = Self>
         + DivAssign<Self>
+        + Shl<u8, Output = Self>
+        + Shr<usize, Output = Self>
         + Into<u16>
         + Into<i32>
         + Into<u32>
         + Into<u64>
+        + Into<f32>
         + From<u8>
         + TryFrom<u16>
         + TryFrom<u32>
         + TryFrom<u64>
+        + FromFloatLossy
         + MaxValue
         + PartialOrd
         + Ord
@@ -98,6 +107,23 @@ impl MaxValue for u8 {
 impl MaxValue for u16 {
     fn max_value() -> Self {
         u16::MAX
+    }
+}
+
+pub trait FromFloatLossy {
+    #[must_use]
+    fn from_float_lossy(value: f32) -> Self;
+}
+
+impl FromFloatLossy for u8 {
+    fn from_float_lossy(value: f32) -> Self {
+        value as u8
+    }
+}
+
+impl FromFloatLossy for u16 {
+    fn from_float_lossy(value: f32) -> Self {
+        value as u16
     }
 }
 
@@ -236,9 +262,4 @@ fn luma_sum_impl<T: Pixel, const WIDTH: usize, const HEIGHT: usize>(
         }
     }
     luma_sum
-}
-
-/// find the median between a, b and c
-pub fn median<T: Ord + Copy>(a: T, b: T, c: T) -> T {
-    max(min(a, b), min(max(a, b), c))
 }

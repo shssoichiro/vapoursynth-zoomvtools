@@ -462,7 +462,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 self.predictors[4] = self.clip_mv(MotionVector::zero());
 
                 self.pseudo_epz_search::<DCT_MODE, LOG_PEL>(
-                    src_frame,
                     src_frame_data,
                     ref_frame,
                     ref_frame_data,
@@ -552,7 +551,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
     fn pseudo_epz_search<const DCT_MODE: u8, const LOG_PEL: usize>(
         &mut self,
-        src_frame: &MVFrame,
         src_frame_data: &Frame,
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
@@ -574,7 +572,12 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         if (1..=4).contains(&DCT_MODE) {
             // make dct of source block
             // don't do the slow dct conversion if SATD used
-            self.dct.as_ref().unwrap().bytes_2d();
+            self.dct.as_mut().unwrap().bytes_2d(
+                src_plane_y,
+                self.src_pitch[0],
+                &mut self.dct_src,
+                self.dct_pitch,
+            )?;
         }
 
         if DCT_MODE >= 3 {

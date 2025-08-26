@@ -131,3 +131,47 @@ fn test_median_ordering_edge_cases() {
     assert_eq!(median(1000, 1, 500), 500);
     assert_eq!(median(500, 1000, 1), 500);
 }
+
+#[test]
+fn test_round_ties_to_even_ties() {
+    // Positive ties
+    assert_eq!(round_ties_to_even(0.5), 0.0);
+    assert_eq!(round_ties_to_even(1.5), 2.0);
+    assert_eq!(round_ties_to_even(2.5), 2.0);
+    assert_eq!(round_ties_to_even(3.5), 4.0);
+
+    // Negative ties
+    assert_eq!(round_ties_to_even(-0.5), 0.0);
+    assert_eq!(round_ties_to_even(-1.5), -2.0);
+    assert_eq!(round_ties_to_even(-2.5), -2.0);
+    assert_eq!(round_ties_to_even(-3.5), -4.0);
+}
+
+#[test]
+fn test_round_ties_to_even_non_ties() {
+    // Values just below/above .5 should round away from or toward zero accordingly
+    assert_eq!(round_ties_to_even(1.4999), 1.0);
+    assert_eq!(round_ties_to_even(1.5001), 2.0);
+    assert_eq!(round_ties_to_even(-1.4999), -1.0);
+    assert_eq!(round_ties_to_even(-1.5001), -2.0);
+
+    // Near zero
+    assert_eq!(round_ties_to_even(0.49), 0.0);
+    assert_eq!(round_ties_to_even(0.51), 1.0);
+    assert_eq!(round_ties_to_even(-0.49), 0.0);
+    assert_eq!(round_ties_to_even(-0.51), -1.0);
+}
+
+#[test]
+fn test_round_ties_to_even_integers_and_bounds() {
+    // Exact integers remain unchanged
+    assert_eq!(round_ties_to_even(2.0), 2.0);
+    assert_eq!(round_ties_to_even(-2.0), -2.0);
+    assert_eq!(round_ties_to_even(0.0), 0.0);
+
+    // Large values at tie boundaries
+    assert_eq!(round_ties_to_even(123456.5), 123456.0); // even
+    assert_eq!(round_ties_to_even(123455.5), 123456.0); // odd -> up
+    assert_eq!(round_ties_to_even(-123456.5), -123456.0); // even
+    assert_eq!(round_ties_to_even(-123455.5), -123456.0); // odd -> down
+}
