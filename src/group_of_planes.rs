@@ -148,8 +148,9 @@ impl<T: Pixel> GroupOfPlanes<T> {
             search_param
         };
         let try_many_level = try_many && self.level_count > 1;
+        let mut out_idx = 0;
         self.planes[self.level_count - 1].search_mvs(
-            0,
+            out_idx,
             &src_gof.frames[self.level_count - 1],
             src_frame_data,
             &ref_gof.frames[self.level_count - 1],
@@ -174,8 +175,54 @@ impl<T: Pixel> GroupOfPlanes<T> {
         )?;
 
         // Refining the search until we reach the highest detail interpolation.
-        for i in (0..(self.level_count - 1)).rev() {
-            todo!()
+        for i in (0..=(self.level_count - 2)).rev() {
+            out_idx += 1;
+
+            // full search for coarse planes
+            let search_type_level = if i == 0
+                || search_type == SearchType::Horizontal
+                || search_type == SearchType::Vertical
+            {
+                search_type
+            } else {
+                search_type_coarse
+            };
+            // special case for finest level
+            let search_param_level = if i == 0 { pel_search } else { search_param };
+            if global {
+                // get updated global MV (doubled)
+                self.planes[i + 1].estimate_global_mv_doubled(global_mv);
+            }
+            self.planes[i].interpolate_prediction(&self.planes[i + 1]);
+            // may be non zero for finest level only
+            let field_shift_cur = if i == 0 { field_shift } else { 0 };
+            // not for finest level to not decrease speed
+            let try_many_level = try_many && i > 0;
+
+            self.planes[i].search_mvs(
+                out_idx,
+                &src_gof.frames[i],
+                src_frame_data,
+                &ref_gof.frames[i],
+                ref_frame_data,
+                search_type_level,
+                search_param_level,
+                lambda,
+                lambda_sad,
+                penalty_new,
+                penalty_level,
+                &mut vectors,
+                &mut global_mv,
+                field_shift_cur,
+                dct_mode,
+                &mut mean_luma_change,
+                penalty_zero,
+                penalty_global,
+                bad_sad,
+                bad_range,
+                meander,
+                try_many_level,
+            )?;
         }
 
         Ok(vectors)
