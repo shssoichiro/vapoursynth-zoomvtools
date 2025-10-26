@@ -37,6 +37,7 @@ pub trait Pixel:
     + Into<u16>
     + Into<i32>
     + Into<u32>
+    + Into<i64>
     + Into<u64>
     + Into<f32>
     + From<u8>
@@ -72,6 +73,7 @@ where
         + Into<u16>
         + Into<i32>
         + Into<u32>
+        + Into<i64>
         + Into<u64>
         + Into<f32>
         + From<u8>

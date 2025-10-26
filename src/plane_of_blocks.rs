@@ -3,7 +3,8 @@ use crate::{
     mv::{MV_SIZE, MotionVector},
     mv_frame::MVFrame,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
-    util::{Pixel, luma_sum, median, plane_with_padding},
+    sad::select_sad_fn,
+    util::{Pixel, luma_sum, median, plane_with_padding, plane_with_padding_mut},
 };
 use anyhow::Result;
 use smallvec::SmallVec;
@@ -210,24 +211,24 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         }
     }
 
-    pub fn search_mvs(
+    pub fn search_mvs<'a>(
         &mut self,
         out_idx: usize,
-        src_frame: &MVFrame,
-        src_frame_data: &Frame,
-        ref_frame: &MVFrame,
-        ref_frame_data: &Frame,
+        src_frame: &'a MVFrame,
+        src_frame_data: &'a Frame<'a>,
+        ref_frame: &'a MVFrame,
+        ref_frame_data: &'a mut Frame<'a>,
         search_type: SearchType,
         search_param: usize,
         lambda: u32,
         lambda_sad: u32,
         penalty_new: u16,
         penalty_level: PenaltyScaling,
-        out: &mut MvsOutput,
-        global_mv: &mut MotionVector,
+        out: &'a mut MvsOutput,
+        global_mv: &'a mut MotionVector,
         field_shift: isize,
         dct_mode: DctMode,
-        mean_luma_change: &mut i32,
+        mean_luma_change: &'a mut i32,
         penalty_zero: u16,
         penalty_global: u16,
         bad_sad: u64,
@@ -601,44 +602,32 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         }
 
         // We treat zero alone
-        // Do we bias zero with not taking into account distorsion ?
+        // Do we bias zero with not taking into account distortion ?
         self.best_mv.x = self.zero_mv_field_shifted.x;
         self.best_mv.y = self.zero_mv_field_shifted.y;
-        let zero_mv_blocks = [
+        // Compute zero MV blocks
+        let mut sad = self.luma_sad::<DCT_MODE>(
+            src_plane_y,
+            self.src_pitch[0],
             self.get_ref_block::<LOG_PEL>(
                 ref_frame,
                 ref_frame_data,
                 0,
                 self.zero_mv_field_shifted.y,
             )?,
-            if self.chroma {
-                self.get_ref_block_u::<LOG_PEL>(ref_frame, ref_frame_data, 0, 0)?
-            } else {
-                &[]
-            },
-            if self.chroma {
-                self.get_ref_block_v::<LOG_PEL>(ref_frame, ref_frame_data, 0, 0)?
-            } else {
-                &[]
-            },
-        ];
-        let mut sad = self.sad_luma::<DCT_MODE>(
-            src_plane_y,
-            self.src_pitch[0],
-            zero_mv_blocks[0],
             self.ref_pitch[0],
         );
         if self.chroma {
-            sad += self.sad_chroma(
+            sad += self.chroma_sad(
                 src_plane_u,
                 self.src_pitch[1],
-                zero_mv_blocks[1],
+                self.get_ref_block_u::<LOG_PEL>(ref_frame, ref_frame_data, 0, 0)?,
                 self.ref_pitch[1],
             );
-            sad += self.sad_chroma(
+            sad += self.chroma_sad(
                 src_plane_v,
                 self.src_pitch[2],
-                zero_mv_blocks[2],
+                self.get_ref_block_v::<LOG_PEL>(ref_frame, ref_frame_data, 0, 0)?,
                 self.ref_pitch[2],
             );
         }
@@ -656,51 +645,38 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
         // Global MV predictor
         self.global_mv_predictor = self.clip_mv(self.global_mv_predictor);
-        let global_pred_blocks = [
+        let mut sad = self.luma_sad::<DCT_MODE>(
+            src_plane_y,
+            self.src_pitch[0],
             self.get_ref_block::<LOG_PEL>(
                 ref_frame,
                 ref_frame_data,
                 self.global_mv_predictor.x,
                 self.global_mv_predictor.y,
             )?,
-            if self.chroma {
+            self.ref_pitch[0],
+        );
+        if self.chroma {
+            sad += self.chroma_sad(
+                src_plane_u,
+                self.src_pitch[1],
                 self.get_ref_block_u::<LOG_PEL>(
                     ref_frame,
                     ref_frame_data,
                     self.global_mv_predictor.x,
                     self.global_mv_predictor.y,
-                )?
-            } else {
-                &[]
-            },
-            if self.chroma {
+                )?,
+                self.ref_pitch[1],
+            );
+            sad += self.chroma_sad(
+                src_plane_v,
+                self.src_pitch[2],
                 self.get_ref_block_v::<LOG_PEL>(
                     ref_frame,
                     ref_frame_data,
                     self.global_mv_predictor.x,
                     self.global_mv_predictor.y,
-                )?
-            } else {
-                &[]
-            },
-        ];
-        let mut sad = self.sad_luma::<DCT_MODE>(
-            src_plane_y,
-            self.src_pitch[0],
-            global_pred_blocks[0],
-            self.ref_pitch[0],
-        );
-        if self.chroma {
-            sad += self.sad_chroma(
-                src_plane_u,
-                self.src_pitch[1],
-                global_pred_blocks[1],
-                self.ref_pitch[1],
-            );
-            sad += self.sad_chroma(
-                src_plane_v,
-                self.src_pitch[2],
-                global_pred_blocks[2],
+                )?,
                 self.ref_pitch[2],
             );
         }
@@ -718,51 +694,40 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             best_mv_many[1] = self.best_mv;
             min_cost_many[1] = self.min_cost;
         }
-        let pred_blocks = [
+
+        // Predictor blocks
+        let mut sad = self.luma_sad::<DCT_MODE>(
+            src_plane_y,
+            self.src_pitch[0],
             self.get_ref_block::<LOG_PEL>(
                 ref_frame,
                 ref_frame_data,
                 self.predictor.x,
                 self.predictor.y,
             )?,
-            if self.chroma {
+            self.ref_pitch[0],
+        );
+        if self.chroma {
+            sad += self.chroma_sad(
+                src_plane_u,
+                self.src_pitch[1],
                 self.get_ref_block_u::<LOG_PEL>(
                     ref_frame,
                     ref_frame_data,
                     self.predictor.x,
                     self.predictor.y,
-                )?
-            } else {
-                &[]
-            },
-            if self.chroma {
+                )?,
+                self.ref_pitch[1],
+            );
+            sad += self.chroma_sad(
+                src_plane_v,
+                self.src_pitch[2],
                 self.get_ref_block_v::<LOG_PEL>(
                     ref_frame,
                     ref_frame_data,
                     self.predictor.x,
                     self.predictor.y,
-                )?
-            } else {
-                &[]
-            },
-        ];
-        let mut sad = self.sad_luma::<DCT_MODE>(
-            src_plane_y,
-            self.src_pitch[0],
-            pred_blocks[0],
-            self.ref_pitch[0],
-        );
-        if self.chroma {
-            sad += self.sad_chroma(
-                src_plane_u,
-                self.src_pitch[1],
-                pred_blocks[1],
-                self.ref_pitch[1],
-            );
-            sad += self.sad_chroma(
-                src_plane_v,
-                self.src_pitch[2],
-                pred_blocks[2],
+                )?,
                 self.ref_pitch[2],
             );
         }
@@ -986,17 +951,31 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         self.lambda = (self.lambda as i64 * scale * scale) as u32;
     }
 
-    fn sad_luma<const DCT_MODE: u8>(
+    fn luma_sad<const DCT_MODE: u8>(
         &self,
         src_plane: &[T],
         src_pitch: NonZeroUsize,
-        zero_mv_blocks: &[T],
+        ref_plane: &[T],
         ref_pitch: NonZeroUsize,
     ) -> u64 {
-        todo!()
+        let dct_mode = DctMode::try_from(DCT_MODE as i64).expect("invalid dct mode");
+        let sad_fn = select_sad_fn::<T>(self.blk_size_x, self.blk_size_y);
+        match dct_mode {
+            DctMode::Spatial => sad_fn(src_plane, src_pitch, ref_plane, ref_pitch),
+            DctMode::Dct => todo!(),
+            DctMode::MixedSpatialDct => todo!(),
+            DctMode::AdaptiveSpatialMixed => todo!(),
+            DctMode::AdaptiveSpatialDct => todo!(),
+            DctMode::Satd => todo!(),
+            DctMode::MixedSatdDct => todo!(),
+            DctMode::AdaptiveSatdMixed => todo!(),
+            DctMode::AdaptiveSatdDct => todo!(),
+            DctMode::MixedSadEqSatdDct => todo!(),
+            DctMode::AdaptiveSatdLuma => todo!(),
+        }
     }
 
-    fn sad_chroma(
+    fn chroma_sad(
         &self,
         src_plane: &[T],
         src_pitch: NonZeroUsize,
