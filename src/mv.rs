@@ -1,3 +1,5 @@
+pub const MV_SIZE: usize = size_of::<MotionVector>();
+
 #[derive(Debug, Clone, Copy)]
 pub struct MotionVector {
     pub x: isize,

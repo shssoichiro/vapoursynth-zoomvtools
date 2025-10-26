@@ -1,14 +1,17 @@
-use std::num::{NonZeroU8, NonZeroUsize};
+use std::{
+    mem::transmute,
+    num::{NonZeroU8, NonZeroUsize},
+};
 
 use anyhow::{Result, anyhow};
 use vapoursynth::frame::Frame;
 
 use crate::{
-    mv::MotionVector,
+    mv::{MV_SIZE, MotionVector},
     mv_gof::MVGroupOfFrames,
     params::{DctMode, DivideMode, MotionFlags, PenaltyScaling, SearchType, Subpel},
     plane_of_blocks::{MvsOutput, PlaneOfBlocks},
-    util::Pixel,
+    util::{Pixel, median},
 };
 
 #[derive(Clone)]
@@ -119,7 +122,7 @@ impl<T: Pixel> GroupOfPlanes<T> {
     ) -> Result<MvsOutput> {
         let mut vectors = MvsOutput {
             validity: true,
-            blocks: self.init_output_blocks(),
+            block_data: vec![0; self.get_array_size()].into_boxed_slice(),
         };
 
         let field_shift_cur = if self.level_count - 1 == 0 {
@@ -228,19 +231,165 @@ impl<T: Pixel> GroupOfPlanes<T> {
         Ok(vectors)
     }
 
-    pub fn extra_divide(&self, vectors: &mut MvsOutput) {
-        todo!()
+    pub fn extra_divide(&self, out: &mut MvsOutput) {
+        let mut start_idx = 0;
+        // skip all levels up to finest estimated
+        for i in (1..self.level_count).rev() {
+            start_idx += self.planes[i].get_array_size(DivideMode::None).get();
+        }
+
+        let size = usize::from_le_bytes(
+            out.block_data[start_idx..][..size_of::<usize>()]
+                .try_into()
+                .expect("slice with incorrect length"),
+        );
+        let blk_y = self.planes[0].blk_y.get();
+        let blk_x = self.planes[0].blk_x.get();
+        // finest estimated plane
+        let mut in_idx = start_idx + size_of::<usize>();
+        // position for divided subblocks data
+        let mut out_idx = start_idx + size + size_of::<usize>();
+
+        // top blocks
+        for bx in 0..blk_x {
+            extra_divide_block_data(out, in_idx, out_idx, bx, blk_x);
+        }
+
+        out_idx += blk_x * 4 * MV_SIZE;
+        in_idx += blk_x * MV_SIZE;
+
+        // middle blocks
+        for _by in 1..(blk_y - 1) {
+            let bx = 0;
+            extra_divide_block_data(out, in_idx, out_idx, bx, blk_x);
+
+            for bx in 1..(blk_x - 1) {
+                extra_divide_block_data(out, in_idx, out_idx, bx, blk_x);
+
+                if self.divide_extra == DivideMode::Median {
+                    assign_median(out, in_idx, out_idx, bx, bx - 1, bx - blk_x, bx * 2);
+                    assign_median(out, in_idx, out_idx, bx, bx + 1, bx - blk_x, bx * 2 + 1);
+                    assign_median(
+                        out,
+                        in_idx,
+                        out_idx,
+                        bx,
+                        bx - 1,
+                        bx + blk_x,
+                        bx * 2 + blk_x * 2,
+                    );
+                    assign_median(
+                        out,
+                        in_idx,
+                        out_idx,
+                        bx,
+                        bx + 1,
+                        bx + blk_x,
+                        bx * 2 + blk_x * 2 + 1,
+                    );
+                }
+            }
+
+            let bx = blk_x - 1;
+            extra_divide_block_data(out, in_idx, out_idx, bx, blk_x);
+
+            out_idx += blk_x * 4 * MV_SIZE;
+            in_idx += blk_x * MV_SIZE;
+        }
+
+        // bottom blocks
+        for bx in 0..blk_x {
+            extra_divide_block_data(out, in_idx, out_idx, bx, blk_x);
+        }
     }
 
-    #[must_use]
-    pub(crate) fn init_output_blocks(&self) -> Vec<Vec<MotionVector>> {
-        let mut output = Vec::with_capacity(self.level_count);
+    fn get_array_size(&self) -> usize {
+        let mut size = 0;
         for i in (0..self.level_count).rev() {
-            output.push(vec![
-                Default::default();
-                self.planes[i].get_array_size(self.divide_extra).get()
-            ]);
+            size += self.planes[i].get_array_size(self.divide_extra).get();
         }
-        output
+        size
     }
+}
+
+fn extra_divide_block_data(
+    out: &mut MvsOutput,
+    in_idx: usize,
+    out_idx: usize,
+    bx: usize,
+    blk_x: usize,
+) {
+    // SAFETY: Size is checked
+    let mut block: MotionVector = unsafe {
+        transmute::<[u8; MV_SIZE], _>(
+            out.block_data[in_idx + bx * MV_SIZE..][..MV_SIZE]
+                .try_into()
+                .expect("slice with incorrect length"),
+        )
+    };
+    block.sad >>= 2;
+
+    // SAFETY: I hate every part of this, but this is what the C code does.
+    let blocks_out: &mut [MotionVector] = unsafe { transmute(&mut out.block_data[out_idx..]) };
+    // top left subblock
+    blocks_out[bx * 2] = block;
+    // top right subblock
+    blocks_out[bx * 2 + 1] = block;
+    // bottom left subblock
+    blocks_out[bx * 2 + blk_x * 2] = block;
+    // bottom right subblock
+    blocks_out[bx * 2 + blk_x * 2 + 1] = block;
+}
+
+fn get_median(v: &mut MotionVector, v1: MotionVector, v2: MotionVector, v3: MotionVector) {
+    v.x = median(v1.x, v2.x, v3.x);
+    v.y = median(v1.y, v2.y, v3.y);
+
+    if (v.x == v1.x && v.y == v1.y) || (v.x == v2.x && v.y == v2.y) || (v.x == v3.x && v.y == v3.y)
+    {
+        return;
+    }
+
+    v.x = v1.x;
+    v.y = v1.y;
+}
+
+fn assign_median(
+    out: &mut MvsOutput,
+    in_idx: usize,
+    out_idx: usize,
+    in_1_offset: usize,
+    in_2_offset: usize,
+    in_3_offset: usize,
+    out_offset: usize,
+) {
+    let blkin_1: MotionVector = unsafe {
+        transmute::<[u8; MV_SIZE], _>(
+            out.block_data[in_idx + in_1_offset * MV_SIZE..][..MV_SIZE]
+                .try_into()
+                .expect("slice with incorrect length"),
+        )
+    };
+    let blkin_2: MotionVector = unsafe {
+        transmute::<[u8; MV_SIZE], _>(
+            out.block_data[in_idx + in_2_offset * MV_SIZE..][..MV_SIZE]
+                .try_into()
+                .expect("slice with incorrect length"),
+        )
+    };
+    let blkin_3: MotionVector = unsafe {
+        transmute::<[u8; MV_SIZE], _>(
+            out.block_data[in_idx + in_3_offset * MV_SIZE..][..MV_SIZE]
+                .try_into()
+                .expect("slice with incorrect length"),
+        )
+    };
+    let blkout: &mut MotionVector = unsafe {
+        transmute::<&mut [u8; MV_SIZE], _>(
+            &mut out.block_data[out_idx + out_offset * MV_SIZE..][..MV_SIZE]
+                .try_into()
+                .expect("slice with incorrect length"),
+        )
+    };
+    get_median(blkout, blkin_1, blkin_2, blkin_3);
 }

@@ -1,6 +1,6 @@
 use crate::{
     dct::DctHelper,
-    mv::MotionVector,
+    mv::{MV_SIZE, MotionVector},
     mv_frame::MVFrame,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
     util::{Pixel, luma_sum, median, plane_with_padding},
@@ -9,6 +9,7 @@ use anyhow::Result;
 use smallvec::SmallVec;
 use std::{
     cmp::{max, min},
+    mem::transmute,
     num::{NonZeroU8, NonZeroUsize},
 };
 use vapoursynth::frame::Frame;
@@ -19,32 +20,39 @@ const MAX_BLOCK_SIZE: usize = 128 * 128;
 const MAX_PREDICTOR: usize = 5;
 
 #[derive(Clone)]
-pub struct PlaneOfBlocks<T: Pixel> {
-    pel: Subpel,
-    log_pel: u8,
-    log_scale: usize,
-    scale: usize,
-    blk_size_x: NonZeroUsize,
-    blk_size_y: NonZeroUsize,
-    overlap_x: usize,
-    overlap_y: usize,
-    blk_x: NonZeroUsize,
-    blk_y: NonZeroUsize,
-    blk_count: NonZeroUsize,
-    x_ratio_uv: NonZeroU8,
-    y_ratio_uv: NonZeroU8,
-    log_x_ratio_uv: u8,
-    log_y_ratio_uv: u8,
-    bits_per_sample: NonZeroU8,
-    smallest_plane: bool,
-    chroma: bool,
-    can_use_satd: bool,
-    global_mv_predictor: MotionVector,
-    vectors: Vec<MotionVector>,
-    dct_pitch: NonZeroUsize,
-    freq_size: NonZeroUsize,
-    freq_array: Vec<i32>,
-    very_big_sad: NonZeroUsize,
+pub(crate) struct PlaneOfBlocks<T: Pixel> {
+    pub pel: Subpel,
+    pub log_pel: u8,
+    pub log_scale: usize,
+    pub scale: usize,
+    /// width of a block
+    pub blk_size_x: NonZeroUsize,
+    /// height of a block
+    pub blk_size_y: NonZeroUsize,
+    /// horizontal overlap of blocks
+    pub overlap_x: usize,
+    /// vertical overlap of blocks
+    pub overlap_y: usize,
+    /// width in number of blocks
+    pub blk_x: NonZeroUsize,
+    /// height in number of blocks
+    pub blk_y: NonZeroUsize,
+    /// number of blocks in the plane (isn't this just `blk_x` * `blk_y`?)
+    pub blk_count: NonZeroUsize,
+    pub x_ratio_uv: NonZeroU8,
+    pub y_ratio_uv: NonZeroU8,
+    pub log_x_ratio_uv: u8,
+    pub log_y_ratio_uv: u8,
+    pub bits_per_sample: NonZeroU8,
+    pub smallest_plane: bool,
+    pub chroma: bool,
+    pub can_use_satd: bool,
+    pub global_mv_predictor: MotionVector,
+    pub vectors: Vec<MotionVector>,
+    pub dct_pitch: NonZeroUsize,
+    pub freq_size: NonZeroUsize,
+    pub freq_array: Vec<i32>,
+    pub very_big_sad: NonZeroUsize,
 
     // TODO: We might want to move these away from this struct
     dct: Option<DctHelper>,
@@ -343,7 +351,8 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             sad: global_mv.sad,
         };
 
-        let blk_data = &mut out.blocks[out_idx];
+        let blk_data: &mut [MotionVector] =
+            unsafe { transmute(&mut out.block_data[out_idx * MV_SIZE..]) };
         self.y[0] = src_frame.planes[0].vpad as isize;
         if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
             self.y[1] = src_frame.planes[1].vpad as isize;
@@ -1028,8 +1037,9 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 #[derive(Debug, Clone)]
 pub struct MvsOutput {
     pub validity: bool,
-    pub blocks: Vec<Vec<MotionVector>>,
+    pub block_data: Box<[u8]>,
 }
+
 // This only exists so we don't have 500 lines of code building a jump table.
 struct SearchMvsArgs<'a> {
     pub out_idx: usize,
