@@ -43,8 +43,6 @@ pub mod reduce;
 #[cfg(feature = "bench")]
 pub mod refine;
 #[cfg(feature = "bench")]
-pub mod sad;
-#[cfg(feature = "bench")]
 pub mod util;
 
 #[cfg(not(feature = "bench"))]
@@ -75,8 +73,6 @@ mod plane_of_blocks;
 mod reduce;
 #[cfg(not(feature = "bench"))]
 mod refine;
-#[cfg(not(feature = "bench"))]
-mod sad;
 #[cfg(not(feature = "bench"))]
 mod util;
 

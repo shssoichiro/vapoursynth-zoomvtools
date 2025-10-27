@@ -3,8 +3,7 @@ use crate::{
     mv::{MV_SIZE, MotionVector},
     mv_frame::MVFrame,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
-    sad::select_sad_fn,
-    util::{Pixel, luma_sum, median, plane_with_padding, plane_with_padding_mut},
+    util::{Pixel, get_sad, luma_sum, median, plane_with_padding},
 };
 use anyhow::Result;
 use smallvec::SmallVec;
@@ -81,7 +80,6 @@ pub(crate) struct PlaneOfBlocks<T: Pixel> {
     penalty_new: u16,
     bad_count: usize,
     try_many: bool,
-    sum_luma_change: i64,
     /// direction of scan (1 is left to rught, -1 is right to left)
     blk_scan_dir: i8,
     lambda: u32,
@@ -95,6 +93,8 @@ pub(crate) struct PlaneOfBlocks<T: Pixel> {
     best_mv: MotionVector,
     src_offset: [usize; 3],
     src_luma: u64,
+    ref_luma: u64,
+    sum_luma_change: i64,
     min_cost: i64,
     blk_x_i: usize,
     blk_y_i: usize,
@@ -204,6 +204,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             best_mv: Default::default(),
             src_offset: Default::default(),
             src_luma: Default::default(),
+            ref_luma: Default::default(),
             min_cost: Default::default(),
             blk_idx: Default::default(),
             blk_x_i: Default::default(),
@@ -217,7 +218,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_frame: &'a MVFrame,
         src_frame_data: &'a Frame<'a>,
         ref_frame: &'a MVFrame,
-        ref_frame_data: &'a mut Frame<'a>,
+        ref_frame_data: &'a Frame<'a>,
         search_type: SearchType,
         search_param: usize,
         lambda: u32,
@@ -951,21 +952,79 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         self.lambda = (self.lambda as i64 * scale * scale) as u32;
     }
 
+    #[must_use]
     fn luma_sad<const DCT_MODE: u8>(
-        &self,
+        &mut self,
         src_plane: &[T],
         src_pitch: NonZeroUsize,
         ref_plane: &[T],
         ref_pitch: NonZeroUsize,
     ) -> u64 {
         let dct_mode = DctMode::try_from(DCT_MODE as i64).expect("invalid dct mode");
-        let sad_fn = select_sad_fn::<T>(self.blk_size_x, self.blk_size_y);
         match dct_mode {
-            DctMode::Spatial => sad_fn(src_plane, src_pitch, ref_plane, ref_pitch),
-            DctMode::Dct => todo!(),
-            DctMode::MixedSpatialDct => todo!(),
-            DctMode::AdaptiveSpatialMixed => todo!(),
-            DctMode::AdaptiveSpatialDct => todo!(),
+            DctMode::Spatial => get_sad(
+                self.blk_size_x,
+                self.blk_size_y,
+                src_plane,
+                src_pitch,
+                ref_plane,
+                ref_pitch,
+            ),
+            DctMode::Dct => self.reduction_corrected_dct(ref_plane, ref_pitch),
+            DctMode::MixedSpatialDct => {
+                let sad = get_sad(
+                    self.blk_size_x,
+                    self.blk_size_y,
+                    src_plane,
+                    src_pitch,
+                    ref_plane,
+                    ref_pitch,
+                );
+                let dct_sad = if self.dct_weight_16 > 0 {
+                    self.reduction_corrected_dct(ref_plane, ref_pitch)
+                } else {
+                    0
+                };
+                (sad * (16 - self.dct_weight_16 as u64) + dct_sad * self.dct_weight_16 as u64) / 16
+            }
+            DctMode::AdaptiveSpatialMixed => {
+                self.ref_luma = luma_sum(self.blk_size_x, self.blk_size_y, ref_plane, ref_pitch);
+                let sad = get_sad(
+                    self.blk_size_x,
+                    self.blk_size_y,
+                    src_plane,
+                    src_pitch,
+                    ref_plane,
+                    ref_pitch,
+                );
+                if (self.src_luma as i64 - self.ref_luma as i64).unsigned_abs()
+                    > ((self.src_luma + self.ref_luma) >> 5)
+                {
+                    let dct_sad = self.bsize_corrected_dct(ref_plane, ref_pitch);
+                    sad / 2 + dct_sad / 2
+                } else {
+                    sad
+                }
+            }
+            DctMode::AdaptiveSpatialDct => {
+                self.ref_luma = luma_sum(self.blk_size_x, self.blk_size_y, ref_plane, ref_pitch);
+                let sad = get_sad(
+                    self.blk_size_x,
+                    self.blk_size_y,
+                    src_plane,
+                    src_pitch,
+                    ref_plane,
+                    ref_pitch,
+                );
+                if (self.src_luma as i64 - self.ref_luma as i64).unsigned_abs()
+                    > ((self.src_luma + self.ref_luma) >> 5)
+                {
+                    let dct_sad = self.bsize_corrected_dct(ref_plane, ref_pitch);
+                    sad / 4 + dct_sad / 2 + dct_sad / 4
+                } else {
+                    sad
+                }
+            }
             DctMode::Satd => todo!(),
             DctMode::MixedSatdDct => todo!(),
             DctMode::AdaptiveSatdMixed => todo!(),
@@ -975,14 +1034,52 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         }
     }
 
+    #[must_use]
     fn chroma_sad(
         &self,
         src_plane: &[T],
         src_pitch: NonZeroUsize,
-        zero_mv_blocks: &[T],
+        ref_plane: &[T],
         ref_pitch: NonZeroUsize,
     ) -> u64 {
         todo!()
+    }
+
+    #[must_use]
+    fn bsize_corrected_dct(&mut self, ref_plane: &[T], ref_pitch: NonZeroUsize) -> u64 {
+        self.dct
+            .as_mut()
+            .expect("dct helper should be defined")
+            .bytes_2d(ref_plane, ref_pitch, &mut self.dct_ref, self.dct_pitch);
+        get_sad(
+            self.blk_size_x,
+            self.blk_size_y,
+            &self.dct_src,
+            self.dct_pitch,
+            &self.dct_ref,
+            self.dct_pitch,
+        ) * self.blk_size_x.get() as u64
+            / 2
+    }
+
+    #[must_use]
+    fn reduction_corrected_dct(&mut self, ref_plane: &[T], ref_pitch: NonZeroUsize) -> u64 {
+        self.dct
+            .as_mut()
+            .expect("dct helper should be defined")
+            .bytes_2d(ref_plane, ref_pitch, &mut self.dct_ref, self.dct_pitch);
+
+        // correct reduced DC component
+        let src0: i64 = self.dct_src[0].into();
+        let ref0: i64 = self.dct_ref[0].into();
+        get_sad(
+            self.blk_size_x,
+            self.blk_size_y,
+            &self.dct_src,
+            self.dct_pitch,
+            &self.dct_ref,
+            self.dct_pitch,
+        ) + (src0 - ref0).unsigned_abs() * 3 * self.blk_size_x.get() as u64 / 2
     }
 
     fn refine<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self) {
