@@ -2,6 +2,7 @@ mod luma;
 mod math;
 mod plane;
 mod sad;
+mod satd;
 #[cfg(test)]
 mod tests;
 
@@ -9,6 +10,7 @@ pub use luma::*;
 pub use math::*;
 pub use plane::*;
 pub use sad::*;
+pub use satd::*;
 
 use std::{
     convert::TryFrom,

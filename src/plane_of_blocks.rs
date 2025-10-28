@@ -3,7 +3,7 @@ use crate::{
     mv::{MV_SIZE, MotionVector},
     mv_frame::MVFrame,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
-    util::{Pixel, get_sad, luma_sum, median, plane_with_padding},
+    util::{Pixel, get_sad, get_satd, luma_sum, median, plane_with_padding},
 };
 use anyhow::Result;
 use smallvec::SmallVec;
@@ -1025,12 +1025,140 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                     sad
                 }
             }
-            DctMode::Satd => todo!(),
-            DctMode::MixedSatdDct => todo!(),
-            DctMode::AdaptiveSatdMixed => todo!(),
-            DctMode::AdaptiveSatdDct => todo!(),
-            DctMode::MixedSadEqSatdDct => todo!(),
-            DctMode::AdaptiveSatdLuma => todo!(),
+            DctMode::Satd => get_satd(
+                self.blk_size_x,
+                self.blk_size_y,
+                src_plane,
+                src_pitch,
+                ref_plane,
+                ref_pitch,
+            ),
+            DctMode::MixedSatdDct => {
+                let sad = get_sad(
+                    self.blk_size_x,
+                    self.blk_size_y,
+                    src_plane,
+                    src_pitch,
+                    ref_plane,
+                    ref_pitch,
+                );
+                if self.dct_weight_16 > 0 {
+                    let dct_sad = get_satd(
+                        self.blk_size_x,
+                        self.blk_size_y,
+                        src_plane,
+                        src_pitch,
+                        ref_plane,
+                        ref_pitch,
+                    );
+                    (sad * (16 - self.dct_weight_16 as u64) + dct_sad * self.dct_weight_16 as u64)
+                        / 16
+                } else {
+                    sad
+                }
+            }
+            DctMode::AdaptiveSatdMixed => {
+                self.ref_luma = luma_sum(self.blk_size_x, self.blk_size_y, ref_plane, ref_pitch);
+                let sad = get_sad(
+                    self.blk_size_x,
+                    self.blk_size_y,
+                    src_plane,
+                    src_pitch,
+                    ref_plane,
+                    ref_pitch,
+                );
+                if (self.src_luma as i64 - self.ref_luma as i64).unsigned_abs()
+                    > ((self.src_luma + self.ref_luma) >> 5)
+                {
+                    let dct_sad = get_satd(
+                        self.blk_size_x,
+                        self.blk_size_y,
+                        src_plane,
+                        src_pitch,
+                        ref_plane,
+                        ref_pitch,
+                    );
+                    sad / 2 + dct_sad / 2
+                } else {
+                    sad
+                }
+            }
+            DctMode::AdaptiveSatdDct => {
+                self.ref_luma = luma_sum(self.blk_size_x, self.blk_size_y, ref_plane, ref_pitch);
+                let sad = get_sad(
+                    self.blk_size_x,
+                    self.blk_size_y,
+                    src_plane,
+                    src_pitch,
+                    ref_plane,
+                    ref_pitch,
+                );
+                if (self.src_luma as i64 - self.ref_luma as i64).unsigned_abs()
+                    > ((self.src_luma + self.ref_luma) >> 5)
+                {
+                    let dct_sad = get_satd(
+                        self.blk_size_x,
+                        self.blk_size_y,
+                        src_plane,
+                        src_pitch,
+                        ref_plane,
+                        ref_pitch,
+                    );
+                    sad / 4 + dct_sad / 2 + dct_sad / 4
+                } else {
+                    sad
+                }
+            }
+            DctMode::MixedSadEqSatdDct => {
+                let sad = get_sad(
+                    self.blk_size_x,
+                    self.blk_size_y,
+                    src_plane,
+                    src_pitch,
+                    ref_plane,
+                    ref_pitch,
+                );
+                if self.dct_weight_16 > 1 {
+                    let dct_weight_half = self.dct_weight_16 as u64 / 2;
+                    let dct_sad = get_satd(
+                        self.blk_size_x,
+                        self.blk_size_y,
+                        src_plane,
+                        src_pitch,
+                        ref_plane,
+                        ref_pitch,
+                    );
+                    (sad * (16 - dct_weight_half) + dct_sad * dct_weight_half) / 16
+                } else {
+                    sad
+                }
+            }
+            DctMode::AdaptiveSatdLuma => {
+                self.ref_luma = luma_sum(self.blk_size_x, self.blk_size_y, ref_plane, ref_pitch);
+                let sad = get_sad(
+                    self.blk_size_x,
+                    self.blk_size_y,
+                    src_plane,
+                    src_pitch,
+                    ref_plane,
+                    ref_pitch,
+                );
+                if (self.src_luma as i64 - self.ref_luma as i64).unsigned_abs()
+                    > ((self.src_luma + self.ref_luma) >> 4)
+                {
+                    let dct_sad = get_satd(
+                        self.blk_size_x,
+                        self.blk_size_y,
+                        src_plane,
+                        src_pitch,
+                        ref_plane,
+                        ref_pitch,
+                    );
+                    sad / 2 + dct_sad / 4 + sad / 4
+                } else {
+                    sad
+                }
+            }
         }
     }
 
