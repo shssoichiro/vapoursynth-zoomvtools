@@ -1163,6 +1163,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     #[must_use]
+    #[inline(always)]
     fn chroma_sad(
         &self,
         src_plane: &[T],
@@ -1170,7 +1171,20 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         ref_plane: &[T],
         ref_pitch: NonZeroUsize,
     ) -> u64 {
-        todo!()
+        // Just use basic SAD algorithm for chroma because it's faster
+        get_sad(
+            // sAFETY: all values are NonZero typed
+            unsafe {
+                NonZeroUsize::new_unchecked(self.blk_size_x.get() / self.x_ratio_uv.get() as usize)
+            },
+            unsafe {
+                NonZeroUsize::new_unchecked(self.blk_size_y.get() / self.y_ratio_uv.get() as usize)
+            },
+            src_plane,
+            src_pitch,
+            ref_plane,
+            ref_pitch,
+        )
     }
 
     #[must_use]
