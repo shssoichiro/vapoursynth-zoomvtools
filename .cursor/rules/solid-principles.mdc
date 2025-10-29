@@ -1,6 +1,6 @@
 ---
-description: SOLID Design Principles
-alwaysApply: true
+description: When generating, reviewing, or modifying code, follow these guidelines to ensure adherence to SOLID principles.
+alwaysApply: false
 ---
 
 # SOLID Design Principles

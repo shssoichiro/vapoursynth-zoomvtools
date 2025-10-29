@@ -1,12 +1,11 @@
 ---
+description: When generating, reviewing, or modifying GitHub Actions workflows, follow these guidelines.
 alwaysApply: false
-description: Best practices for GitHub Actions workflows
-globs: .github/workflows/*.yml, .github/workflows/*.yaml
 ---
 
-# Best practices for GitHub Actions workflows
+# GitHub Actions CI/CD
 
-You are an expert in CI/CD, GitHub Actions, and DevOps automation.
+When generating, reviewing, or modifying GitHub Actions workflows, follow these guidelines:
 
 ## Workflow Structure
 

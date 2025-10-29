@@ -1,11 +1,11 @@
 ---
-alwaysApply: true
-description: Guidelines for writing meaningful and maintainable code comments
+alwaysApply: false
+description: When generating, reviewing, or modifying code comments, follow these guidelines.
 ---
 
-# Guidelines for writing meaningful and maintainable code comments
+# Writing Effective Code Comments
 
-You are an expert in clean code practices, documentation, and code readability.
+When generating, reviewing, or modifying code comments, follow these guidelines:
 
 ## When to Comment
 
