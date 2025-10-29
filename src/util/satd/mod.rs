@@ -1,8 +1,10 @@
 use std::{
-    mem::transmute,
+    mem::size_of,
     num::NonZeroUsize,
-    ops::{Add, Sub},
+    ops::{Add, AddAssign, BitAnd, BitXor, Mul, Shl, Shr, Sub},
 };
+
+use num_traits::{One, PrimInt, WrappingAdd};
 
 use crate::util::Pixel;
 
@@ -39,11 +41,11 @@ fn get_satd_impl<T: Pixel, const WIDTH: usize, const HEIGHT: usize>(
     ref_pitch: NonZeroUsize,
 ) -> u64 {
     if WIDTH == 4 && HEIGHT == 4 {
-        return if size_of::<T>() == 2 {
-            // SAFETY: We checked the size of T
-            unsafe { satd_4x4_16b(transmute(src), src_pitch, transmute(ref_), ref_pitch) }
-        } else {
-            unsafe { satd_4x4_8b(transmute(src), src_pitch, transmute(ref_), ref_pitch) }
+        // perf: branch is elided via generics at compile time
+        return match size_of::<T>() {
+            1 => satd_4x4::<T, u16, u32>(src, src_pitch, ref_, ref_pitch),
+            2 => satd_4x4::<T, u32, u64>(src, src_pitch, ref_, ref_pitch),
+            _ => unreachable!(),
         };
     }
 
@@ -53,25 +55,21 @@ fn get_satd_impl<T: Pixel, const WIDTH: usize, const HEIGHT: usize>(
     let mut sum = 0;
     for y in (0..HEIGHT).step_by(partition_height) {
         for x in (0..WIDTH).step_by(partition_width) {
-            sum += if size_of::<T>() == 2 {
-                // SAFETY: We checked the size of T
-                unsafe {
-                    satd_8x4_16b(
-                        transmute(&src[y * src_pitch.get() + x..]),
-                        src_pitch,
-                        transmute(&ref_[y * ref_pitch.get() + x..]),
-                        ref_pitch,
-                    )
-                }
-            } else {
-                unsafe {
-                    satd_8x4_8b(
-                        transmute(&src[y * src_pitch.get() + x..]),
-                        src_pitch,
-                        transmute(&ref_[y * ref_pitch.get() + x..]),
-                        ref_pitch,
-                    )
-                }
+            // perf: branch is elided via generics at compile time
+            sum += match size_of::<T>() {
+                1 => satd_8x4::<T, u16, u32>(
+                    &src[y * src_pitch.get() + x..],
+                    src_pitch,
+                    &ref_[y * ref_pitch.get() + x..],
+                    ref_pitch,
+                ),
+                2 => satd_8x4::<T, u32, u64>(
+                    &src[y * src_pitch.get() + x..],
+                    src_pitch,
+                    &ref_[y * ref_pitch.get() + x..],
+                    ref_pitch,
+                ),
+                _ => unreachable!(),
             };
         }
     }
@@ -79,26 +77,89 @@ fn get_satd_impl<T: Pixel, const WIDTH: usize, const HEIGHT: usize>(
 }
 
 #[must_use]
-fn satd_4x4_8b(src: &[u8], src_pitch: NonZeroUsize, ref_: &[u8], ref_pitch: NonZeroUsize) -> u64 {
-    todo!()
-}
-
-#[must_use]
-fn satd_4x4_16b(
-    src: &[u16],
+fn satd_4x4<
+    T: Pixel,
+    SUM1: PrimInt + Default,
+    SUM2: PrimInt + Default + One + AddAssign<SUM2> + WrappingAdd + FromDiff + Into<u64>,
+>(
+    src: &[T],
     src_pitch: NonZeroUsize,
-    ref_: &[u16],
+    ref_: &[T],
     ref_pitch: NonZeroUsize,
 ) -> u64 {
-    todo!()
+    let bits_per_sum = size_of::<SUM1>() * 8;
+    let mut tmp: [[SUM2; 2]; 4] = Default::default();
+    let mut a: [SUM2; 4] = Default::default();
+    let mut b: [SUM2; 2] = Default::default();
+    let mut sum: SUM2 = Default::default();
+
+    for i in 0..4 {
+        let src_offset = i * src_pitch.get();
+        let ref_offset = i * ref_pitch.get();
+
+        let src_row = &src[src_offset..src_offset + 4];
+        let ref_row = &ref_[ref_offset..ref_offset + 4];
+
+        let diff = |idx: usize| -> SUM2 {
+            let s: i32 = src_row[idx].into();
+            let r: i32 = ref_row[idx].into();
+            SUM2::from_diff(s - r)
+        };
+
+        a[0] = diff(0);
+        a[1] = diff(1);
+        b[0] = (a[0] + a[1]) + ((a[0] - a[1]) << bits_per_sum);
+        a[2] = diff(2);
+        a[3] = diff(3);
+        b[1] = (a[2] + a[3]) + ((a[2] - a[3]) << bits_per_sum);
+        tmp[i][0] = b[0] + b[1];
+        tmp[i][1] = b[0] - b[1];
+    }
+
+    let one = SUM2::one();
+    let mask = (one << bits_per_sum) - one;
+    for i in 0..4 {
+        let [ref mut d0, ref mut d1, ref mut d2, ref mut d3] = a;
+        hadamard4(d0, d1, d2, d3, tmp[0][i], tmp[1][i], tmp[2][i], tmp[3][i]);
+        a[0] = abs2::<SUM1, SUM2>(a[0])
+            + abs2::<SUM1, SUM2>(a[1])
+            + abs2::<SUM1, SUM2>(a[2])
+            + abs2::<SUM1, SUM2>(a[3]);
+        sum += (a[0] & mask) + (a[0] >> bits_per_sum);
+    }
+
+    let result = sum >> 1;
+    result.into()
 }
 
 #[must_use]
-fn satd_8x4_8b(src: &[u8], src_pitch: NonZeroUsize, ref_: &[u8], ref_pitch: NonZeroUsize) -> u64 {
-    const BITS_PER_SUM: usize = 16;
-    let mut tmp = [[0u32; 4]; 4];
-    let mut a = (0u32, 0u32, 0u32, 0u32);
-    let mut sum = 0u32;
+fn satd_8x4<
+    T: Pixel,
+    SUM1: PrimInt,
+    SUM2: PrimInt
+        + One
+        + Default
+        + BitAnd<Output = SUM2>
+        + BitXor<Output = SUM2>
+        + Mul<Output = SUM2>
+        + Sub<Output = SUM2>
+        + Add<Output = SUM2>
+        + Shl<usize, Output = SUM2>
+        + Shr<usize, Output = SUM2>
+        + AddAssign<SUM2>
+        + WrappingAdd
+        + Into<u64>
+        + FromDiff,
+>(
+    src: &[T],
+    src_pitch: NonZeroUsize,
+    ref_: &[T],
+    ref_pitch: NonZeroUsize,
+) -> u64 {
+    let bits_per_sum = size_of::<SUM1>() * 8;
+    let mut tmp: [[SUM2; 4]; 4] = Default::default();
+    let mut a: [SUM2; 4] = Default::default();
+    let mut sum: SUM2 = Default::default();
 
     for i in 0..4 {
         let src_offset = i * src_pitch.get();
@@ -107,104 +168,93 @@ fn satd_8x4_8b(src: &[u8], src_pitch: NonZeroUsize, ref_: &[u8], ref_pitch: NonZ
         let src_row = &src[src_offset..src_offset + 8];
         let ref_row = &ref_[ref_offset..ref_offset + 8];
 
-        let diff = |idx: usize| -> i32 { i32::from(src_row[idx]) - i32::from(ref_row[idx]) };
+        let diff = |idx: usize| -> SUM2 {
+            let s: i32 = src_row[idx].into();
+            let r: i32 = ref_row[idx].into();
+            SUM2::from_diff(s - r)
+        };
 
-        a.0 = (diff(0) as u32).wrapping_add((diff(4) as u32) << BITS_PER_SUM);
-        a.1 = (diff(1) as u32).wrapping_add((diff(5) as u32) << BITS_PER_SUM);
-        a.2 = (diff(2) as u32).wrapping_add((diff(6) as u32) << BITS_PER_SUM);
-        a.3 = (diff(3) as u32).wrapping_add((diff(7) as u32) << BITS_PER_SUM);
-        let tmp_row = &mut tmp[i];
-        let [ref mut d0, ref mut d1, ref mut d2, ref mut d3] = *tmp_row;
-        hadamard4(d0, d1, d2, d3, a.0, a.1, a.2, a.3);
+        a[0] = diff(0).wrapping_add(&(diff(4) << bits_per_sum));
+        a[1] = diff(1).wrapping_add(&(diff(5) << bits_per_sum));
+        a[2] = diff(2).wrapping_add(&(diff(6) << bits_per_sum));
+        a[3] = diff(3).wrapping_add(&(diff(7) << bits_per_sum));
+        let [ref mut d0, ref mut d1, ref mut d2, ref mut d3] = tmp[i];
+        hadamard4(d0, d1, d2, d3, a[0], a[1], a[2], a[3]);
     }
 
     for i in 0..4 {
-        hadamard4(
-            &mut a.0, &mut a.1, &mut a.2, &mut a.3, tmp[0][i], tmp[1][i], tmp[2][i], tmp[3][i],
-        );
-        sum += abs2_8b(a.0) + abs2_8b(a.1) + abs2_8b(a.2) + abs2_8b(a.3);
+        let [ref mut d0, ref mut d1, ref mut d2, ref mut d3] = a;
+        hadamard4(d0, d1, d2, d3, tmp[0][i], tmp[1][i], tmp[2][i], tmp[3][i]);
+        sum += abs2::<SUM1, SUM2>(a[0])
+            + abs2::<SUM1, SUM2>(a[1])
+            + abs2::<SUM1, SUM2>(a[2])
+            + abs2::<SUM1, SUM2>(a[3]);
     }
 
-    (((sum as u16 as u32) + (sum >> BITS_PER_SUM)) >> 1) as u64
+    let one = SUM2::one();
+    let mask = (one << bits_per_sum) - one;
+    let result = ((sum & mask) + (sum >> bits_per_sum)) >> 1;
+    result.into()
 }
 
-#[must_use]
-fn satd_8x4_16b(
-    src: &[u16],
-    src_pitch: NonZeroUsize,
-    ref_: &[u16],
-    ref_pitch: NonZeroUsize,
-) -> u64 {
-    const BITS_PER_SUM: usize = 32;
-    let mut tmp = [[0u64; 4]; 4];
-    let mut a = (0u64, 0u64, 0u64, 0u64);
-    let mut sum = 0u64;
-
-    for i in 0..4 {
-        let src_offset = i * src_pitch.get();
-        let ref_offset = i * ref_pitch.get();
-
-        let src_row = &src[src_offset..src_offset + 8];
-        let ref_row = &ref_[ref_offset..ref_offset + 8];
-
-        let diff = |idx: usize| -> i64 { i64::from(src_row[idx]) - i64::from(ref_row[idx]) };
-
-        a.0 = (diff(0) as u64).wrapping_add((diff(4) as u64) << BITS_PER_SUM);
-        a.1 = (diff(1) as u64).wrapping_add((diff(5) as u64) << BITS_PER_SUM);
-        a.2 = (diff(2) as u64).wrapping_add((diff(6) as u64) << BITS_PER_SUM);
-        a.3 = (diff(3) as u64).wrapping_add((diff(7) as u64) << BITS_PER_SUM);
-        let tmp_row = &mut tmp[i];
-        let [ref mut d0, ref mut d1, ref mut d2, ref mut d3] = *tmp_row;
-        hadamard4(d0, d1, d2, d3, a.0, a.1, a.2, a.3);
-    }
-
-    for i in 0..4 {
-        hadamard4(
-            &mut a.0, &mut a.1, &mut a.2, &mut a.3, tmp[0][i], tmp[1][i], tmp[2][i], tmp[3][i],
-        );
-        sum += abs2_16b(a.0) + abs2_16b(a.1) + abs2_16b(a.2) + abs2_16b(a.3);
-    }
-
-    (((sum as u32 as u64) + (sum >> BITS_PER_SUM)) >> 1) as u64
-}
-
-/// in: a pseudo-simd number of the form x+(y<<16)
-/// return: abs(x)+(abs(y)<<16)
+/// in: a pseudo-simd number of the form x+(y<<bits_per_sum)
+/// return: abs(x)+(abs(y)<<bits_per_sum)
 #[must_use]
 #[inline(always)]
-fn abs2_8b(a: u32) -> u32 {
-    const BITS_PER_SUM: usize = 16;
-
-    let s: u32 = ((a >> (BITS_PER_SUM - 1)) & ((1u32 << BITS_PER_SUM) + 1)) * (-1i16 as u16 as u32);
-    return a.wrapping_add(s) ^ s;
+fn abs2<SUM: PrimInt, SUM2>(a: SUM2) -> SUM2
+where
+    SUM2: PrimInt
+        + One
+        + BitAnd<Output = SUM2>
+        + BitXor<Output = SUM2>
+        + Mul<Output = SUM2>
+        + Sub<Output = SUM2>
+        + Add<Output = SUM2>
+        + Shl<usize, Output = SUM2>
+        + Shr<usize, Output = SUM2>
+        + WrappingAdd,
+{
+    let bits_per_sum = size_of::<SUM>() * 8;
+    let one = SUM2::one();
+    let ones = (one << bits_per_sum) - one;
+    let mask = (one << bits_per_sum) + one;
+    let s = ((a >> (bits_per_sum - 1)) & mask) * ones;
+    a.wrapping_add(&s) ^ s
 }
 
-/// in: a pseudo-simd number of the form x+(y<<16)
-/// return: abs(x)+(abs(y)<<16)
-#[must_use]
-#[inline(always)]
-fn abs2_16b(a: u64) -> u64 {
-    const BITS_PER_SUM: usize = 32;
+trait FromDiff {
+    fn from_diff(diff: i32) -> Self;
+}
 
-    let s: u64 = ((a >> (BITS_PER_SUM - 1)) & ((1u64 << BITS_PER_SUM) + 1)) * (-1i32 as u32 as u64);
-    return a.wrapping_add(s) ^ s;
+impl FromDiff for u32 {
+    #[inline(always)]
+    fn from_diff(diff: i32) -> Self {
+        diff as u32
+    }
+}
+
+impl FromDiff for u64 {
+    #[inline(always)]
+    fn from_diff(diff: i32) -> Self {
+        diff as u64
+    }
 }
 
 #[inline(always)]
-fn hadamard4<T: Copy + Add<T, Output = T> + Sub<T, Output = T>>(
-    dest0: &mut T,
-    dest1: &mut T,
-    dest2: &mut T,
-    dest3: &mut T,
-    src0: T,
-    src1: T,
-    src2: T,
-    src3: T,
+fn hadamard4<SUM: Copy + Add<SUM, Output = SUM> + Sub<SUM, Output = SUM>>(
+    dest0: &mut SUM,
+    dest1: &mut SUM,
+    dest2: &mut SUM,
+    dest3: &mut SUM,
+    src0: SUM,
+    src1: SUM,
+    src2: SUM,
+    src3: SUM,
 ) {
-    let temp0: T = src0 + src1;
-    let temp1: T = src0 - src1;
-    let temp2: T = src2 + src3;
-    let temp3: T = src2 - src3;
+    let temp0: SUM = src0 + src1;
+    let temp1: SUM = src0 - src1;
+    let temp2: SUM = src2 + src3;
+    let temp3: SUM = src2 - src3;
     *dest0 = temp0 + temp2;
     *dest2 = temp0 - temp2;
     *dest1 = temp1 + temp3;
