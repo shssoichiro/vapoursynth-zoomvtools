@@ -1225,10 +1225,78 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     fn refine<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self) {
-        todo!()
+        match self.search_type {
+            SearchType::Onetime => {
+                let mut i = self.search_param;
+                while i > 0 {
+                    self.one_time_search::<DCT_MODE, LOG_PEL>(i as isize);
+                    i /= 2;
+                }
+            }
+            SearchType::Nstep => {
+                self.n_step_search::<DCT_MODE, LOG_PEL>(self.search_param as isize)
+            }
+            SearchType::Logarithmic => {
+                let mut i = self.search_param;
+                while i > 0 {
+                    self.diamond_search::<DCT_MODE, LOG_PEL>(i as isize);
+                    i /= 2;
+                }
+            }
+            SearchType::Exhaustive => {
+                let mvx = self.best_mv.x;
+                let mvy = self.best_mv.y;
+                for i in 1..=self.search_param {
+                    // region is same as enhausted, but ordered by radius (from near to far)
+                    self.expanding_search::<DCT_MODE, LOG_PEL>(i as isize, 1, mvx, mvy);
+                }
+            }
+            SearchType::Hex2 => self.hex2_search::<DCT_MODE, LOG_PEL>(self.search_param as isize),
+            SearchType::UnevenMultiHexagon => self.umh_search::<DCT_MODE, LOG_PEL>(
+                self.search_param as isize,
+                self.best_mv.x,
+                self.best_mv.y,
+            ),
+            SearchType::Horizontal => {
+                let mvx = self.best_mv.x;
+                let mvy = self.best_mv.y;
+                for i in 1..=self.search_param {
+                    self.check_mv::<DCT_MODE, LOG_PEL>(mvx - i as isize, mvy);
+                    self.check_mv::<DCT_MODE, LOG_PEL>(mvx + i as isize, mvy);
+                }
+            }
+            SearchType::Vertical => {
+                let mvx = self.best_mv.x;
+                let mvy = self.best_mv.y;
+                for i in 1..=self.search_param {
+                    self.check_mv::<DCT_MODE, LOG_PEL>(mvx, mvy - i as isize);
+                    self.check_mv::<DCT_MODE, LOG_PEL>(mvx, mvy + i as isize);
+                }
+            }
+        }
     }
 
     fn check_mv0<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, x: isize, y: isize) {
+        todo!()
+    }
+
+    fn check_mv<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, x: isize, y: isize) {
+        todo!()
+    }
+
+    fn one_time_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, length: isize) {
+        todo!()
+    }
+
+    fn n_step_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, step: isize) {
+        todo!()
+    }
+
+    fn diamond_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, length: isize) {
+        todo!()
+    }
+
+    fn hex2_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, i_me_range: isize) {
         todo!()
     }
 
