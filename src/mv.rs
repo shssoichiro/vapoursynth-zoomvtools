@@ -10,6 +10,14 @@ pub struct MotionVector {
     pub sad: i64,
 }
 
+impl MotionVector {
+    /// computes square distance between two vectors
+    #[must_use]
+    pub fn square_difference_norm(&self, v2x: isize, v2y: isize) -> u64 {
+        ((self.x - v2x).pow(2) + (self.y - v2y).pow(2)) as u64
+    }
+}
+
 bitflags! {
     /// Bitflags for motion vector checking options.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

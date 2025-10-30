@@ -6,7 +6,6 @@ use crate::{
     util::{Pixel, get_sad, get_satd, luma_sum, median, plane_with_padding},
 };
 use anyhow::Result;
-use bitflags::Flags;
 use smallvec::SmallVec;
 use std::{
     cmp::{max, min},
@@ -588,6 +587,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         } else {
             &[]
         };
+        let src_planes = [src_plane_y, src_plane_u, src_plane_v];
 
         self.fetch_predictors();
 
@@ -650,7 +650,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         let mut min_cost_many = [0; 8];
         if self.try_many {
             // refine around zero
-            self.refine::<DCT_MODE, LOG_PEL>();
+            self.refine::<DCT_MODE, LOG_PEL>(src_planes, ref_frame, ref_frame_data)?;
             best_mv_many[0] = self.best_mv;
             min_cost_many[0] = self.min_cost;
         }
@@ -702,7 +702,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         }
         if self.try_many {
             // refine around global
-            self.refine::<DCT_MODE, LOG_PEL>();
+            self.refine::<DCT_MODE, LOG_PEL>(src_planes, ref_frame, ref_frame_data)?;
             best_mv_many[1] = self.best_mv;
             min_cost_many[1] = self.min_cost;
         }
@@ -753,7 +753,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         }
         if self.try_many {
             // refine around predictor
-            self.refine::<DCT_MODE, LOG_PEL>();
+            self.refine::<DCT_MODE, LOG_PEL>(src_planes, ref_frame, ref_frame_data)?;
             best_mv_many[2] = self.best_mv;
             min_cost_many[2] = self.min_cost;
         }
@@ -764,11 +764,17 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             if self.try_many {
                 self.min_cost = self.very_big_sad.get() as i64 + 1;
             }
-            self.check_mv0::<DCT_MODE, LOG_PEL>(self.predictors[i].x, self.predictors[i].y);
+            self.check_mv0::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                self.predictors[i].x,
+                self.predictors[i].y,
+            )?;
 
             if self.try_many {
                 // refine around predictor
-                self.refine::<DCT_MODE, LOG_PEL>();
+                self.refine::<DCT_MODE, LOG_PEL>(src_planes, ref_frame, ref_frame_data)?;
                 best_mv_many[i + 3] = self.best_mv;
                 min_cost_many[i + 3] = self.min_cost;
             }
@@ -783,7 +789,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 }
             }
         } else {
-            self.refine::<DCT_MODE, LOG_PEL>();
+            self.refine::<DCT_MODE, LOG_PEL>(src_planes, ref_frame, ref_frame_data)?;
         }
 
         let found_sad = self.best_mv.sad;
@@ -1188,6 +1194,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             unsafe {
                 NonZeroUsize::new_unchecked(self.blk_size_x.get() / self.x_ratio_uv.get() as usize)
             },
+            // sAFETY: all values are NonZero typed
             unsafe {
                 NonZeroUsize::new_unchecked(self.blk_size_y.get() / self.y_ratio_uv.get() as usize)
             },
@@ -1238,7 +1245,12 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         ) + (src0 - ref0).unsigned_abs() * 3 * self.blk_size_x.get() as u64 / 2
     }
 
-    fn refine<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self) {
+    fn refine<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+    ) -> Result<()> {
         match self.search_type {
             SearchType::Onetime => {
                 let mut i = self.search_param;
@@ -1275,65 +1287,178 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 let mvx = self.best_mv.x;
                 let mvy = self.best_mv.y;
                 for i in 1..=self.search_param {
-                    self.check_mv::<DCT_MODE, LOG_PEL>(mvx - i as isize, mvy);
-                    self.check_mv::<DCT_MODE, LOG_PEL>(mvx + i as isize, mvy);
+                    self.check_mv::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        mvx - i as isize,
+                        mvy,
+                    )?;
+                    self.check_mv::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        mvx + i as isize,
+                        mvy,
+                    )?;
                 }
             }
             SearchType::Vertical => {
                 let mvx = self.best_mv.x;
                 let mvy = self.best_mv.y;
                 for i in 1..=self.search_param {
-                    self.check_mv::<DCT_MODE, LOG_PEL>(mvx, mvy - i as isize);
-                    self.check_mv::<DCT_MODE, LOG_PEL>(mvx, mvy + i as isize);
+                    self.check_mv::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        mvx,
+                        mvy - i as isize,
+                    )?;
+                    self.check_mv::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        mvx,
+                        mvy + i as isize,
+                    )?;
                 }
             }
         }
+
+        Ok(())
     }
 
     /// check if the vector (vx, vy) is better than the best vector found so far without penalty new
     #[inline(always)]
-    fn check_mv0<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, vx: isize, vy: isize) {
+    fn check_mv0<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+        vx: isize,
+        vy: isize,
+    ) -> Result<()> {
         // here the chance for default values are high especially
         // for zeroMVfieldShifted (on left/top border)
         self.check_mv_impl::<DCT_MODE, LOG_PEL, { CheckMVFlags::UPDATE_BEST_MV.bits() }>(
-            vx, vy, &mut 0, 0,
-        );
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            vx,
+            vy,
+            &mut 0,
+            0,
+        )
     }
 
     /// check if the vector (vx, vy) is better than the best vector found so far
     #[inline(always)]
-    fn check_mv<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, vx: isize, vy: isize) {
+    fn check_mv<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+        vx: isize,
+        vy: isize,
+    ) -> Result<()> {
         // here the chance for default values are high especially
         // for zeroMVfieldShifted (on left/top border)
         self.check_mv_impl::<DCT_MODE, LOG_PEL, { CheckMVFlags::PENALTY_NEW.bits() | CheckMVFlags::UPDATE_BEST_MV.bits() }>(
-            vx, vy, &mut 0, 0,
-        );
+            src_planes,ref_frame,ref_frame_data,vx, vy, &mut 0, 0,
+        )
     }
 
     /// check if the vector (vx, vy) is better, and update dir accordingly
     #[inline(always)]
     fn check_mv2<const DCT_MODE: u8, const LOG_PEL: usize>(
         &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
         vx: isize,
         vy: isize,
         dir: &mut isize,
         val: isize,
-    ) {
+    ) -> Result<()> {
         self.check_mv_impl::<DCT_MODE, LOG_PEL, {
             CheckMVFlags::PENALTY_NEW.bits()
                 | CheckMVFlags::UPDATE_DIR.bits()
                 | CheckMVFlags::UPDATE_BEST_MV.bits()
-        }>(vx, vy, dir, val);
+        }>(src_planes, ref_frame, ref_frame_data, vx, vy, dir, val)
     }
 
     fn check_mv_impl<const DCT_MODE: u8, const LOG_PEL: usize, const CHECK_MV_FLAGS: u32>(
         &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
         vx: isize,
         vy: isize,
-        direction: &mut isize,
+        dir: &mut isize,
         val: isize,
-    ) {
-        todo!()
+    ) -> Result<()> {
+        if !self.is_vector_ok(vx, vy) {
+            return Ok(());
+        }
+
+        let mut cost = self.motion_distortion(vx, vy);
+        if cost >= self.min_cost {
+            return Ok(());
+        }
+
+        let flags = CheckMVFlags::from_bits(CHECK_MV_FLAGS).expect("invalid check mv flags");
+        let sad = self.luma_sad::<DCT_MODE>(
+            src_planes[0],
+            self.src_pitch[0],
+            self.get_ref_block::<LOG_PEL>(ref_frame, ref_frame_data, vx, vy)?,
+            self.ref_pitch[0],
+        ) as i64;
+        cost += sad
+            + if flags.contains(CheckMVFlags::PENALTY_NEW) {
+                (self.penalty_new as i64 * sad) >> 8
+            } else {
+                0
+            };
+        if cost >= self.min_cost {
+            return Ok(());
+        }
+
+        let mut sad_uv = 0;
+        if self.chroma {
+            sad_uv += self.chroma_sad(
+                src_planes[1],
+                self.src_pitch[1],
+                self.get_ref_block_u::<LOG_PEL>(ref_frame, ref_frame_data, vx, vy)?,
+                self.ref_pitch[1],
+            ) as i64;
+            sad_uv += self.chroma_sad(
+                src_planes[2],
+                self.src_pitch[2],
+                self.get_ref_block_v::<LOG_PEL>(ref_frame, ref_frame_data, vx, vy)?,
+                self.ref_pitch[2],
+            ) as i64;
+            cost += sad_uv
+                + if flags.contains(CheckMVFlags::PENALTY_NEW) {
+                    (self.penalty_new as i64 * sad_uv) >> 8
+                } else {
+                    0
+                };
+            if cost >= self.min_cost {
+                return Ok(());
+            }
+        }
+
+        if flags.contains(CheckMVFlags::UPDATE_BEST_MV) {
+            self.best_mv.x = vx;
+            self.best_mv.y = vy;
+        }
+        self.min_cost = cost;
+        self.best_mv.sad = sad + sad_uv;
+        if flags.contains(CheckMVFlags::UPDATE_DIR) {
+            *dir = val;
+        }
+
+        Ok(())
     }
 
     fn one_time_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, length: isize) {
@@ -1369,6 +1494,18 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         mvy: isize,
     ) {
         todo!()
+    }
+
+    #[must_use]
+    fn is_vector_ok(&self, vx: isize, vy: isize) -> bool {
+        (vx >= self.dx_min) && (vy >= self.dy_min) && (vx < self.dx_max) && (vy < self.dy_max)
+    }
+
+    /// computes the cost of a vector (vx, vy)
+    #[must_use]
+    fn motion_distortion(&self, vx: isize, vy: isize) -> i64 {
+        let dist = self.predictor.square_difference_norm(vx, vy);
+        (self.lambda as i64 * dist as i64) >> 8
     }
 }
 
