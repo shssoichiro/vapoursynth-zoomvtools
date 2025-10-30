@@ -192,17 +192,23 @@ impl<T: Pixel> GroupOfPlanes<T> {
             };
             // special case for finest level
             let search_param_level = if i == 0 { pel_search } else { search_param };
+
+            // Use split_at_mut to avoid borrowing conflicts
+            let (planes_left, planes_right) = self.planes.split_at_mut(i + 1);
+            let plane_i = &mut planes_left[i];
+            let plane_i_plus_1 = &mut planes_right[0];
+
             if global {
                 // get updated global MV (doubled)
-                self.planes[i + 1].estimate_global_mv_doubled(global_mv);
+                plane_i_plus_1.estimate_global_mv_doubled(global_mv);
             }
-            self.planes[i].interpolate_prediction(&self.planes[i + 1]);
+            plane_i.interpolate_prediction(plane_i_plus_1);
             // may be non zero for finest level only
             let field_shift_cur = if i == 0 { field_shift } else { 0 };
             // not for finest level to not decrease speed
             let try_many_level = try_many && i > 0;
 
-            self.planes[i].search_mvs(
+            plane_i.search_mvs(
                 out_idx,
                 &src_gof.frames[i],
                 src_frame_data,

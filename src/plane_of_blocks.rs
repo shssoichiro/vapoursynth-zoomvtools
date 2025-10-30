@@ -541,6 +541,14 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         len
     }
 
+    pub(crate) fn estimate_global_mv_doubled(&mut self, mv: MotionVector) {
+        todo!()
+    }
+
+    pub(crate) fn interpolate_prediction(&mut self, other: &Self) {
+        todo!()
+    }
+
     #[must_use]
     fn clip_mv(&self, v: MotionVector) -> MotionVector {
         MotionVector {
@@ -1281,6 +1289,16 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     fn check_mv<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, x: isize, y: isize) {
+        todo!()
+    }
+
+    fn check_mv_impl<const DCT_MODE: u8, const LOG_PEL: usize, const CHECK_MV_FLAGS: u32>(
+        &mut self,
+        vx: isize,
+        vy: isize,
+        direction: &mut isize,
+        val: isize,
+    ) {
         todo!()
     }
 
