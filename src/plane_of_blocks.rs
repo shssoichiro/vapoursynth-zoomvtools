@@ -1,11 +1,12 @@
 use crate::{
     dct::DctHelper,
-    mv::{MV_SIZE, MotionVector},
+    mv::{CheckMVFlags, MV_SIZE, MotionVector},
     mv_frame::MVFrame,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
     util::{Pixel, get_sad, get_satd, luma_sum, median, plane_with_padding},
 };
 use anyhow::Result;
+use bitflags::Flags;
 use smallvec::SmallVec;
 use std::{
     cmp::{max, min},
@@ -353,6 +354,8 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             sad: global_mv.sad,
         };
 
+        // SAFETY: We only modify the contents of this data within this function,
+        // so we control the layout.
         let blk_data: &mut [MotionVector] =
             unsafe { transmute(&mut out.block_data[out_idx * MV_SIZE..]) };
         self.y[0] = src_frame.planes[0].vpad as isize;
@@ -1200,7 +1203,9 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         self.dct
             .as_mut()
             .expect("dct helper should be defined")
-            .bytes_2d(ref_plane, ref_pitch, &mut self.dct_ref, self.dct_pitch);
+            .bytes_2d(ref_plane, ref_pitch, &mut self.dct_ref, self.dct_pitch)
+            .expect("dct should not fail with valid params");
+
         get_sad(
             self.blk_size_x,
             self.blk_size_y,
@@ -1217,7 +1222,8 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         self.dct
             .as_mut()
             .expect("dct helper should be defined")
-            .bytes_2d(ref_plane, ref_pitch, &mut self.dct_ref, self.dct_pitch);
+            .bytes_2d(ref_plane, ref_pitch, &mut self.dct_ref, self.dct_pitch)
+            .expect("dct should not fail with valid params");
 
         // correct reduced DC component
         let src0: i64 = self.dct_src[0].into();
@@ -1284,12 +1290,40 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         }
     }
 
-    fn check_mv0<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, x: isize, y: isize) {
-        todo!()
+    /// check if the vector (vx, vy) is better than the best vector found so far without penalty new
+    #[inline(always)]
+    fn check_mv0<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, vx: isize, vy: isize) {
+        // here the chance for default values are high especially
+        // for zeroMVfieldShifted (on left/top border)
+        self.check_mv_impl::<DCT_MODE, LOG_PEL, { CheckMVFlags::UPDATE_BEST_MV.bits() }>(
+            vx, vy, &mut 0, 0,
+        );
     }
 
-    fn check_mv<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, x: isize, y: isize) {
-        todo!()
+    /// check if the vector (vx, vy) is better than the best vector found so far
+    #[inline(always)]
+    fn check_mv<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, vx: isize, vy: isize) {
+        // here the chance for default values are high especially
+        // for zeroMVfieldShifted (on left/top border)
+        self.check_mv_impl::<DCT_MODE, LOG_PEL, { CheckMVFlags::PENALTY_NEW.bits() | CheckMVFlags::UPDATE_BEST_MV.bits() }>(
+            vx, vy, &mut 0, 0,
+        );
+    }
+
+    /// check if the vector (vx, vy) is better, and update dir accordingly
+    #[inline(always)]
+    fn check_mv2<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        vx: isize,
+        vy: isize,
+        dir: &mut isize,
+        val: isize,
+    ) {
+        self.check_mv_impl::<DCT_MODE, LOG_PEL, {
+            CheckMVFlags::PENALTY_NEW.bits()
+                | CheckMVFlags::UPDATE_DIR.bits()
+                | CheckMVFlags::UPDATE_BEST_MV.bits()
+        }>(vx, vy, dir, val);
     }
 
     fn check_mv_impl<const DCT_MODE: u8, const LOG_PEL: usize, const CHECK_MV_FLAGS: u32>(
