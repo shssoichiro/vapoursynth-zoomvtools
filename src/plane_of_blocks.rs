@@ -1628,7 +1628,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         if direction == 1 {
             while direction > 0 {
                 direction = 0;
-                dx += length;
+                dy += length;
                 self.check_mv2::<DCT_MODE, LOG_PEL>(
                     src_planes,
                     ref_frame,
@@ -1642,7 +1642,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         } else if direction == 2 {
             while direction > 0 {
                 direction = 0;
-                dx -= length;
+                dy -= length;
                 self.check_mv2::<DCT_MODE, LOG_PEL>(
                     src_planes,
                     ref_frame,
@@ -1665,7 +1665,74 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         ref_frame_data: &Frame,
         step: isize,
     ) -> Result<()> {
-        todo!()
+        let mut dx;
+        let mut dy;
+        let mut length = step;
+        while length > 0 {
+            dx = self.best_mv.x;
+            dy = self.best_mv.y;
+
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                dx + length,
+                dy + length,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                dx + length,
+                dy,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                dx + length,
+                dy - length,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                dx,
+                dy - length,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                dx,
+                dy + length,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                dx - length,
+                dy + length,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                dx - length,
+                dy,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                dx - length,
+                dy - length,
+            )?;
+
+            length -= 1;
+        }
+
+        Ok(())
     }
 
     fn diamond_search<const DCT_MODE: u8, const LOG_PEL: usize>(
@@ -2036,9 +2103,145 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         ref_frame_data: &Frame,
         i_me_range: isize,
     ) -> Result<()> {
-        todo!()
+        const MOD6M1: [isize; 8] = [5, 0, 1, 2, 3, 4, 5, 0];
+        const HEX2: [[isize; 2]; 8] = [
+            [-1, -2],
+            [-2, 0],
+            [-1, 2],
+            [1, 2],
+            [2, 0],
+            [1, -2],
+            [-1, -2],
+            [-2, 0],
+        ];
+
+        let mut direction = -2;
+        let mut bmx = self.best_mv.x;
+        let mut bmy = self.best_mv.y;
+
+        if i_me_range > 1 {
+            // hexagon
+            self.check_mv_dir::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                bmx - 2,
+                bmy,
+                &mut direction,
+                0,
+            )?;
+            self.check_mv_dir::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                bmx - 1,
+                bmy + 2,
+                &mut direction,
+                1,
+            )?;
+            self.check_mv_dir::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                bmx + 1,
+                bmy + 2,
+                &mut direction,
+                2,
+            )?;
+            self.check_mv_dir::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                bmx + 2,
+                bmy,
+                &mut direction,
+                3,
+            )?;
+            self.check_mv_dir::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                bmx + 1,
+                bmy - 2,
+                &mut direction,
+                4,
+            )?;
+            self.check_mv_dir::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                bmx - 1,
+                bmy - 2,
+                &mut direction,
+                5,
+            )?;
+
+            if direction != -2 {
+                bmx += HEX2[(direction + 1) as usize][0];
+                bmy += HEX2[(direction + 1) as usize][1];
+                // half hexagon, not overlapping the previous iteration
+                for _ in 1..(i_me_range / 2) {
+                    if !self.is_vector_ok(bmx, bmy) {
+                        break;
+                    }
+
+                    let odir = MOD6M1[(direction + 1) as usize];
+                    direction = -2;
+
+                    self.check_mv_dir::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        bmx + HEX2[odir as usize][0],
+                        bmy + HEX2[odir as usize][1],
+                        &mut direction,
+                        odir - 1,
+                    )?;
+                    self.check_mv_dir::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        bmx + HEX2[odir as usize + 1][0],
+                        bmy + HEX2[odir as usize + 1][1],
+                        &mut direction,
+                        odir,
+                    )?;
+                    self.check_mv_dir::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        bmx + HEX2[odir as usize + 2][0],
+                        bmy + HEX2[odir as usize + 2][1],
+                        &mut direction,
+                        odir + 1,
+                    )?;
+
+                    if direction == -2 {
+                        break;
+                    }
+                    bmx += HEX2[(direction + 1) as usize][0];
+                    bmx += HEX2[(direction + 1) as usize][1];
+                }
+            }
+
+            self.best_mv.x = bmx;
+            self.best_mv.y = bmy;
+        }
+
+        // square refine
+        self.expanding_search::<DCT_MODE, LOG_PEL>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            1,
+            1,
+            bmx,
+            bmy,
+        )?;
+        Ok(())
     }
 
+    /// Uneven-cross Multi-Hexagon-grid Search (see x264)
     fn umh_search<const DCT_MODE: u8, const LOG_PEL: usize>(
         &mut self,
         src_planes: [&[T]; 3],
@@ -2047,6 +2250,68 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         me_range: isize,
         omx: isize,
         omy: isize,
+    ) -> Result<()> {
+        const HEX4: [[isize; 2]; 16] = [
+            [-4, 2],
+            [-4, 1],
+            [-4, 0],
+            [-4, -1],
+            [-4, -2],
+            [4, -2],
+            [4, -1],
+            [4, 0],
+            [4, 1],
+            [4, 2],
+            [2, 3],
+            [0, 4],
+            [-2, 3],
+            [-2, -3],
+            [0, -4],
+            [2, -3],
+        ];
+
+        // hexagon grid
+        // C author's mod: do not shift the center after Cross
+        self.cross_search::<DCT_MODE, LOG_PEL>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            1,
+            me_range,
+            me_range,
+            omx,
+            omy,
+        )?;
+
+        let mut i = 1;
+        loop {
+            for j in 0..16 {
+                let mx = omx + HEX4[j][0] * i;
+                let my = omy + HEX4[j][1] * i;
+                self.check_mv::<DCT_MODE, LOG_PEL>(src_planes, ref_frame, ref_frame_data, mx, my)?;
+            }
+
+            i += 1;
+            if i <= me_range / 4 {
+                break;
+            }
+        }
+
+        self.hex2_search::<DCT_MODE, LOG_PEL>(src_planes, ref_frame, ref_frame_data, me_range)?;
+
+        Ok(())
+    }
+
+    fn cross_search<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+        start: isize,
+        x_max: isize,
+        y_max: isize,
+        mvx: isize,
+        mvy: isize,
     ) -> Result<()> {
         todo!()
     }
@@ -2057,11 +2322,79 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
         r: isize,
-        s: isize,
+        s: usize,
         mvx: isize,
         mvy: isize,
     ) -> Result<()> {
-        todo!()
+        // diameter = 2*r + 1, step=s
+        // part of true enhaustive search (thin expanding square) around mvx, mvy
+
+        // sides of square without corners
+        for i in ((-r + s as isize)..r).step_by(s) {
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                mvx + i,
+                mvy - r,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                mvx + i,
+                mvy + r,
+            )?;
+        }
+
+        for j in ((-r + s as isize)..r).step_by(s) {
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                mvx - r,
+                mvy + j,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                mvx + r,
+                mvy + j,
+            )?;
+        }
+
+        // then corners -- they are farther from center
+        self.check_mv::<DCT_MODE, LOG_PEL>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            mvx - r,
+            mvy - r,
+        )?;
+        self.check_mv::<DCT_MODE, LOG_PEL>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            mvx - r,
+            mvy + r,
+        )?;
+        self.check_mv::<DCT_MODE, LOG_PEL>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            mvx + r,
+            mvy - r,
+        )?;
+        self.check_mv::<DCT_MODE, LOG_PEL>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            mvx + r,
+            mvy + r,
+        )?;
+
+        Ok(())
     }
 
     #[must_use]
