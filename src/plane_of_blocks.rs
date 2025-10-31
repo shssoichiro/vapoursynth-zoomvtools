@@ -6,6 +6,7 @@ use crate::{
     util::{Pixel, get_sad, get_satd, luma_sum, median, plane_with_padding},
 };
 use anyhow::Result;
+use bitflags::bitflags;
 use smallvec::SmallVec;
 use std::{
     cmp::{max, min},
@@ -803,12 +804,27 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
             if self.bad_range > 0 {
                 // UMH, good mv not found so try around zero
-                self.umh_search::<DCT_MODE, LOG_PEL>(self.bad_range * (1 << LOG_PEL), 0, 0);
+                self.umh_search::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    self.bad_range * (1 << LOG_PEL),
+                    0,
+                    0,
+                )?;
             } else if self.bad_range < 0 {
                 // ESA
                 for i in (1..(-self.bad_range * (1 << LOG_PEL))).step_by(1 << LOG_PEL) {
                     // at radius
-                    self.expanding_search::<DCT_MODE, LOG_PEL>(i, 1 << LOG_PEL, 0, 0);
+                    self.expanding_search::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        i,
+                        1 << LOG_PEL,
+                        0,
+                        0,
+                    )?;
                     if self.best_mv.sad < found_sad / 4 {
                         // stop search if good MV is found
                         break;
@@ -818,7 +834,15 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
             for i in 1..(1 << LOG_PEL) {
                 // small radius
-                self.expanding_search::<DCT_MODE, LOG_PEL>(i, 1, self.best_mv.x, self.best_mv.y);
+                self.expanding_search::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    i,
+                    1,
+                    self.best_mv.x,
+                    self.best_mv.y,
+                )?;
             }
         }
 
@@ -1255,17 +1279,32 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             SearchType::Onetime => {
                 let mut i = self.search_param;
                 while i > 0 {
-                    self.one_time_search::<DCT_MODE, LOG_PEL>(i as isize);
+                    self.one_time_search::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        i as isize,
+                    )?;
                     i /= 2;
                 }
             }
             SearchType::Nstep => {
-                self.n_step_search::<DCT_MODE, LOG_PEL>(self.search_param as isize)
+                self.n_step_search::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    self.search_param as isize,
+                )?;
             }
             SearchType::Logarithmic => {
                 let mut i = self.search_param;
                 while i > 0 {
-                    self.diamond_search::<DCT_MODE, LOG_PEL>(i as isize);
+                    self.diamond_search::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        i as isize,
+                    )?;
                     i /= 2;
                 }
             }
@@ -1274,15 +1313,35 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 let mvy = self.best_mv.y;
                 for i in 1..=self.search_param {
                     // region is same as enhausted, but ordered by radius (from near to far)
-                    self.expanding_search::<DCT_MODE, LOG_PEL>(i as isize, 1, mvx, mvy);
+                    self.expanding_search::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        i as isize,
+                        1,
+                        mvx,
+                        mvy,
+                    )?;
                 }
             }
-            SearchType::Hex2 => self.hex2_search::<DCT_MODE, LOG_PEL>(self.search_param as isize),
-            SearchType::UnevenMultiHexagon => self.umh_search::<DCT_MODE, LOG_PEL>(
-                self.search_param as isize,
-                self.best_mv.x,
-                self.best_mv.y,
-            ),
+            SearchType::Hex2 => {
+                self.hex2_search::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    self.search_param as isize,
+                )?;
+            }
+            SearchType::UnevenMultiHexagon => {
+                self.umh_search::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    self.search_param as isize,
+                    self.best_mv.x,
+                    self.best_mv.y,
+                )?;
+            }
             SearchType::Horizontal => {
                 let mvx = self.best_mv.x;
                 let mvy = self.best_mv.y;
@@ -1377,14 +1436,40 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         ref_frame_data: &Frame,
         vx: isize,
         vy: isize,
-        dir: &mut isize,
+        direction: &mut isize,
         val: isize,
     ) -> Result<()> {
         self.check_mv_impl::<DCT_MODE, LOG_PEL, {
             CheckMVFlags::PENALTY_NEW.bits()
                 | CheckMVFlags::UPDATE_DIR.bits()
                 | CheckMVFlags::UPDATE_BEST_MV.bits()
-        }>(src_planes, ref_frame, ref_frame_data, vx, vy, dir, val)
+        }>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            vx,
+            vy,
+            direction,
+            val,
+        )
+    }
+
+    /// check if the vector (vx, vy) is better, and update dir accordingly, but not bestMV.x, y
+    #[inline(always)]
+    fn check_mv_dir<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+        vx: isize,
+        vy: isize,
+        direction: &mut isize,
+        val: isize,
+    ) -> Result<()> {
+        self.check_mv_impl::<DCT_MODE, LOG_PEL, {
+            CheckMVFlags::PENALTY_NEW.bits()
+                | CheckMVFlags::UPDATE_DIR.bits()
+        }>(src_planes, ref_frame, ref_frame_data, vx, vy, direction, val)
     }
 
     fn check_mv_impl<const DCT_MODE: u8, const LOG_PEL: usize, const CHECK_MV_FLAGS: u32>(
@@ -1394,7 +1479,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         ref_frame_data: &Frame,
         vx: isize,
         vy: isize,
-        dir: &mut isize,
+        direction: &mut isize,
         val: isize,
     ) -> Result<()> {
         if !self.is_vector_ok(vx, vy) {
@@ -1455,44 +1540,527 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         self.min_cost = cost;
         self.best_mv.sad = sad + sad_uv;
         if flags.contains(CheckMVFlags::UPDATE_DIR) {
-            *dir = val;
+            *direction = val;
         }
 
         Ok(())
     }
 
-    fn one_time_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, length: isize) {
+    fn one_time_search<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+        length: isize,
+    ) -> Result<()> {
+        let mut direction = 0;
+        let mut dx = self.best_mv.x;
+        let mut dy = self.best_mv.y;
+
+        self.check_mv2::<DCT_MODE, LOG_PEL>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            dx - length,
+            dy,
+            &mut direction,
+            2,
+        )?;
+        self.check_mv2::<DCT_MODE, LOG_PEL>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            dx + length,
+            dy,
+            &mut direction,
+            1,
+        )?;
+
+        if direction == 1 {
+            while direction > 0 {
+                direction = 0;
+                dx += length;
+                self.check_mv2::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    dx + length,
+                    dy,
+                    &mut direction,
+                    1,
+                )?;
+            }
+        } else if direction == 2 {
+            while direction > 0 {
+                direction = 0;
+                dx -= length;
+                self.check_mv2::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    dx - length,
+                    dy,
+                    &mut direction,
+                    1,
+                )?;
+            }
+        }
+
+        self.check_mv2::<DCT_MODE, LOG_PEL>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            dx,
+            dy - length,
+            &mut direction,
+            2,
+        )?;
+        self.check_mv2::<DCT_MODE, LOG_PEL>(
+            src_planes,
+            ref_frame,
+            ref_frame_data,
+            dx,
+            dy + length,
+            &mut direction,
+            1,
+        )?;
+
+        if direction == 1 {
+            while direction > 0 {
+                direction = 0;
+                dx += length;
+                self.check_mv2::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    dx,
+                    dy + length,
+                    &mut direction,
+                    1,
+                )?;
+            }
+        } else if direction == 2 {
+            while direction > 0 {
+                direction = 0;
+                dx -= length;
+                self.check_mv2::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    dx,
+                    dy - length,
+                    &mut direction,
+                    1,
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn n_step_search<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+        step: isize,
+    ) -> Result<()> {
         todo!()
     }
 
-    fn n_step_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, step: isize) {
-        todo!()
+    fn diamond_search<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+        length: isize,
+    ) -> Result<()> {
+        bitflags! {
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+            struct Direction: isize {
+                const RIGHT = 1;
+                const LEFT = 2;
+                const DOWN = 4;
+                const UP = 8;
+            }
+        }
+
+        let mut dx;
+        let mut dy;
+
+        let mut direction = Direction::all().bits();
+        let mut last_direction;
+
+        while direction > 0 {
+            dx = self.best_mv.x;
+            dy = self.best_mv.y;
+            last_direction = Direction::from_bits(direction).expect("valid direction");
+            direction = Direction::empty().bits();
+
+            // First, we look the directions that were hinted by the previous step
+            // of the algorithm. If we find one, we add it to the set of directions
+            // we'll test next
+            if last_direction.contains(Direction::RIGHT) {
+                self.check_mv2::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    dx + length,
+                    dy,
+                    &mut direction,
+                    Direction::RIGHT.bits(),
+                )?;
+            }
+            if last_direction.contains(Direction::LEFT) {
+                self.check_mv2::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    dx - length,
+                    dy,
+                    &mut direction,
+                    Direction::LEFT.bits(),
+                )?;
+            }
+            if last_direction.contains(Direction::DOWN) {
+                self.check_mv2::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    dx,
+                    dy + length,
+                    &mut direction,
+                    Direction::DOWN.bits(),
+                )?;
+            }
+            if last_direction.contains(Direction::UP) {
+                self.check_mv2::<DCT_MODE, LOG_PEL>(
+                    src_planes,
+                    ref_frame,
+                    ref_frame_data,
+                    dx,
+                    dy - length,
+                    &mut direction,
+                    Direction::UP.bits(),
+                )?;
+            }
+
+            // If one of the directions improves the SAD,
+            // we make further tests on the diagonals
+            if direction > 0 {
+                last_direction = Direction::from_bits(direction).expect("valid direction");
+                dx = self.best_mv.x;
+                dy = self.best_mv.y;
+
+                if last_direction.bits() & (Direction::RIGHT.bits() + Direction::LEFT.bits()) > 0 {
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx,
+                        dy + length,
+                        &mut direction,
+                        Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx,
+                        dy - length,
+                        &mut direction,
+                        Direction::UP.bits(),
+                    )?;
+                } else {
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy,
+                        &mut direction,
+                        Direction::RIGHT.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy,
+                        &mut direction,
+                        Direction::LEFT.bits(),
+                    )?;
+                }
+            } else {
+                // If not, we do not stop here. We infer from the last direction the
+                // diagonals to be checked, because we might be lucky.
+                if last_direction.bits() == Direction::RIGHT.bits() {
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy + length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy - length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::UP.bits(),
+                    )?;
+                } else if last_direction.bits() == Direction::LEFT.bits() {
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy + length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy - length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::UP.bits(),
+                    )?;
+                } else if last_direction.bits() == Direction::DOWN.bits() {
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy + length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy + length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::DOWN.bits(),
+                    )?;
+                } else if last_direction.bits() == Direction::UP.bits() {
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy - length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::UP.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy - length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::UP.bits(),
+                    )?;
+                } else if last_direction.bits() == Direction::RIGHT.bits() + Direction::DOWN.bits()
+                {
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy + length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy + length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy - length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::UP.bits(),
+                    )?;
+                } else if last_direction.bits() == Direction::LEFT.bits() + Direction::DOWN.bits() {
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy + length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy + length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy - length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::UP.bits(),
+                    )?;
+                } else if last_direction.bits() == Direction::RIGHT.bits() + Direction::UP.bits() {
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy + length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy - length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::UP.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy - length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::UP.bits(),
+                    )?;
+                } else if last_direction.bits() == Direction::LEFT.bits() + Direction::UP.bits() {
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy - length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::UP.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy + length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy - length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::UP.bits(),
+                    )?;
+                } else {
+                    // Even the default case may happen, in the first step of the
+                    // algorithm for example.
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy + length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy + length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::DOWN.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx + length,
+                        dy - length,
+                        &mut direction,
+                        Direction::RIGHT.bits() + Direction::UP.bits(),
+                    )?;
+                    self.check_mv2::<DCT_MODE, LOG_PEL>(
+                        src_planes,
+                        ref_frame,
+                        ref_frame_data,
+                        dx - length,
+                        dy - length,
+                        &mut direction,
+                        Direction::LEFT.bits() + Direction::UP.bits(),
+                    )?;
+                }
+            }
+        }
+
+        Ok(())
     }
 
-    fn diamond_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, length: isize) {
-        todo!()
-    }
-
-    fn hex2_search<const DCT_MODE: u8, const LOG_PEL: usize>(&mut self, i_me_range: isize) {
+    fn hex2_search<const DCT_MODE: u8, const LOG_PEL: usize>(
+        &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+        i_me_range: isize,
+    ) -> Result<()> {
         todo!()
     }
 
     fn umh_search<const DCT_MODE: u8, const LOG_PEL: usize>(
         &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
         me_range: isize,
         omx: isize,
         omy: isize,
-    ) {
+    ) -> Result<()> {
         todo!()
     }
 
     fn expanding_search<const DCT_MODE: u8, const LOG_PEL: usize>(
         &mut self,
+        src_planes: [&[T]; 3],
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
         r: isize,
         s: isize,
         mvx: isize,
         mvy: isize,
-    ) {
+    ) -> Result<()> {
         todo!()
     }
 

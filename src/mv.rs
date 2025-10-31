@@ -31,19 +31,6 @@ bitflags! {
     }
 }
 
-impl CheckMVFlags {
-    /// Creates a new instance with no flags set.
-    #[must_use]
-    pub fn new() -> Self {
-        Self::empty()
-    }
-}
-
-impl Default for CheckMVFlags {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 impl MotionVector {
     #[must_use]
     pub fn zero() -> Self {
