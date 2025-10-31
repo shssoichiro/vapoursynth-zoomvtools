@@ -2,5 +2,9 @@
 /.vscode
 /.code
 /.idea
+/.cursor
+/.claude
+/.kilocode
+CLAUDE.md
 lcov.*
 codecov.json

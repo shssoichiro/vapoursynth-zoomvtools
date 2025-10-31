@@ -200,7 +200,13 @@ impl<T: Pixel> GroupOfPlanes<T> {
 
             if global {
                 // get updated global MV (doubled)
-                plane_i_plus_1.estimate_global_mv_doubled(global_mv);
+                plane_i_plus_1.estimate_global_mv_doubled(
+                    &src_gof.frames[i],
+                    src_frame_data,
+                    &ref_gof.frames[i],
+                    ref_frame_data,
+                    global_mv,
+                );
             }
             plane_i.interpolate_prediction(plane_i_plus_1);
             // may be non zero for finest level only

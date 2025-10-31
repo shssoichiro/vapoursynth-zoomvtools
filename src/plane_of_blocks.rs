@@ -544,7 +544,17 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         len
     }
 
-    pub(crate) fn estimate_global_mv_doubled(&mut self, mv: MotionVector) {
+    /// estimate global motion from current plane vectors data for using on next
+    /// plane - on input globalMVec is prev estimation, on output
+    /// globalMVec is doubled for next scale plane using
+    pub(crate) fn estimate_global_mv_doubled(
+        &mut self,
+        src_frame: &MVFrame,
+        src_frame_data: &Frame,
+        ref_frame: &MVFrame,
+        ref_frame_data: &Frame,
+        mv: MotionVector,
+    ) {
         todo!()
     }
 
@@ -2313,7 +2323,41 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         mvx: isize,
         mvy: isize,
     ) -> Result<()> {
-        todo!()
+        for i in (start..x_max).step_by(2) {
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                mvx - i,
+                mvy,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                mvx + i,
+                mvy,
+            )?;
+        }
+
+        for j in (start..y_max).step_by(2) {
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                mvx,
+                mvy - j,
+            )?;
+            self.check_mv::<DCT_MODE, LOG_PEL>(
+                src_planes,
+                ref_frame,
+                ref_frame_data,
+                mvx,
+                mvy + j,
+            )?;
+        }
+
+        Ok(())
     }
 
     fn expanding_search<const DCT_MODE: u8, const LOG_PEL: usize>(
