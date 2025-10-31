@@ -549,63 +549,10 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     /// globalMVec is doubled for next scale plane using
     pub(crate) fn estimate_global_mv_doubled(&mut self, global_mv: &mut MotionVector) {
         // find most frequent x
-        self.freq_array.clear();
-        let mut ind_min = self.freq_size.get() - 1;
-        let mut ind_max = 0;
-        for i in 0..self.blk_count.get() {
-            let ind = (self.freq_size.get() >> 1) as isize + self.vectors[i].x;
-            if ind >= 0 && ind < self.freq_size.get() as isize {
-                let ind = ind as usize;
-                self.freq_array[ind] += 1;
-                if ind > ind_max {
-                    ind_max = ind;
-                }
-                if ind < ind_min {
-                    ind_min = ind;
-                }
-            }
-        }
-
-        let mut count = self.freq_array[ind_min];
-        let mut index = ind_min;
-        for i in (ind_min + 1)..=ind_max {
-            if self.freq_array[i] > count {
-                count = self.freq_array[i];
-                index = i;
-            }
-        }
-        // most frequent value
-        let median_x = index as isize - (self.freq_size.get() >> 1) as isize;
+        let median_x = self.find_most_frequent(|v| v.x);
 
         // find most frequent y
-        // TODO: refactor, this is exactly the same but looking at the `y` of the vector
-        self.freq_array.clear();
-        let mut ind_min = self.freq_size.get() - 1;
-        let mut ind_max = 0;
-        for i in 0..self.blk_count.get() {
-            let ind = (self.freq_size.get() >> 1) as isize + self.vectors[i].y;
-            if ind >= 0 && ind < self.freq_size.get() as isize {
-                let ind = ind as usize;
-                self.freq_array[ind] += 1;
-                if ind > ind_max {
-                    ind_max = ind;
-                }
-                if ind < ind_min {
-                    ind_min = ind;
-                }
-            }
-        }
-
-        let mut count = self.freq_array[ind_min];
-        let mut index = ind_min;
-        for i in (ind_min + 1)..=ind_max {
-            if self.freq_array[i] > count {
-                count = self.freq_array[i];
-                index = i;
-            }
-        }
-        // most frequent value
-        let median_y = index as isize - (self.freq_size.get() >> 1) as isize;
+        let median_y = self.find_most_frequent(|v| v.y);
 
         // iteration to increase precision
         let mut mean_vx = 0;
@@ -628,6 +575,40 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             global_mv.x = 2 * median_x;
             global_mv.y = 2 * median_y;
         }
+    }
+
+    /// Find the most frequent value of a vector component (x or y)
+    fn find_most_frequent<F>(&mut self, component_fn: F) -> isize
+    where
+        F: Fn(&MotionVector) -> isize,
+    {
+        self.freq_array = vec![0; self.freq_size.get()];
+        let mut ind_min = self.freq_size.get() - 1;
+        let mut ind_max = 0;
+        for i in 0..self.blk_count.get() {
+            let ind = (self.freq_size.get() >> 1) as isize + component_fn(&self.vectors[i]);
+            if ind >= 0 && ind < self.freq_size.get() as isize {
+                let ind = ind as usize;
+                self.freq_array[ind] += 1;
+                if ind > ind_max {
+                    ind_max = ind;
+                }
+                if ind < ind_min {
+                    ind_min = ind;
+                }
+            }
+        }
+
+        let mut count = self.freq_array[ind_min];
+        let mut index = ind_min;
+        for i in (ind_min + 1)..=ind_max {
+            if self.freq_array[i] > count {
+                count = self.freq_array[i];
+                index = i;
+            }
+        }
+        // most frequent value
+        index as isize - (self.freq_size.get() >> 1) as isize
     }
 
     pub(crate) fn interpolate_prediction(&mut self, other: &Self) {
