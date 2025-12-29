@@ -125,12 +125,7 @@ impl<'core> Super<'core> {
                 )
             },
         };
-        let format = match video_info.format {
-            vapoursynth::prelude::Property::Variable => {
-                bail!("Super: variable format input clips are not supported")
-            }
-            vapoursynth::prelude::Property::Constant(format) => format,
-        };
+        let format = video_info.format;
         if format.bits_per_sample() > 16 {
             bail!("Super: input clip must be 8-16 bits");
         }
@@ -185,16 +180,9 @@ impl<'core> Super<'core> {
                     )
                 },
             };
-            match pelclip_info.format {
-                vapoursynth::prelude::Property::Variable => {
-                    bail!("Super: 'pelclip' must be constant format")
-                }
-                vapoursynth::prelude::Property::Constant(pelclip_format) => {
-                    if pelclip_format != format {
-                        bail!("Super: 'pelclip' must have same format as input clip");
-                    }
-                }
-            };
+            if pelclip_info.format != format {
+                bail!("Super: 'pelclip' must have same format as input clip");
+            }
 
             if pel >= Subpel::Half {
                 let pel = NonZeroU8::from(pel).into();

@@ -6,6 +6,7 @@ use anyhow::{Result, bail};
 pub const MV_DEFAULT_SCD1: usize = 400;
 pub const MV_DEFAULT_SCD2: usize = 130;
 
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Subpel {
     Full = 1,
@@ -244,6 +245,7 @@ impl TryFrom<i64> for DivideMode {
 }
 
 bitflags! {
+    #[repr(C)]
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct MotionFlags: u8 {
         const IS_BACKWARD = 0x00000002;

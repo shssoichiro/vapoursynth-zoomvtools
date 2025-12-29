@@ -11,10 +11,7 @@ fn test_mvgof_struct_fields() {
     let env = create_test_env(64, 48, PresetFormat::YUV420P8, 1).unwrap();
     let (node, _) = env.get_output(0).unwrap();
     let video_info = node.info();
-    let format = match video_info.format {
-        vapoursynth::prelude::Property::Constant(format) => format,
-        _ => panic!("Should have constant format"),
-    };
+    let format = video_info.format;
 
     let level_count = 2;
     let width = NonZeroUsize::new(64).unwrap();
@@ -77,10 +74,7 @@ fn test_mvgof_different_level_counts() {
     let env = create_test_env(64, 48, PresetFormat::YUV420P8, 1).unwrap();
     let (node, _) = env.get_output(0).unwrap();
     let video_info = node.info();
-    let format = match video_info.format {
-        vapoursynth::prelude::Property::Constant(format) => format,
-        _ => panic!("Should have constant format"),
-    };
+    let format = video_info.format;
 
     for level_count in [1, 2, 3, 5] {
         let width = NonZeroUsize::new(64).unwrap();
@@ -125,10 +119,7 @@ fn test_mvgof_debug_and_clone() {
     let env = create_test_env(32, 32, PresetFormat::YUV420P8, 1).unwrap();
     let (node, _) = env.get_output(0).unwrap();
     let video_info = node.info();
-    let format = match video_info.format {
-        vapoursynth::prelude::Property::Constant(format) => format,
-        _ => panic!("Should have constant format"),
-    };
+    let format = video_info.format;
 
     let level_count = 2;
     let width = NonZeroUsize::new(32).unwrap();

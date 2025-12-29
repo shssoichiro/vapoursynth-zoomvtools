@@ -9,7 +9,7 @@ use std::{
 use anyhow::{Result, anyhow, bail};
 use vapoursynth::{
     format::{ColorFamily, Format, SampleType},
-    frame::FrameRef,
+    frame::{FrameRef, FrameRefMut},
     node::Node,
     plugins::Filter,
 };
@@ -20,6 +20,9 @@ use crate::{
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
     util::Pixel,
 };
+
+const PROP_MVANALYSISDATA: &str = "MVTools_MVAnalysisData";
+const PROP_VECTORS: &str = "MVTools_vectors";
 
 #[derive(Debug)]
 pub struct Analyse<'core> {
@@ -90,7 +93,8 @@ pub struct Analyse<'core> {
     super_levels: usize,
 }
 
-#[derive(Debug, Clone)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
 struct MVAnalysisData {
     // TODO: Are these top two fields even used for anything at all?
     /// Unique identifier, not very useful
@@ -133,6 +137,18 @@ struct MVAnalysisData {
     pub h_padding: usize,
     /// Vertical padding
     pub v_padding: usize,
+}
+
+impl MVAnalysisData {
+    pub(crate) fn bytes(&self) -> &[u8] {
+        // SAFETY: We've added `repr(c)` to ensure a predictable size of the struct
+        unsafe {
+            std::slice::from_raw_parts(
+                self as *const Self as *const u8,
+                std::mem::size_of::<Self>(),
+            )
+        }
+    }
 }
 
 impl<'core> Analyse<'core> {
@@ -250,12 +266,7 @@ impl<'core> Analyse<'core> {
         }
 
         let info = super_.info();
-        let format = match info.format {
-            vapoursynth::prelude::Property::Variable => {
-                bail!("Analyse: variable format input clips are not supported")
-            }
-            vapoursynth::prelude::Property::Constant(format) => format,
-        };
+        let format = info.format;
         if format.bits_per_sample() > 16 {
             bail!("Analyse: input clip must be 8-16 bits");
         }
@@ -519,7 +530,7 @@ impl<'core> Analyse<'core> {
 
     fn get_frame_internal<T: Pixel>(
         &self,
-        _core: vapoursynth::core::CoreRef<'core>,
+        core: vapoursynth::core::CoreRef<'core>,
         context: vapoursynth::plugins::FrameContext,
         n: usize,
     ) -> Result<FrameRef<'core>> {
@@ -572,7 +583,7 @@ impl<'core> Analyse<'core> {
             src_top_field = (tff as u8 ^ (n % 2) as u8) > 0;
         }
 
-        if nref >= 0 && (nref as usize) < self.node.info().num_frames {
+        let vectors = if nref >= 0 && (nref as usize) < self.node.info().num_frames {
             let ref_ = self
                 .node
                 .get_frame_filter(context, nref as usize)
@@ -679,12 +690,27 @@ impl<'core> Analyse<'core> {
             if self.divide_extra != DivideMode::None {
                 vector_fields.extra_divide(&mut vectors);
             }
+            vectors
         } else {
             // too close to the beginning or end to do anything
-            todo!()
-        }
+            vector_fields.write_default_to_array()
+        };
 
-        todo!()
+        let dest = FrameRefMut::copy_of(core, &src);
+        let dest_props = dest.props_mut();
+        dest_props.set_data(
+            PROP_MVANALYSISDATA,
+            if self.divide_extra != DivideMode::None {
+                self.analysis_data_divided
+                    .map(|data| data.bytes())
+                    .unwrap_or(&[])
+            } else {
+                self.analysis_data.bytes()
+            },
+        );
+        dest_props.set_data(PROP_VECTORS, &vectors);
+
+        Ok(dest.into())
     }
 }
 
