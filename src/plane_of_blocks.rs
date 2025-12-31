@@ -2505,12 +2505,45 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         let dist = self.predictor.square_difference_norm(vx, vy);
         (self.lambda as i64 * dist as i64) >> 8
     }
+
+    #[must_use]
+    pub(crate) fn write_default_to_array(&self, divide_extra: DivideMode) -> Vec<u8> {
+        let mut num_mvs = self.blk_count.get();
+        if self.log_scale == 0 && divide_extra != DivideMode::None {
+            // reserve space for divided subblocks extra level
+            // 4 subblocks
+            num_mvs += self.blk_count.get() * 4;
+        }
+
+        let mut data = Vec::with_capacity(num_mvs * size_of::<MotionVector>());
+        let mv = MotionVector {
+            x: 0,
+            y: 0,
+            sad: self.very_big_sad.get() as i64,
+        };
+        for _ in 0..num_mvs {
+            data.extend_from_slice(mv.bytes());
+        }
+        data
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct MvsOutput {
     pub validity: bool,
     pub block_data: Box<[u8]>,
+}
+
+impl MvsOutput {
+    #[must_use]
+    pub(crate) fn bytes(&self) -> Vec<u8> {
+        let mut data = Vec::with_capacity(self.block_data.len() + 1 + size_of::<usize>());
+
+        data.push(self.validity as u8);
+        data.extend_from_slice(&self.block_data.len().to_le_bytes());
+        data.extend_from_slice(&self.block_data);
+        data
+    }
 }
 
 // This only exists so we don't have 500 lines of code building a jump table.

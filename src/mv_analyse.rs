@@ -140,6 +140,7 @@ struct MVAnalysisData {
 }
 
 impl MVAnalysisData {
+    #[must_use]
     pub(crate) fn bytes(&self) -> &[u8] {
         // SAFETY: We've added `repr(c)` to ensure a predictable size of the struct
         unsafe {
@@ -465,7 +466,7 @@ impl<'core> Analyse<'core> {
         };
 
         let analysis_data_divided = if divide_extra != DivideMode::None {
-            let mut div_data = analysis_data.clone();
+            let mut div_data = analysis_data;
             // SAFETY: constant is non-zero
             div_data.blk_x = div_data
                 .blk_x
@@ -696,19 +697,20 @@ impl<'core> Analyse<'core> {
             vector_fields.write_default_to_array()
         };
 
-        let dest = FrameRefMut::copy_of(core, &src);
-        let dest_props = dest.props_mut();
+        let mut dest = FrameRefMut::copy_of(core, &src);
+        let mut dest_props = dest.props_mut();
         dest_props.set_data(
             PROP_MVANALYSISDATA,
             if self.divide_extra != DivideMode::None {
-                self.analysis_data_divided
-                    .map(|data| data.bytes())
-                    .unwrap_or(&[])
+                match self.analysis_data_divided.as_ref() {
+                    Some(data) => data.bytes(),
+                    _ => &[],
+                }
             } else {
                 self.analysis_data.bytes()
             },
-        );
-        dest_props.set_data(PROP_VECTORS, &vectors);
+        )?;
+        dest_props.set_data(PROP_VECTORS, &vectors.bytes())?;
 
         Ok(dest.into())
     }

@@ -3,6 +3,7 @@ use std::mem::size_of;
 
 pub const MV_SIZE: usize = size_of::<MotionVector>();
 
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct MotionVector {
     pub x: isize,
@@ -15,6 +16,19 @@ impl MotionVector {
     #[must_use]
     pub fn square_difference_norm(&self, v2x: isize, v2y: isize) -> u64 {
         ((self.x - v2x).pow(2) + (self.y - v2y).pow(2)) as u64
+    }
+}
+
+impl MotionVector {
+    #[must_use]
+    pub(crate) fn bytes(&self) -> &[u8] {
+        // SAFETY: We've added `repr(c)` to ensure a predictable size of the struct
+        unsafe {
+            std::slice::from_raw_parts(
+                self as *const Self as *const u8,
+                std::mem::size_of::<Self>(),
+            )
+        }
     }
 }
 

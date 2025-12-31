@@ -309,12 +309,29 @@ impl<T: Pixel> GroupOfPlanes<T> {
         }
     }
 
+    #[must_use]
     fn get_array_size(&self) -> usize {
         let mut size = 0;
         for i in (0..self.level_count).rev() {
             size += self.planes[i].get_array_size(self.divide_extra).get();
         }
         size
+    }
+
+    #[must_use]
+    pub(crate) fn write_default_to_array(&self) -> MvsOutput {
+        let mut vectors = MvsOutput {
+            validity: false,
+            block_data: vec![0; self.get_array_size()].into_boxed_slice(),
+        };
+
+        let mut start = 0;
+        for i in (0..self.level_count).rev() {
+            let plane_array = self.planes[i].write_default_to_array(self.divide_extra);
+            vectors.block_data[start..][..plane_array.len()].copy_from_slice(&plane_array);
+            start += plane_array.len();
+        }
+        vectors
     }
 }
 
@@ -369,6 +386,7 @@ fn assign_median(
     in_3_offset: usize,
     out_offset: usize,
 ) {
+    // SAFETY: block data is always transmuted to and from `MotionVector`s
     let blkin_1: MotionVector = unsafe {
         transmute::<[u8; MV_SIZE], _>(
             out.block_data[in_idx + in_1_offset * MV_SIZE..][..MV_SIZE]
@@ -376,6 +394,7 @@ fn assign_median(
                 .expect("slice with incorrect length"),
         )
     };
+    // SAFETY: block data is always transmuted to and from `MotionVector`s
     let blkin_2: MotionVector = unsafe {
         transmute::<[u8; MV_SIZE], _>(
             out.block_data[in_idx + in_2_offset * MV_SIZE..][..MV_SIZE]
@@ -383,6 +402,7 @@ fn assign_median(
                 .expect("slice with incorrect length"),
         )
     };
+    // SAFETY: block data is always transmuted to and from `MotionVector`s
     let blkin_3: MotionVector = unsafe {
         transmute::<[u8; MV_SIZE], _>(
             out.block_data[in_idx + in_3_offset * MV_SIZE..][..MV_SIZE]
@@ -390,6 +410,7 @@ fn assign_median(
                 .expect("slice with incorrect length"),
         )
     };
+    // SAFETY: block data is always transmuted to and from `MotionVector`s
     let blkout: &mut MotionVector = unsafe {
         transmute::<&mut [u8; MV_SIZE], _>(
             &mut out.block_data[out_idx + out_offset * MV_SIZE..][..MV_SIZE]
