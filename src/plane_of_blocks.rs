@@ -612,7 +612,137 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     pub(crate) fn interpolate_prediction(&mut self, other: &Self) {
-        todo!()
+        let log_pel_1 = self.log_pel as i32;
+        let log_pel_2 = other.log_pel as i32;
+        let blk_size_x_1 = self.blk_size_x.get() as i32;
+        let blk_size_y_1 = self.blk_size_y.get() as i32;
+        let overlap_x_1 = self.overlap_x as i32;
+        let overlap_y_1 = self.overlap_y as i32;
+        let blk_x_1 = self.blk_x.get() as i32;
+        let blk_y_1 = self.blk_y.get() as i32;
+        let blk_x_2 = other.blk_x.get() as i32;
+        let blk_y_2 = other.blk_y.get() as i32;
+
+        let mut norm_factor = 3i32 - log_pel_1 + log_pel_2;
+        let mul_factor = if norm_factor < 0 { -norm_factor } else { 0 };
+        if norm_factor < 0 {
+            norm_factor = 0
+        };
+        let normov = (blk_size_x_1 - overlap_x_1) * (blk_size_y_1 - overlap_y_1);
+        let aoddx = blk_size_x_1 * 3 - overlap_x_1 * 2;
+        let aevenx = blk_size_x_1 * 3 - overlap_x_1 * 4;
+        let aoddy = blk_size_y_1 * 3 - overlap_y_1 * 2;
+        let aeveny = blk_size_y_1 * 3 - overlap_y_1 * 4;
+        // FIXME: overlapping is still (v2.5.7) not processed properly
+        let scaleov = 1.0 / normov as f64;
+        let mut index = 0;
+        for l in 0..blk_y_1 {
+            for k in 0..blk_x_1 {
+                let mut vecs = [MotionVector::zero(); 4];
+                let mut i = k;
+                let mut j = l;
+                if i >= 2 * blk_x_2 {
+                    i = 2 * blk_x_2 - 1;
+                }
+                if j >= 2 * blk_y_2 {
+                    j = 2 * blk_y_2 - 1;
+                }
+                let offy = -1 + 2 * (j % 2);
+                let offx = -1 + 2 * (i % 2);
+
+                if (i == 0) || (i >= 2 * blk_x_2 - 1) {
+                    if (j == 0) || (j >= 2 * blk_y_2 - 1) {
+                        let idx = (i / 2 + (j / 2) * blk_x_2) as usize;
+                        let new_vec = other.vectors[idx];
+                        vecs.iter_mut().for_each(|vec| *vec = new_vec);
+                    } else {
+                        let idx1 = (i / 2 + (j / 2) * blk_x_2) as usize;
+                        let idx2 = (i / 2 + (j / 2 + offy) * blk_x_2) as usize;
+                        let new_vec1 = other.vectors[idx1];
+                        let new_vec2 = other.vectors[idx2];
+                        vecs[0] = new_vec1;
+                        vecs[1] = new_vec1;
+                        vecs[2] = new_vec2;
+                        vecs[3] = new_vec2;
+                    }
+                } else if (j == 0) || (j >= 2 * blk_y_2 - 1) {
+                    let idx1 = (i / 2 + (j / 2) * blk_x_2) as usize;
+                    let idx2 = (i / 2 + offx + (j / 2) * blk_x_2) as usize;
+                    let new_vec1 = other.vectors[idx1];
+                    let new_vec2 = other.vectors[idx2];
+                    vecs[0] = new_vec1;
+                    vecs[1] = new_vec1;
+                    vecs[2] = new_vec2;
+                    vecs[3] = new_vec2;
+                } else {
+                    let idx1 = (i / 2 + (j / 2) * blk_x_2) as usize;
+                    let idx2 = (i / 2 + offx + (j / 2) * blk_x_2) as usize;
+                    let idx3 = (i / 2 + (j / 2 + offy) * blk_x_2) as usize;
+                    let idx4 = (i / 2 + offx + (j / 2 + offy) * blk_x_2) as usize;
+                    let new_vec1 = other.vectors[idx1];
+                    let new_vec2 = other.vectors[idx2];
+                    let new_vec3 = other.vectors[idx3];
+                    let new_vec4 = other.vectors[idx4];
+                    vecs[0] = new_vec1;
+                    vecs[1] = new_vec2;
+                    vecs[2] = new_vec3;
+                    vecs[3] = new_vec4;
+                }
+
+                let temp_sad;
+                if overlap_x_1 == 0 && overlap_y_1 == 0 {
+                    let cur_vec = &mut self.vectors[index];
+                    cur_vec.x = 9 * vecs[0].x + 3 * vecs[1].x + 3 * vecs[2].x + vecs[3].x;
+                    cur_vec.y = 9 * vecs[0].y + 3 * vecs[1].y + 3 * vecs[2].y + vecs[3].y;
+                    temp_sad =
+                        9 * vecs[0].sad + 3 * vecs[1].sad + 3 * vecs[2].sad + vecs[3].sad + 8;
+                } else if overlap_x_1 <= (blk_size_x_1 >> 1) && overlap_y_1 <= (blk_size_y_1 >> 1) {
+                    // corrected in v1.4.11
+                    let ax1 = if offx > 0 { aoddx } else { aevenx } as i64;
+                    let ax2 = ((blk_size_x_1 - overlap_x_1) * 4) as i64 - ax1;
+                    let ay1 = if offy > 0 { aoddy } else { aeveny } as i64;
+                    let ay2 = ((blk_size_y_1 - overlap_y_1) * 4) as i64 - ay1;
+
+                    // 64 bit so that the multiplications by the SADs don't overflow
+                    // with 16 bit input.
+                    let a11 = ax1 * ay1;
+                    let a12 = ax1 * ay2;
+                    let a21 = ax2 * ay1;
+                    let a22 = ax2 * ay2;
+
+                    let cur_vec = &mut self.vectors[index];
+                    cur_vec.x = ((a11 * vecs[0].x as i64
+                        + a21 * vecs[1].x as i64
+                        + a12 * vecs[2].x as i64
+                        + a22 * vecs[3].x as i64) as f64
+                        * scaleov) as isize;
+                    cur_vec.y = ((a11 * vecs[0].y as i64
+                        + a21 * vecs[1].y as i64
+                        + a12 * vecs[2].y as i64
+                        + a22 * vecs[3].y as i64) as f64
+                        * scaleov) as isize;
+                    temp_sad = ((a11 * vecs[0].sad
+                        + a21 * vecs[1].sad
+                        + a12 * vecs[2].sad
+                        + a22 * vecs[3].sad) as f64
+                        * scaleov) as i64;
+                } else {
+                    // large overlap. Weights are not quite correct but let it be
+
+                    // Dead branch. The overlap is no longer allowed to be more than
+                    // half the block size.
+                    self.vectors[index].x = (vecs[0].x + vecs[1].x + vecs[2].x + vecs[3].x) << 2;
+                    self.vectors[index].y = (vecs[0].y + vecs[1].y + vecs[2].y + vecs[3].y) << 2;
+                    temp_sad = (vecs[0].sad + vecs[1].sad + vecs[2].sad + vecs[3].sad + 2) << 2;
+                }
+
+                let cur_vec = &mut self.vectors[index];
+                cur_vec.x = (cur_vec.x >> norm_factor) * (1 << mul_factor);
+                cur_vec.y = (cur_vec.y >> norm_factor) * (1 << mul_factor);
+                cur_vec.sad = temp_sad >> 4;
+                index += 1;
+            }
+        }
     }
 
     #[must_use]
