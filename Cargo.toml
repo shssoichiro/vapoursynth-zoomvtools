@@ -16,6 +16,7 @@ vapoursynth = "0.5.0"
 
 [dev-dependencies]
 criterion = { version = "0.7.0", features = ["html_reports"] }
+float-cmp = "0.10"
 pastey = "0.1.0"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.1.0"
@@ -52,6 +53,7 @@ required-features = ["bench"]
 
 [features]
 bench = []
+e2e = []
 # This feature is ONLY for testing and benchmarking.
 # If you use it in production it will make me sad.
 no_simd = []
