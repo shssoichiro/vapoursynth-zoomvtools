@@ -15,6 +15,7 @@ use crate::{
 };
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct GroupOfPlanes<T: Pixel> {
     pub blk_size_x: NonZeroUsize,
     pub blk_size_y: NonZeroUsize,
@@ -110,12 +111,12 @@ impl<T: Pixel> GroupOfPlanes<T> {
         penalty_new: u16,
         penalty_level: PenaltyScaling,
         global: bool,
-        field_shift: isize,
+        field_shift: i32,
         dct_mode: DctMode,
         penalty_zero: u16,
         mut penalty_global: u16,
         bad_sad: u64,
-        bad_range: isize,
+        bad_range: i32,
         meander: bool,
         try_many: bool,
         search_type_coarse: SearchType,
@@ -311,8 +312,8 @@ impl<T: Pixel> GroupOfPlanes<T> {
 
     #[must_use]
     fn get_array_size(&self) -> usize {
-        let mut size = 0;
-        for i in (0..self.level_count).rev() {
+        let mut size = 2 * size_of::<u32>();
+        for i in 0..self.level_count {
             size += self.planes[i].get_array_size(self.divide_extra).get();
         }
         size
@@ -320,12 +321,21 @@ impl<T: Pixel> GroupOfPlanes<T> {
 
     #[must_use]
     pub(crate) fn write_default_to_array(&self) -> MvsOutput {
+        let array_size = self.get_array_size();
         let mut vectors = MvsOutput {
             validity: false,
-            block_data: vec![0; self.get_array_size()].into_boxed_slice(),
+            block_data: vec![0; array_size].into_boxed_slice(),
         };
 
-        let mut start = 0;
+        // Store the size as u32 for compatibility with C plugin
+        let u32_size = size_of::<u32>();
+        vectors.block_data[0..u32_size].copy_from_slice(&(array_size as u32).to_le_bytes());
+
+        // Store the validity as u32 for compatibility with C plugin
+        vectors.block_data[u32_size..][..u32_size]
+            .copy_from_slice(&(vectors.validity as u32).to_le_bytes());
+
+        let mut start = u32_size * 2;
         for i in (0..self.level_count).rev() {
             let plane_array = self.planes[i].write_default_to_array(self.divide_extra);
             vectors.block_data[start..][..plane_array.len()].copy_from_slice(&plane_array);

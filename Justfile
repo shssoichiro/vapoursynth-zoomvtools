@@ -36,10 +36,6 @@ precommit:
 e2e:
     cargo test --features e2e
 
-# Run e2e tests with verbose output
-e2e-verbose:
-    cargo test --features e2e -- --nocapture --test-threads=1
-
 # Check if C MVTools is installed
 check-mvtools:
     @python3 -c "import vapoursynth as vs; core = vs.core; core.mv.Super" 2>/dev/null && echo "C MVTools is installed" || echo "C MVTools NOT found - install vapoursynth-plugin-mvtools"

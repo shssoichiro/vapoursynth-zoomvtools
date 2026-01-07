@@ -1,5 +1,6 @@
+#![allow(dead_code)]
+
 use anyhow::{Context, Result, bail};
-use std::mem::size_of;
 use vapoursynth::frame::FrameRef;
 
 #[derive(Debug, Clone)]
@@ -68,10 +69,6 @@ where
     for plane in 0..format.plane_count() {
         let width = c_frame.width(plane);
         let height = c_frame.height(plane);
-        let c_stride = c_frame.stride(plane);
-        let r_stride = r_frame.stride(plane);
-
-        let bytes_per_sample = size_of::<T>();
 
         let mut different_pixels = 0;
         let mut max_diff = 0i32;
@@ -172,7 +169,7 @@ pub fn compare_frame_properties(
     let r_keys: Vec<_> = r_props.keys().collect();
 
     for key in &c_keys {
-        if ignore_keys.contains(&key.as_ref()) {
+        if ignore_keys.contains(key) {
             continue;
         }
 
@@ -207,7 +204,7 @@ pub fn compare_frame_properties(
 
     // Check for properties in Rust that aren't in C
     for key in &r_keys {
-        if ignore_keys.contains(&key.as_ref()) {
+        if ignore_keys.contains(key) {
             continue;
         }
         if !c_keys.contains(key) {
@@ -216,69 +213,6 @@ pub fn compare_frame_properties(
                 key
             );
         }
-    }
-
-    Ok(())
-}
-
-/// Compare motion vector data
-pub fn compare_motion_vectors(
-    c_vectors: &[u8],
-    r_vectors: &[u8],
-    sad_tolerance: i64,
-) -> Result<()> {
-    // MotionVector is repr(C) with x, y (isize), sad (i64)
-    let isize_size = size_of::<isize>();
-    let i64_size = size_of::<i64>();
-    let mv_size = isize_size * 2 + i64_size;
-
-    if c_vectors.len() != r_vectors.len() {
-        bail!(
-            "Vector data length mismatch: C={}, Rust={}",
-            c_vectors.len(),
-            r_vectors.len()
-        );
-    }
-
-    if c_vectors.len() % mv_size != 0 {
-        bail!(
-            "Vector data length {} is not a multiple of motion vector size {}",
-            c_vectors.len(),
-            mv_size
-        );
-    }
-
-    let num_vectors = c_vectors.len() / mv_size;
-    let mut mismatches = Vec::new();
-
-    for i in 0..num_vectors {
-        let offset = i * mv_size;
-        let c_mv = &c_vectors[offset..offset + mv_size];
-        let r_mv = &r_vectors[offset..offset + mv_size];
-
-        // Parse as MotionVector
-        let c_x = isize::from_ne_bytes(c_mv[0..isize_size].try_into().unwrap());
-        let c_y = isize::from_ne_bytes(c_mv[isize_size..isize_size * 2].try_into().unwrap());
-        let c_sad = i64::from_ne_bytes(c_mv[isize_size * 2..].try_into().unwrap());
-
-        let r_x = isize::from_ne_bytes(r_mv[0..isize_size].try_into().unwrap());
-        let r_y = isize::from_ne_bytes(r_mv[isize_size..isize_size * 2].try_into().unwrap());
-        let r_sad = i64::from_ne_bytes(r_mv[isize_size * 2..].try_into().unwrap());
-
-        if c_x != r_x || c_y != r_y || (c_sad - r_sad).abs() > sad_tolerance {
-            mismatches.push(format!(
-                "MV[{}]: C=({},{},{}), Rust=({},{},{})",
-                i, c_x, c_y, c_sad, r_x, r_y, r_sad
-            ));
-
-            if mismatches.len() >= 10 {
-                break; // Limit output
-            }
-        }
-    }
-
-    if !mismatches.is_empty() {
-        bail!("Motion vector mismatches:\n{}", mismatches.join("\n"));
     }
 
     Ok(())

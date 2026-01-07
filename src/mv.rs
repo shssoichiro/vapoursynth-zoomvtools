@@ -6,15 +6,15 @@ pub const MV_SIZE: usize = size_of::<MotionVector>();
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct MotionVector {
-    pub x: isize,
-    pub y: isize,
+    pub x: i32,
+    pub y: i32,
     pub sad: i64,
 }
 
 impl MotionVector {
     /// computes square distance between two vectors
     #[must_use]
-    pub fn square_difference_norm(&self, v2x: isize, v2y: isize) -> u64 {
+    pub fn square_difference_norm(&self, v2x: i32, v2y: i32) -> u64 {
         ((self.x - v2x).pow(2) + (self.y - v2y).pow(2)) as u64
     }
 }

@@ -21,6 +21,7 @@ const MAX_BLOCK_SIZE: usize = 128 * 128;
 const MAX_PREDICTOR: usize = 5;
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub(crate) struct PlaneOfBlocks<T: Pixel> {
     pub pel: Subpel,
     pub log_pel: u8,
@@ -66,12 +67,12 @@ pub(crate) struct PlaneOfBlocks<T: Pixel> {
     dct_mode: Option<DctMode>,
     dct_weight_16: u32,
     bad_sad: u64,
-    bad_range: isize,
+    bad_range: i32,
     zero_mv_field_shifted: MotionVector,
     /// absolute x coordinate of the origin of the block in the reference frame
-    x: [isize; 3],
+    x: [i32; 3],
     /// absolute y coordinate of the origin of the block in the reference frame
-    y: [isize; 3],
+    y: [i32; 3],
     src_pitch: [NonZeroUsize; 3],
     ref_pitch: [NonZeroUsize; 3],
     search_type: SearchType,
@@ -85,10 +86,10 @@ pub(crate) struct PlaneOfBlocks<T: Pixel> {
     blk_scan_dir: i8,
     lambda: u32,
     lambda_sad: u32,
-    dx_max: isize,
-    dy_max: isize,
-    dx_min: isize,
-    dy_min: isize,
+    dx_max: i32,
+    dy_max: i32,
+    dx_min: i32,
+    dy_min: i32,
     predictor: MotionVector,
     predictors: [MotionVector; MAX_PREDICTOR],
     best_mv: MotionVector,
@@ -228,13 +229,13 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         penalty_level: PenaltyScaling,
         out: &'a mut MvsOutput,
         global_mv: &'a mut MotionVector,
-        field_shift: isize,
+        field_shift: i32,
         dct_mode: DctMode,
         mean_luma_change: &'a mut i32,
         penalty_zero: u16,
         penalty_global: u16,
         bad_sad: u64,
-        bad_range: isize,
+        bad_range: i32,
         meander: bool,
         try_many: bool,
     ) -> Result<()> {
@@ -358,12 +359,12 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         // so we control the layout.
         let blk_data: &mut [MotionVector] =
             unsafe { transmute(&mut out.block_data[out_idx * MV_SIZE..]) };
-        self.y[0] = src_frame.planes[0].vpad as isize;
+        self.y[0] = src_frame.planes[0].vpad as i32;
         if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
-            self.y[1] = src_frame.planes[1].vpad as isize;
+            self.y[1] = src_frame.planes[1].vpad as i32;
         }
         if (src_frame.yuv_mode & MVPlaneSet::VPLANE).bits() > 0 {
-            self.y[2] = src_frame.planes[2].vpad as isize;
+            self.y[2] = src_frame.planes[2].vpad as i32;
         }
         self.src_pitch[0] = src_frame.planes[0].pitch;
         if self.chroma {
@@ -402,23 +403,23 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 self.blk_x.get() - 1
             };
             if self.blk_scan_dir == 1 {
-                self.x[0] = src_frame.planes[0].hpad as isize;
+                self.x[0] = src_frame.planes[0].hpad as i32;
                 if self.chroma {
-                    self.x[1] = src_frame.planes[1].hpad as isize;
-                    self.x[2] = src_frame.planes[2].hpad as isize;
+                    self.x[1] = src_frame.planes[1].hpad as i32;
+                    self.x[2] = src_frame.planes[2].hpad as i32;
                 }
             } else {
                 // start with rightmost block, but it is already set at prev row
                 self.x[0] = (src_frame.planes[0].hpad
                     + (self.blk_size_x.get() - self.overlap_x) * (self.blk_x.get() - 1))
-                    as isize;
+                    as i32;
                 if self.chroma {
                     self.x[1] = (src_frame.planes[1].hpad
                         + (self.blk_size_x.get() - self.overlap_x) / self.x_ratio_uv.get() as usize
-                            * (self.blk_x.get() - 1)) as isize;
+                            * (self.blk_x.get() - 1)) as i32;
                     self.x[2] = (src_frame.planes[2].hpad
                         + (self.blk_size_x.get() - self.overlap_x) / self.x_ratio_uv.get() as usize
-                            * (self.blk_x.get() - 1)) as isize;
+                            * (self.blk_x.get() - 1)) as i32;
                 }
             }
 
@@ -452,23 +453,21 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 let vpad_scaled = src_frame.planes[0].vpad >> self.log_scale;
 
                 // compute search boundaries
-                self.dx_max = (src_frame.planes[0].padded_width.get() as isize
+                self.dx_max = (src_frame.planes[0].padded_width.get() as i32
                     - self.x[0]
-                    - self.blk_size_x.get() as isize
-                    - src_frame.planes[0].hpad as isize
-                    + hpad_scaled as isize)
+                    - self.blk_size_x.get() as i32
+                    - src_frame.planes[0].hpad as i32
+                    + hpad_scaled as i32)
                     << LOG_PEL;
-                self.dy_max = (src_frame.planes[0].padded_height.get() as isize
+                self.dy_max = (src_frame.planes[0].padded_height.get() as i32
                     - self.y[0]
-                    - self.blk_size_y.get() as isize
-                    - src_frame.planes[0].vpad as isize
-                    + vpad_scaled as isize)
+                    - self.blk_size_y.get() as i32
+                    - src_frame.planes[0].vpad as i32
+                    + vpad_scaled as i32)
                     << LOG_PEL;
-                self.dx_min = -((self.x[0] - src_frame.planes[0].hpad as isize
-                    + hpad_scaled as isize)
+                self.dx_min = -((self.x[0] - src_frame.planes[0].hpad as i32 + hpad_scaled as i32)
                     << LOG_PEL);
-                self.dy_min = -((self.y[0] - src_frame.planes[0].vpad as isize
-                    + vpad_scaled as isize)
+                self.dy_min = -((self.y[0] - src_frame.planes[0].vpad as i32 + vpad_scaled as i32)
                     << LOG_PEL);
 
                 // search the MV
@@ -502,28 +501,28 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
                 // increment indexes
                 if iblk_x < self.blk_x.get() - 1 {
-                    self.x[0] += (self.blk_size_x.get() - self.overlap_x) as isize
-                        * self.blk_scan_dir as isize;
+                    self.x[0] +=
+                        (self.blk_size_x.get() - self.overlap_x) as i32 * self.blk_scan_dir as i32;
                     if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
                         self.x[1] += ((self.blk_size_x.get() - self.overlap_x)
-                            >> self.log_x_ratio_uv) as isize
-                            * self.blk_scan_dir as isize;
+                            >> self.log_x_ratio_uv) as i32
+                            * self.blk_scan_dir as i32;
                     }
                     if (src_frame.yuv_mode & MVPlaneSet::VPLANE).bits() > 0 {
                         self.x[2] += ((self.blk_size_x.get() - self.overlap_x)
-                            >> self.log_x_ratio_uv) as isize
-                            * self.blk_scan_dir as isize;
+                            >> self.log_x_ratio_uv) as i32
+                            * self.blk_scan_dir as i32;
                     }
                 }
             }
-            self.y[0] += (self.blk_size_y.get() - self.overlap_y) as isize;
+            self.y[0] += (self.blk_size_y.get() - self.overlap_y) as i32;
             if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
                 self.y[0] +=
-                    ((self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv) as isize;
+                    ((self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv) as i32;
             }
             if (src_frame.yuv_mode & MVPlaneSet::VPLANE).bits() > 0 {
                 self.y[0] +=
-                    ((self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv) as isize;
+                    ((self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv) as i32;
             }
         }
 
@@ -536,12 +535,27 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
     #[must_use]
     pub(crate) fn get_array_size(&self, divide: DivideMode) -> NonZeroUsize {
-        let mut len = self.blk_count;
+        let mut size = self
+            .blk_count
+            .saturating_mul(
+                NonZeroUsize::new(size_of::<MotionVector>()).expect("type should be sized"),
+            )
+            .saturating_add(size_of::<u32>());
+
         if self.log_scale == 0 && divide != DivideMode::None {
-            // reserve space for divided subblocks extra level
-            len = len.saturating_add(self.blk_count.get() * 4);
+            size = size.saturating_add(
+                self.blk_count
+                    .saturating_mul(
+                        // reserve space for divided subblocks extra level
+                        NonZeroUsize::new(size_of::<MotionVector>() * 4)
+                            .expect("type should be sized"),
+                    )
+                    .saturating_add(size_of::<u32>())
+                    .get(),
+            );
         }
-        len
+
+        size
     }
 
     /// estimate global motion from current plane vectors data for using on next
@@ -578,16 +592,16 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     /// Find the most frequent value of a vector component (x or y)
-    fn find_most_frequent<F>(&mut self, component_fn: F) -> isize
+    fn find_most_frequent<F>(&mut self, component_fn: F) -> i32
     where
-        F: Fn(&MotionVector) -> isize,
+        F: Fn(&MotionVector) -> i32,
     {
         self.freq_array = vec![0; self.freq_size.get()];
         let mut ind_min = self.freq_size.get() - 1;
         let mut ind_max = 0;
         for i in 0..self.blk_count.get() {
-            let ind = (self.freq_size.get() >> 1) as isize + component_fn(&self.vectors[i]);
-            if ind >= 0 && ind < self.freq_size.get() as isize {
+            let ind = (self.freq_size.get() >> 1) as i32 + component_fn(&self.vectors[i]);
+            if ind >= 0 && ind < self.freq_size.get() as i32 {
                 let ind = ind as usize;
                 self.freq_array[ind] += 1;
                 if ind > ind_max {
@@ -608,7 +622,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             }
         }
         // most frequent value
-        index as isize - (self.freq_size.get() >> 1) as isize
+        index as i32 - (self.freq_size.get() >> 1) as i32
     }
 
     pub(crate) fn interpolate_prediction(&mut self, other: &Self) {
@@ -715,12 +729,12 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         + a21 * vecs[1].x as i64
                         + a12 * vecs[2].x as i64
                         + a22 * vecs[3].x as i64) as f64
-                        * scaleov) as isize;
+                        * scaleov) as i32;
                     cur_vec.y = ((a11 * vecs[0].y as i64
                         + a21 * vecs[1].y as i64
                         + a12 * vecs[2].y as i64
                         + a22 * vecs[3].y as i64) as f64
-                        * scaleov) as isize;
+                        * scaleov) as i32;
                     temp_sad = ((a11 * vecs[0].sad
                         + a21 * vecs[1].sad
                         + a12 * vecs[2].sad
@@ -755,12 +769,12 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     #[must_use]
-    fn clip_mv_x(&self, x: isize) -> isize {
+    fn clip_mv_x(&self, x: i32) -> i32 {
         min(max(x, self.dx_min), self.dx_max - 1)
     }
 
     #[must_use]
-    fn clip_mv_y(&self, y: isize) -> isize {
+    fn clip_mv_y(&self, y: i32) -> i32 {
         min(max(y, self.dy_min), self.dy_max - 1)
     }
 
@@ -1048,8 +1062,8 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         &self,
         ref_frame: &MVFrame,
         ref_frame_data: &'a Frame,
-        vx: isize,
-        vy: isize,
+        vx: i32,
+        vy: i32,
     ) -> Result<&'a [T]> {
         let plane = plane_with_padding(ref_frame_data, 0)?;
         let mvplane = &ref_frame.planes[0];
@@ -1065,8 +1079,8 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         &self,
         ref_frame: &MVFrame,
         ref_frame_data: &'a Frame,
-        vx: isize,
-        vy: isize,
+        vx: i32,
+        vy: i32,
     ) -> Result<&'a [T]> {
         self.get_ref_block_chroma::<LOG_PEL>(ref_frame, ref_frame_data, vx, vy, 1)
     }
@@ -1075,8 +1089,8 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         &self,
         ref_frame: &MVFrame,
         ref_frame_data: &'a Frame,
-        vx: isize,
-        vy: isize,
+        vx: i32,
+        vy: i32,
     ) -> Result<&'a [T]> {
         self.get_ref_block_chroma::<LOG_PEL>(ref_frame, ref_frame_data, vx, vy, 2)
     }
@@ -1085,8 +1099,8 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         &self,
         ref_frame: &MVFrame,
         ref_frame_data: &'a Frame,
-        vx: isize,
-        vy: isize,
+        vx: i32,
+        vy: i32,
         plane_idx: usize,
     ) -> Result<&'a [T]> {
         let xbias = if vx < 0 { -1 } else { 1 } * ((1 << self.log_x_ratio_uv) - 1);
@@ -1476,7 +1490,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         src_planes,
                         ref_frame,
                         ref_frame_data,
-                        i as isize,
+                        i as i32,
                     )?;
                     i /= 2;
                 }
@@ -1486,7 +1500,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                     src_planes,
                     ref_frame,
                     ref_frame_data,
-                    self.search_param as isize,
+                    self.search_param as i32,
                 )?;
             }
             SearchType::Logarithmic => {
@@ -1496,7 +1510,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         src_planes,
                         ref_frame,
                         ref_frame_data,
-                        i as isize,
+                        i as i32,
                     )?;
                     i /= 2;
                 }
@@ -1510,7 +1524,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         src_planes,
                         ref_frame,
                         ref_frame_data,
-                        i as isize,
+                        i as i32,
                         1,
                         mvx,
                         mvy,
@@ -1522,7 +1536,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                     src_planes,
                     ref_frame,
                     ref_frame_data,
-                    self.search_param as isize,
+                    self.search_param as i32,
                 )?;
             }
             SearchType::UnevenMultiHexagon => {
@@ -1530,7 +1544,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                     src_planes,
                     ref_frame,
                     ref_frame_data,
-                    self.search_param as isize,
+                    self.search_param as i32,
                     self.best_mv.x,
                     self.best_mv.y,
                 )?;
@@ -1543,14 +1557,14 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         src_planes,
                         ref_frame,
                         ref_frame_data,
-                        mvx - i as isize,
+                        mvx - i as i32,
                         mvy,
                     )?;
                     self.check_mv::<DCT_MODE, LOG_PEL>(
                         src_planes,
                         ref_frame,
                         ref_frame_data,
-                        mvx + i as isize,
+                        mvx + i as i32,
                         mvy,
                     )?;
                 }
@@ -1564,14 +1578,14 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         ref_frame,
                         ref_frame_data,
                         mvx,
-                        mvy - i as isize,
+                        mvy - i as i32,
                     )?;
                     self.check_mv::<DCT_MODE, LOG_PEL>(
                         src_planes,
                         ref_frame,
                         ref_frame_data,
                         mvx,
-                        mvy + i as isize,
+                        mvy + i as i32,
                     )?;
                 }
             }
@@ -1587,8 +1601,8 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        vx: isize,
-        vy: isize,
+        vx: i32,
+        vy: i32,
     ) -> Result<()> {
         // here the chance for default values are high especially
         // for zeroMVfieldShifted (on left/top border)
@@ -1610,8 +1624,8 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        vx: isize,
-        vy: isize,
+        vx: i32,
+        vy: i32,
     ) -> Result<()> {
         // here the chance for default values are high especially
         // for zeroMVfieldShifted (on left/top border)
@@ -1627,10 +1641,10 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        vx: isize,
-        vy: isize,
-        direction: &mut isize,
-        val: isize,
+        vx: i32,
+        vy: i32,
+        direction: &mut i32,
+        val: i32,
     ) -> Result<()> {
         self.check_mv_impl::<DCT_MODE, LOG_PEL, {
             CheckMVFlags::PENALTY_NEW.bits()
@@ -1654,10 +1668,10 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        vx: isize,
-        vy: isize,
-        direction: &mut isize,
-        val: isize,
+        vx: i32,
+        vy: i32,
+        direction: &mut i32,
+        val: i32,
     ) -> Result<()> {
         self.check_mv_impl::<DCT_MODE, LOG_PEL, {
             CheckMVFlags::PENALTY_NEW.bits()
@@ -1670,10 +1684,10 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        vx: isize,
-        vy: isize,
-        direction: &mut isize,
-        val: isize,
+        vx: i32,
+        vy: i32,
+        direction: &mut i32,
+        val: i32,
     ) -> Result<()> {
         if !self.is_vector_ok(vx, vy) {
             return Ok(());
@@ -1744,7 +1758,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        length: isize,
+        length: i32,
     ) -> Result<()> {
         let mut direction = 0;
         let mut dx = self.best_mv.x;
@@ -1856,7 +1870,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        step: isize,
+        step: i32,
     ) -> Result<()> {
         let mut dx;
         let mut dy;
@@ -1933,11 +1947,11 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        length: isize,
+        length: i32,
     ) -> Result<()> {
         bitflags! {
             #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-            struct Direction: isize {
+            struct Direction: i32 {
                 const RIGHT = 1;
                 const LEFT = 2;
                 const DOWN = 4;
@@ -2294,10 +2308,10 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        i_me_range: isize,
+        i_me_range: i32,
     ) -> Result<()> {
-        const MOD6M1: [isize; 8] = [5, 0, 1, 2, 3, 4, 5, 0];
-        const HEX2: [[isize; 2]; 8] = [
+        const MOD6M1: [i32; 8] = [5, 0, 1, 2, 3, 4, 5, 0];
+        const HEX2: [[i32; 2]; 8] = [
             [-1, -2],
             [-2, 0],
             [-1, 2],
@@ -2440,11 +2454,11 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        me_range: isize,
-        omx: isize,
-        omy: isize,
+        me_range: i32,
+        omx: i32,
+        omy: i32,
     ) -> Result<()> {
-        const HEX4: [[isize; 2]; 16] = [
+        const HEX4: [[i32; 2]; 16] = [
             [-4, 2],
             [-4, 1],
             [-4, 0],
@@ -2500,11 +2514,11 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        start: isize,
-        x_max: isize,
-        y_max: isize,
-        mvx: isize,
-        mvy: isize,
+        start: i32,
+        x_max: i32,
+        y_max: i32,
+        mvx: i32,
+        mvy: i32,
     ) -> Result<()> {
         for i in (start..x_max).step_by(2) {
             self.check_mv::<DCT_MODE, LOG_PEL>(
@@ -2548,16 +2562,16 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         src_planes: [&[T]; 3],
         ref_frame: &MVFrame,
         ref_frame_data: &Frame,
-        r: isize,
+        r: i32,
         s: usize,
-        mvx: isize,
-        mvy: isize,
+        mvx: i32,
+        mvy: i32,
     ) -> Result<()> {
         // diameter = 2*r + 1, step=s
         // part of true enhaustive search (thin expanding square) around mvx, mvy
 
         // sides of square without corners
-        for i in ((-r + s as isize)..r).step_by(s) {
+        for i in ((-r + s as i32)..r).step_by(s) {
             self.check_mv::<DCT_MODE, LOG_PEL>(
                 src_planes,
                 ref_frame,
@@ -2574,7 +2588,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             )?;
         }
 
-        for j in ((-r + s as isize)..r).step_by(s) {
+        for j in ((-r + s as i32)..r).step_by(s) {
             self.check_mv::<DCT_MODE, LOG_PEL>(
                 src_planes,
                 ref_frame,
@@ -2625,35 +2639,49 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     #[must_use]
-    fn is_vector_ok(&self, vx: isize, vy: isize) -> bool {
+    fn is_vector_ok(&self, vx: i32, vy: i32) -> bool {
         (vx >= self.dx_min) && (vy >= self.dy_min) && (vx < self.dx_max) && (vy < self.dy_max)
     }
 
     /// computes the cost of a vector (vx, vy)
     #[must_use]
-    fn motion_distortion(&self, vx: isize, vy: isize) -> i64 {
+    fn motion_distortion(&self, vx: i32, vy: i32) -> i64 {
         let dist = self.predictor.square_difference_norm(vx, vy);
         (self.lambda as i64 * dist as i64) >> 8
     }
 
     #[must_use]
     pub(crate) fn write_default_to_array(&self, divide_extra: DivideMode) -> Vec<u8> {
-        let mut num_mvs = self.blk_count.get();
-        if self.log_scale == 0 && divide_extra != DivideMode::None {
-            // reserve space for divided subblocks extra level
-            // 4 subblocks
-            num_mvs += self.blk_count.get() * 4;
-        }
-
-        let mut data = Vec::with_capacity(num_mvs * size_of::<MotionVector>());
-        let mv = MotionVector {
+        let empty_mv = MotionVector {
             x: 0,
             y: 0,
             sad: self.very_big_sad.get() as i64,
         };
-        for _ in 0..num_mvs {
-            data.extend_from_slice(mv.bytes());
+
+        let array_size = self.get_array_size(divide_extra).get();
+        let mut data = Vec::with_capacity(array_size);
+
+        // Store the size as u32 for compatibility with C plugin
+        let start_size = size_of::<u32>() + self.blk_count.get() * size_of::<MotionVector>();
+        data.extend_from_slice(&(start_size as u32).to_le_bytes());
+
+        for _ in 0..self.blk_count.get() {
+            // Fill with blank MV data
+            data.extend_from_slice(empty_mv.bytes());
         }
+
+        if self.log_scale == 0 && divide_extra != DivideMode::None {
+            // Store the size as u32 for compatibility with C plugin
+            let subarray_size =
+                size_of::<u32>() + self.blk_count.get() * size_of::<MotionVector>() * 4;
+            data.extend_from_slice(&(subarray_size as u32).to_le_bytes());
+
+            for _ in 0..(self.blk_count.get() * 4) {
+                // Fill with blank MV data
+                data.extend_from_slice(empty_mv.bytes());
+            }
+        }
+
         data
     }
 }
@@ -2662,18 +2690,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 pub struct MvsOutput {
     pub validity: bool,
     pub block_data: Box<[u8]>,
-}
-
-impl MvsOutput {
-    #[must_use]
-    pub(crate) fn bytes(&self) -> Vec<u8> {
-        let mut data = Vec::with_capacity(self.block_data.len() + 1 + size_of::<usize>());
-
-        data.push(self.validity as u8);
-        data.extend_from_slice(&self.block_data.len().to_le_bytes());
-        data.extend_from_slice(&self.block_data);
-        data
-    }
 }
 
 // This only exists so we don't have 500 lines of code building a jump table.
@@ -2691,12 +2707,12 @@ struct SearchMvsArgs<'a> {
     pub penalty_level: PenaltyScaling,
     pub out: &'a mut MvsOutput,
     pub global_mv: &'a mut MotionVector,
-    pub field_shift: isize,
+    pub field_shift: i32,
     pub mean_luma_change: &'a mut i32,
     pub penalty_zero: u16,
     pub penalty_global: u16,
     pub bad_sad: u64,
-    pub bad_range: isize,
+    pub bad_range: i32,
     pub meander: bool,
     pub try_many: bool,
 }

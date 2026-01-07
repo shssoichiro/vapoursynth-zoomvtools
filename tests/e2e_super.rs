@@ -1,16 +1,17 @@
-#[cfg(feature = "e2e")]
+#![cfg(feature = "e2e")]
+
 #[macro_use]
 mod common;
 
-#[cfg(feature = "e2e")]
 use anyhow::Result;
-#[cfg(feature = "e2e")]
-use common::*;
-#[cfg(feature = "e2e")]
 use vapoursynth::prelude::Environment;
 
+use crate::common::{
+    comparison::{ComparisonConfig, assert_frames_match, compare_frame_properties},
+    script_gen::{ClipContentType, FilterParams, TestClipConfig, generate_comparison_script},
+};
+
 #[test]
-#[cfg(feature = "e2e")]
 fn test_super_8bit_yuv420_default_params() -> Result<()> {
     require_mvtools!();
 
@@ -48,7 +49,6 @@ fn test_super_8bit_yuv420_default_params() -> Result<()> {
 }
 
 #[test]
-#[cfg(feature = "e2e")]
 fn test_super_16bit_yuv420_custom_params() -> Result<()> {
     require_mvtools!();
 
@@ -97,7 +97,6 @@ fn test_super_16bit_yuv420_custom_params() -> Result<()> {
 }
 
 #[test]
-#[cfg(feature = "e2e")]
 fn test_super_different_formats() -> Result<()> {
     require_mvtools!();
 
@@ -156,37 +155,6 @@ fn test_super_different_formats() -> Result<()> {
 }
 
 #[test]
-#[cfg(feature = "e2e")]
-#[ignore] // Performance test - run explicitly
-fn test_super_performance() -> Result<()> {
-    require_mvtools!();
-
-    let clip_config = TestClipConfig {
-        width: 1920,
-        height: 1080,
-        format: "vs.YUV420P8",
-        length: 100,
-        content_type: ClipContentType::Noise { seed: 42 },
-    };
-
-    let super_params = FilterParams::default();
-    let script = generate_comparison_script(&clip_config, &super_params, None);
-
-    let env = Environment::from_script(&script)?;
-    let (c_node, _) = env.get_output(0)?;
-    let (r_node, _) = env.get_output(1)?;
-
-    let c_perf = measure_filter_performance(&c_node, 50, "C MVTools", "Super")?;
-    let r_perf = measure_filter_performance(&r_node, 50, "Rust zoomv", "Super")?;
-
-    println!("{}", compare_performance(&c_perf, &r_perf));
-
-    // Just informational, don't fail on performance
-    Ok(())
-}
-
-#[test]
-#[cfg(feature = "e2e")]
 fn test_super_with_pelclip() -> Result<()> {
     require_mvtools!();
 

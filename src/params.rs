@@ -3,7 +3,9 @@ use std::num::NonZeroU8;
 
 use anyhow::{Result, bail};
 
+#[allow(dead_code)]
 pub const MV_DEFAULT_SCD1: usize = 400;
+#[allow(dead_code)]
 pub const MV_DEFAULT_SCD2: usize = 130;
 
 #[repr(C)]

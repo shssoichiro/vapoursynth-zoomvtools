@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::fmt::Write;
 
 #[derive(Debug, Clone)]
@@ -256,9 +258,9 @@ c_super = core.mv.Super(clip{})
     );
 
     if let Some(analyse) = analyse_params {
-        write!(
+        writeln!(
             &mut script,
-            "c_vectors = core.mv.Analyse(c_super{})\n",
+            "c_vectors = core.mv.Analyse(c_super{})",
             if !analyse.to_kwargs().is_empty() {
                 format!(", {}", analyse.to_kwargs())
             } else {
@@ -283,9 +285,9 @@ r_super = core.zoomv.Super(clip{})
     .unwrap();
 
     if let Some(analyse) = analyse_params {
-        write!(
+        writeln!(
             &mut script,
-            "r_vectors = core.zoomv.Analyse(r_super{})\n",
+            "r_vectors = core.zoomv.Analyse(r_super{})",
             if !analyse.to_kwargs().is_empty() {
                 format!(", {}", analyse.to_kwargs())
             } else {

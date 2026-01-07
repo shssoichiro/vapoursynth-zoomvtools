@@ -85,7 +85,7 @@ make_filter_function! {
     fn create_analyse<'core>(
         _api: API,
         _core: CoreRef<'core>,
-        super_: Node<'core>,
+        super_clip: Node<'core>,
         blksize: Option<i64>,
         blksizev: Option<i64>,
         levels: Option<i64>,
@@ -115,14 +115,12 @@ make_filter_function! {
         tff: Option<i64>,
         search_coarse: Option<i64>,
         dct: Option<i64>,
-        clip: Node<'core>,
+        clip: Option<Node<'core>>,
     ) -> Result<Option<Box<dyn Filter<'core> + 'core>>, Error> {
         // `opt` exists for compatibility purposes, but will not be used.
         // `clip` exists for compatibility purposes, but it was never used in the original plugin.
-
-        // TODO: test if it's a problem for compatibility that `super` is a reserved keyword
         let mvanalyse = Analyse::new(
-            super_,
+            super_clip,
             blksize,
             blksizev,
             levels,

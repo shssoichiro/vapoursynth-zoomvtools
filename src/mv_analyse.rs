@@ -25,6 +25,7 @@ const PROP_MVANALYSISDATA: &str = "MVTools_MVAnalysisData";
 const PROP_VECTORS: &str = "MVTools_vectors";
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Analyse<'core> {
     /// Super clip
     node: Node<'core>,
@@ -73,7 +74,7 @@ pub struct Analyse<'core> {
     /// the range (radius) of wide search for bad blocks.
     /// Default is 24 (image pixel units).
     /// Use positive value for UMH search and negative for Exhaustive search.
-    bad_range: isize,
+    bad_range: i32,
     /// Alternate blocks scan in rows from left to right and from right to left. Default is True
     meander: bool,
     /// try to start searches around many predictors. Default is false.
@@ -412,8 +413,8 @@ impl<'core> Analyse<'core> {
         let super_width = NonZeroUsize::new(width.get() - super_hpad * 2).unwrap();
         let blk_x = (super_width.get() - overlap_x) / (blk_size_x - overlap_x);
         let blk_y = (super_height.get() - overlap_y) / (blk_size_y - overlap_y);
-        let width_b = (blk_size_x - overlap_x) + blk_x + overlap_x;
-        let height_b = (blk_size_y - overlap_y) + blk_y + overlap_y;
+        let width_b = (blk_size_x - overlap_x) * blk_x + overlap_x;
+        let height_b = (blk_size_y - overlap_y) * blk_y + overlap_y;
 
         // calculate valid levels
         let mut levels_max = 0;
@@ -512,7 +513,7 @@ impl<'core> Analyse<'core> {
             dct_mode: dctmode,
             divide_extra,
             bad_sad,
-            bad_range: badrange.map(isize::try_from).unwrap_or(Ok(24))?,
+            bad_range: badrange.map(i32::try_from).unwrap_or(Ok(24))?,
             meander: meander.map(|meander| meander > 0).unwrap_or(true),
             try_many: trymany.map(|trymany| trymany > 0).unwrap_or(false),
             fields: fields.map(|fields| fields > 0).unwrap_or(false),
@@ -612,9 +613,9 @@ impl<'core> Analyse<'core> {
             {
                 // vertical shift of fields for fieldbased video at finest level pel2
                 field_shift = if src_top_field && !ref_top_field {
-                    (u8::from(self.analysis_data.pel) as usize / 2) as isize
+                    (u8::from(self.analysis_data.pel) as u32 / 2) as i32
                 } else if ref_top_field && !src_top_field {
-                    -((u8::from(self.analysis_data.pel) as usize / 2) as isize)
+                    -((u8::from(self.analysis_data.pel) as u32 / 2) as i32)
                 } else {
                     0
                 };
@@ -710,7 +711,7 @@ impl<'core> Analyse<'core> {
                 self.analysis_data.bytes()
             },
         )?;
-        dest_props.set_data(PROP_VECTORS, &vectors.bytes())?;
+        dest_props.set_data(PROP_VECTORS, &vectors.block_data)?;
 
         Ok(dest.into())
     }
