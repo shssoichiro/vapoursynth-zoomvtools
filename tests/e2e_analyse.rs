@@ -58,18 +58,7 @@ fn test_analyse_default_params() -> Result<()> {
         // Compare MVAnalysisData
         let c_analysis = c_props.get_data("MVTools_MVAnalysisData")?;
         let r_analysis = r_props.get_data("MVTools_MVAnalysisData")?;
-
-        assert_eq!(
-            c_analysis.len(),
-            r_analysis.len(),
-            "MVAnalysisData size mismatch at frame {}",
-            n
-        );
-        assert_eq!(
-            c_analysis, r_analysis,
-            "MVAnalysisData content mismatch at frame {}",
-            n
-        );
+        compare_analysis_data(c_analysis, r_analysis);
     }
 
     Ok(())
@@ -245,11 +234,7 @@ fn test_analyse_different_block_sizes() -> Result<()> {
         let c_analysis = c_props.get_data("MVTools_MVAnalysisData")?;
         let r_analysis = r_props.get_data("MVTools_MVAnalysisData")?;
 
-        assert_eq!(
-            c_analysis, r_analysis,
-            "MVAnalysisData mismatch for block size {}",
-            blksize
-        );
+        compare_analysis_data(c_analysis, r_analysis);
     }
 
     Ok(())
@@ -303,12 +288,36 @@ fn test_analyse_16bit() -> Result<()> {
         let c_analysis = c_props.get_data("MVTools_MVAnalysisData")?;
         let r_analysis = r_props.get_data("MVTools_MVAnalysisData")?;
 
-        assert_eq!(
-            c_analysis, r_analysis,
-            "MVAnalysisData mismatch at frame {}",
-            n
-        );
+        compare_analysis_data(c_analysis, r_analysis);
     }
 
     Ok(())
+}
+
+fn compare_analysis_data(c_analysis: &[u8], r_analysis: &[u8]) {
+    // Expected size difference of 12, to account for removed fields
+    assert_eq!(
+        c_analysis.len(),
+        r_analysis.len() + 12,
+        "MVAnalysisData size mismatch",
+    );
+    for ((_, c_field), (i, r_field)) in c_analysis
+        .chunks_exact(4)
+        .enumerate()
+        .filter(|(i, _)| {
+            // removed fields: magic number (0), version (1), cpu flags (8)
+            ![0, 1, 8].contains(i)
+        })
+        .zip(r_analysis.chunks_exact(4).enumerate())
+    {
+        let mut c_field = [c_field[0], c_field[1], c_field[2], c_field[3]];
+        if i == 6 {
+            // ignore cpu flags field on motion flags field
+            c_field[0] &= 0b11111110;
+        };
+        assert_eq!(
+            c_field, r_field,
+            "MVAnalysisData content mismatch on field {i}",
+        );
+    }
 }

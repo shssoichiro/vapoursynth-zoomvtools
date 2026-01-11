@@ -17,10 +17,10 @@ Zoomy MV tools, written in Rust.
 ## Done
 
 - [x] Super
-  - [x] Fully working + tested
+  - [x] Equivalent output to C
   - [x] Similar performance to C
 - [x] Analyse
-  - [ ] Fully working + tested
+  - [ ] Equivalent output to C
 
 ## TODO
 

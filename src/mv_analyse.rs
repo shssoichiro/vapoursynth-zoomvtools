@@ -94,14 +94,8 @@ pub struct Analyse<'core> {
     super_levels: usize,
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 struct MVAnalysisData {
-    // TODO: Are these top two fields even used for anything at all?
-    /// Unique identifier, not very useful
-    pub magic_key: i32,
-    /// MVAnalysisData and outfile format version
-    pub version: i32,
     /// horizontal block size in pixels
     pub blk_size_x: NonZeroUsize,
     /// vertical block size in pixels
@@ -142,13 +136,65 @@ struct MVAnalysisData {
 
 impl MVAnalysisData {
     #[must_use]
-    pub(crate) fn bytes(&self) -> &[u8] {
+    pub(crate) fn bytes(&self) -> Vec<u8> {
+        let prop_data = MVAnalysisPropData::from(*self);
         // SAFETY: We've added `repr(c)` to ensure a predictable size of the struct
         unsafe {
+            // convert to vec to avoid lifetime issues
             std::slice::from_raw_parts(
-                self as *const Self as *const u8,
-                std::mem::size_of::<Self>(),
+                &prop_data as *const MVAnalysisPropData as *const u8,
+                std::mem::size_of::<MVAnalysisPropData>(),
             )
+            .to_vec()
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+// This version of the struct maintains equivalent types to the C version
+struct MVAnalysisPropData {
+    pub blk_size_x: i32,
+    pub blk_size_y: i32,
+    pub pel: i32,
+    pub level_count: i32,
+    pub delta_frame: i32,
+    pub is_backward: i32,
+    pub motion_flags: i32,
+    pub width: i32,
+    pub height: i32,
+    pub overlap_x: i32,
+    pub overlap_y: i32,
+    pub blk_x: i32,
+    pub blk_y: i32,
+    pub bits_per_sample: i32,
+    pub y_ratio_uv: i32,
+    pub x_ratio_uv: i32,
+    pub h_padding: i32,
+    pub v_padding: i32,
+}
+
+impl From<MVAnalysisData> for MVAnalysisPropData {
+    fn from(value: MVAnalysisData) -> Self {
+        MVAnalysisPropData {
+            blk_size_x: value.blk_size_x.get() as _,
+            blk_size_y: value.blk_size_y.get() as _,
+            pel: value.pel as _,
+            level_count: value.level_count as _,
+            delta_frame: value.delta_frame as _,
+            is_backward: value.is_backward as _,
+            motion_flags: value.motion_flags.bits() as _,
+            width: value.width.get() as _,
+            height: value.height.get() as _,
+            overlap_x: value.overlap_x as _,
+            overlap_y: value.overlap_y as _,
+            blk_x: value.blk_x.get() as _,
+            blk_y: value.blk_y.get() as _,
+            bits_per_sample: value.bits_per_sample.get() as _,
+            y_ratio_uv: value.y_ratio_uv.get() as _,
+            x_ratio_uv: value.x_ratio_uv.get() as _,
+            h_padding: value.h_padding as _,
+            v_padding: value.v_padding as _,
         }
     }
 }
@@ -442,8 +488,6 @@ impl<'core> Analyse<'core> {
         }
 
         let analysis_data = MVAnalysisData {
-            magic_key: Default::default(),
-            version: Default::default(),
             blk_size_x: NonZeroUsize::new(blk_size_x)
                 .ok_or_else(|| anyhow!("Analyse: blksize must be greater than 0"))?,
             blk_size_y: NonZeroUsize::new(blk_size_y)
@@ -702,10 +746,10 @@ impl<'core> Analyse<'core> {
         let mut dest_props = dest.props_mut();
         dest_props.set_data(
             PROP_MVANALYSISDATA,
-            if self.divide_extra != DivideMode::None {
+            &if self.divide_extra != DivideMode::None {
                 match self.analysis_data_divided.as_ref() {
                     Some(data) => data.bytes(),
-                    _ => &[],
+                    _ => Vec::new(),
                 }
             } else {
                 self.analysis_data.bytes()

@@ -8,7 +8,6 @@ pub const MV_DEFAULT_SCD1: usize = 400;
 #[allow(dead_code)]
 pub const MV_DEFAULT_SCD2: usize = 130;
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Subpel {
     Full = 1,
