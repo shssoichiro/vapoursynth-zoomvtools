@@ -1,6 +1,7 @@
-use super::*;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
+
+use super::*;
 
 /// Test helper to create minimal valid parameters for MVFrame::new
 #[allow(clippy::type_complexity)]

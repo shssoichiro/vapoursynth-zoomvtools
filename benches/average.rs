@@ -1,8 +1,8 @@
-use criterion::Criterion;
-use criterion::{criterion_group, criterion_main};
+use std::{hint::black_box, num::NonZeroUsize};
+
+use criterion::{Criterion, criterion_group, criterion_main};
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro128StarStar;
-use std::{hint::black_box, num::NonZeroUsize};
 use vapoursynth_zoomvtools::average::average2;
 
 pub fn bench_average2_8bit(c: &mut Criterion) {

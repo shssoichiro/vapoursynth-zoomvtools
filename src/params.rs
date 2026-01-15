@@ -1,7 +1,7 @@
-use bitflags::bitflags;
 use std::num::NonZeroU8;
 
 use anyhow::{Result, bail};
+use bitflags::bitflags;
 
 #[allow(dead_code)]
 pub const MV_DEFAULT_SCD1: usize = 400;

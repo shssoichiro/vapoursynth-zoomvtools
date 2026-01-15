@@ -6,15 +6,14 @@ mod satd;
 #[cfg(test)]
 mod tests;
 
+use std::num::NonZeroUsize;
+
 pub use luma::*;
 pub use math::*;
 use num_traits::PrimInt;
 pub use plane::*;
 pub use sad::*;
 pub use satd::*;
-
-use std::num::NonZeroUsize;
-
 use vapoursynth::prelude::Component;
 
 #[cfg(target_arch = "x86_64")]

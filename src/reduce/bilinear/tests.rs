@@ -1,8 +1,9 @@
 #![allow(unused_unsafe)]
 #![allow(clippy::undocumented_unsafe_blocks)]
 
-use pastey::paste;
 use std::num::NonZeroUsize;
+
+use pastey::paste;
 
 macro_rules! create_tests {
     ($module:ident) => {

@@ -5,9 +5,11 @@ mod rust;
 #[cfg(test)]
 mod tests;
 
-use crate::util::Pixel;
-use cfg_if::cfg_if;
 use std::num::NonZeroUsize;
+
+use cfg_if::cfg_if;
+
+use crate::util::Pixel;
 
 /// Downscales an image by 2x using quadratic interpolation.
 ///

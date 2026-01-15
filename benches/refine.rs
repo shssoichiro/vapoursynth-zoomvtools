@@ -1,15 +1,23 @@
-use criterion::Criterion;
-use criterion::{criterion_group, criterion_main};
+use std::{
+    hint::black_box,
+    num::{NonZeroU8, NonZeroUsize},
+};
+
+use criterion::{Criterion, criterion_group, criterion_main};
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro128StarStar;
-use std::num::NonZeroU8;
-use std::{hint::black_box, num::NonZeroUsize};
-use vapoursynth_zoomvtools::mv_plane::MVPlane;
-use vapoursynth_zoomvtools::params::Subpel;
-use vapoursynth_zoomvtools::refine::{
-    refine_diagonal_bilinear, refine_horizontal_bicubic, refine_horizontal_bilinear,
-    refine_horizontal_wiener, refine_vertical_bicubic, refine_vertical_bilinear,
-    refine_vertical_wiener,
+use vapoursynth_zoomvtools::{
+    mv_plane::MVPlane,
+    params::Subpel,
+    refine::{
+        refine_diagonal_bilinear,
+        refine_horizontal_bicubic,
+        refine_horizontal_bilinear,
+        refine_horizontal_wiener,
+        refine_vertical_bicubic,
+        refine_vertical_bilinear,
+        refine_vertical_wiener,
+    },
 };
 
 pub fn bench_refine_ext_pel2_8bit(c: &mut Criterion) {

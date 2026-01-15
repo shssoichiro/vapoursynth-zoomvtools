@@ -3,11 +3,15 @@
 #[macro_use]
 mod common;
 
-use crate::common::script_gen::{
-    ClipContentType, FilterParams, TestClipConfig, generate_comparison_script,
-};
 use anyhow::{Context, Result};
 use vapoursynth::prelude::Environment;
+
+use crate::common::script_gen::{
+    ClipContentType,
+    FilterParams,
+    TestClipConfig,
+    generate_comparison_script,
+};
 
 #[test]
 fn test_analyse_default_params() -> Result<()> {

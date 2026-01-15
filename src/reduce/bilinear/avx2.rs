@@ -1,12 +1,10 @@
 #![allow(clippy::undocumented_unsafe_blocks)]
 
-use std::mem::size_of;
-use std::num::NonZeroUsize;
-
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
+use std::{mem::size_of, num::NonZeroUsize};
 
 use crate::util::Pixel;
 

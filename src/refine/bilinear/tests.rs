@@ -1,8 +1,9 @@
 #![allow(unused_unsafe)]
 #![allow(clippy::undocumented_unsafe_blocks)]
 
-use pastey::paste;
 use std::num::{NonZeroU8, NonZeroUsize};
+
+use pastey::paste;
 
 use super::*;
 

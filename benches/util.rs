@@ -1,8 +1,8 @@
-use criterion::Criterion;
-use criterion::{criterion_group, criterion_main};
+use std::{hint::black_box, num::NonZeroUsize};
+
+use criterion::{Criterion, criterion_group, criterion_main};
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro128StarStar;
-use std::{hint::black_box, num::NonZeroUsize};
 use vapoursynth_zoomvtools::util::vs_bitblt;
 
 pub fn bench_vs_bitblt_8bit_same_stride(c: &mut Criterion) {

@@ -281,7 +281,8 @@ impl<'core> Analyse<'core> {
             | (128, 64)
             | (128, 128) => (),
             _ => bail!(
-                "Analyse: the block size must be 4x4, 8x4, 8x8, 16x2, 16x8, 16x16, 32x16, 32x32, 64x32, 64x64, 128x64, or 128x128."
+                "Analyse: the block size must be 4x4, 8x4, 8x8, 16x2, 16x8, 16x16, 32x16, 32x32, \
+                 64x32, 64x64, 128x64, or 128x128."
             ),
         }
 
@@ -297,7 +298,8 @@ impl<'core> Analyse<'core> {
 
         if overlap_x > blk_size_x / 2 || overlap_y > blk_size_y / 2 {
             bail!(
-                "Analyse: overlap must be at most half of blksize, and overlapv must be at most half of blksizev"
+                "Analyse: overlap must be at most half of blksize, and overlapv must be at most \
+                 half of blksizev"
             );
         }
 
@@ -371,7 +373,8 @@ impl<'core> Analyse<'core> {
                 || overlap_y % (2 << format.sub_sampling_h()) > 0)
         {
             bail!(
-                "Analyse: overlap and overlapv must be multiples of 2 or 4 when divide=True, depending on the super clip's subsampling."
+                "Analyse: overlap and overlapv must be multiples of 2 or 4 when divide=True, \
+                 depending on the super clip's subsampling."
             );
         }
         if delta_frame <= 0 && (-delta_frame) >= info.num_frames as isize {
@@ -404,7 +407,9 @@ impl<'core> Analyse<'core> {
             }
         };
         let super_props = evil.props();
-        let super_props_err = "Analyse: required properties not found in first frame of super clip. Maybe clip didn't come from mv.Super? Was the first frame trimmed away?";
+        let super_props_err = "Analyse: required properties not found in first frame of super \
+                               clip. Maybe clip didn't come from mv.Super? Was the first frame \
+                               trimmed away?";
         let super_props_err2 = "Analyse: parameters from super clip appear to be wrong.";
         let super_height = NonZeroUsize::new(
             usize::try_from(
@@ -619,7 +624,8 @@ impl<'core> Analyse<'core> {
             Ok(field) => field > 0,
             Err(_) if self.fields && self.tff.is_none() => {
                 bail!(
-                    "Analyse: _Field property not found in input frame. Therefore, you must pass tff argument."
+                    "Analyse: _Field property not found in input frame. Therefore, you must pass \
+                     tff argument."
                 );
             }
             _ => false,
@@ -639,7 +645,8 @@ impl<'core> Analyse<'core> {
                 Ok(field) => field > 0,
                 Err(_) if self.fields && self.tff.is_none() => {
                     bail!(
-                        "Analyse: _Field property not found in input frame. Therefore, you must pass tff argument."
+                        "Analyse: _Field property not found in input frame. Therefore, you must \
+                         pass tff argument."
                     );
                 }
                 _ => false,

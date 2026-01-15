@@ -5,9 +5,11 @@ mod rust;
 #[cfg(test)]
 mod tests;
 
-use crate::util::Pixel;
-use cfg_if::cfg_if;
 use std::num::{NonZeroU8, NonZeroUsize};
+
+use cfg_if::cfg_if;
+
+use crate::util::Pixel;
 
 /// Performs horizontal bilinear interpolation for sub-pixel motion estimation refinement.
 ///

@@ -1,10 +1,18 @@
 use anyhow::Result;
-use vapoursynth::format::{FormatID, PresetFormat};
-use vapoursynth::prelude::Environment;
+use vapoursynth::{
+    format::{FormatID, PresetFormat},
+    prelude::Environment,
+};
 
 use super::Analyse;
 use crate::params::{
-    DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel,
+    DctMode,
+    DivideMode,
+    MVPlaneSet,
+    MotionFlags,
+    PenaltyScaling,
+    SearchType,
+    Subpel,
 };
 
 fn create_test_env(

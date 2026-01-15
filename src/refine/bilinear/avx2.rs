@@ -1,11 +1,10 @@
 #![allow(clippy::undocumented_unsafe_blocks)]
 
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
 use std::num::{NonZeroU8, NonZeroUsize};
 
 use crate::util::Pixel;
-
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
 
 /// Performs horizontal bilinear interpolation for sub-pixel motion estimation refinement.
 ///

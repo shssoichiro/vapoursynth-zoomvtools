@@ -1,8 +1,10 @@
 #![allow(clippy::undocumented_unsafe_blocks)]
 #![allow(unsafe_op_in_unsafe_fn)]
 
-use std::arch::x86_64::*;
-use std::num::{NonZeroU8, NonZeroUsize};
+use std::{
+    arch::x86_64::*,
+    num::{NonZeroU8, NonZeroUsize},
+};
 
 use crate::util::Pixel;
 

@@ -138,8 +138,8 @@ where
 
         if pct > config.max_different_pixels || diff.mean_diff > config.mean_tolerance {
             bail!(
-                "{}\nPlane {}: {}/{} pixels differ ({:.2}%), max_diff={}, mean_diff={:.4}\n\
-                 First differences: {:#?}",
+                "{}\nPlane {}: {}/{} pixels differ ({:.2}%), max_diff={}, mean_diff={:.4}\nFirst \
+                 differences: {:#?}",
                 context,
                 diff.plane,
                 diff.different_pixels,

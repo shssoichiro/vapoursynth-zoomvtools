@@ -1,5 +1,6 @@
-use bitflags::bitflags;
 use std::mem::size_of;
+
+use bitflags::bitflags;
 
 pub const MV_SIZE: usize = size_of::<MotionVector>();
 

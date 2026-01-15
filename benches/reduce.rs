@@ -1,10 +1,14 @@
-use criterion::Criterion;
-use criterion::{criterion_group, criterion_main};
+use std::{hint::black_box, num::NonZeroUsize};
+
+use criterion::{Criterion, criterion_group, criterion_main};
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro128StarStar;
-use std::{hint::black_box, num::NonZeroUsize};
 use vapoursynth_zoomvtools::reduce::{
-    reduce_average, reduce_bilinear, reduce_cubic, reduce_quadratic, reduce_triangle,
+    reduce_average,
+    reduce_bilinear,
+    reduce_cubic,
+    reduce_quadratic,
+    reduce_triangle,
 };
 
 pub fn bench_reduce_average_8bit(c: &mut Criterion) {

@@ -1,6 +1,7 @@
+use std::num::{NonZeroU8, NonZeroUsize};
+
 use super::*;
 use crate::params::{ReduceFilter, Subpel, SubpelMethod};
-use std::num::{NonZeroU8, NonZeroUsize};
 
 // Helper function to create a test MVPlane
 fn create_test_mvplane(

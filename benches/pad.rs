@@ -1,8 +1,8 @@
-use criterion::Criterion;
-use criterion::{criterion_group, criterion_main};
+use std::{hint::black_box, num::NonZeroUsize};
+
+use criterion::{Criterion, criterion_group, criterion_main};
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro128StarStar;
-use std::{hint::black_box, num::NonZeroUsize};
 use vapoursynth_zoomvtools::pad::pad_reference_frame;
 
 pub fn bench_pad_reference_frame_8bit(c: &mut Criterion) {

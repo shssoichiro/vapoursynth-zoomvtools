@@ -1,6 +1,7 @@
+use vapoursynth::format::PresetFormat;
+
 use super::*;
 use crate::tests::create_test_env;
-use vapoursynth::format::PresetFormat;
 
 // FIXME: One of these tests is intermittently segfaulting.
 

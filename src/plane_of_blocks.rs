@@ -1,3 +1,14 @@
+use std::{
+    cmp::{max, min},
+    mem::transmute,
+    num::{NonZeroU8, NonZeroUsize},
+};
+
+use anyhow::Result;
+use bitflags::bitflags;
+use smallvec::SmallVec;
+use vapoursynth::frame::Frame;
+
 use crate::{
     dct::DctHelper,
     mv::{CheckMVFlags, MV_SIZE, MotionVector},
@@ -5,15 +16,6 @@ use crate::{
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
     util::{Pixel, get_sad, get_satd, luma_sum, median, plane_with_padding},
 };
-use anyhow::Result;
-use bitflags::bitflags;
-use smallvec::SmallVec;
-use std::{
-    cmp::{max, min},
-    mem::transmute,
-    num::{NonZeroU8, NonZeroUsize},
-};
-use vapoursynth::frame::Frame;
 
 // max block width * max block height
 const MAX_BLOCK_SIZE: usize = 128 * 128;

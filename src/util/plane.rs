@@ -1,7 +1,7 @@
-use anyhow::{Result, bail};
 use core::slice;
 use std::mem::transmute;
 
+use anyhow::{Result, bail};
 use vapoursynth::frame::Frame;
 
 use crate::util::Pixel;
