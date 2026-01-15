@@ -51,8 +51,9 @@ box_bordered = core.std.AddBorders(box, left=border_h, right=border_h, top=borde
 
 # Shift the pattern per frame to create motion
 def shift_clip(n):
-    shift_x = (n * {speed_x}) % (clip.width - box_size)
-    shift_y = (n * {speed_y}) % (clip.height - box_size)
+    # Ensure shifts are mod 2 for YUV420 chroma alignment
+    shift_x = ((n * {speed_x}) % (clip.width - box_size)) & ~1
+    shift_y = ((n * {speed_y}) % (clip.height - box_size)) & ~1
     if shift_x == 0 and shift_y == 0:
         return box_bordered
     # Shift by cropping and adding borders

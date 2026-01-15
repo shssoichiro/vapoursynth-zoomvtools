@@ -8,15 +8,12 @@ mod tests;
 
 pub use luma::*;
 pub use math::*;
+use num_traits::PrimInt;
 pub use plane::*;
 pub use sad::*;
 pub use satd::*;
 
-use std::{
-    convert::TryFrom,
-    num::NonZeroUsize,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Shl, Shr, Sub, SubAssign},
-};
+use std::num::NonZeroUsize;
 
 use vapoursynth::prelude::Component;
 
@@ -27,35 +24,7 @@ cpufeatures::new!(cpuid_avx2, "avx2");
 pub use cpuid_avx2::get as has_avx2;
 
 pub trait Pixel:
-    Component
-    + Clone
-    + Copy
-    + Add<Self, Output = Self>
-    + AddAssign<Self>
-    + Sub<Self, Output = Self>
-    + SubAssign<Self>
-    + Mul<Self, Output = Self>
-    + MulAssign<Self>
-    + Div<Self, Output = Self>
-    + DivAssign<Self>
-    + Shl<u8, Output = Self>
-    + Shr<usize, Output = Self>
-    + Into<u16>
-    + Into<i32>
-    + Into<u32>
-    + Into<i64>
-    + Into<u64>
-    + Into<f32>
-    + From<u8>
-    + TryFrom<u16>
-    + TryFrom<u32>
-    + TryFrom<u64>
-    + FromFloatLossy
-    + MaxValue
-    + PartialOrd
-    + Ord
-    + PartialEq
-    + Eq
+    Component + Copy + Clone + Default + Send + Sync + PrimInt + FromFloatLossy + 'static
 {
     #[must_use]
     fn from_u32_or_max_value(value: u32) -> Self;
@@ -63,58 +32,13 @@ pub trait Pixel:
 
 impl<T> Pixel for T
 where
-    T: Component
-        + Clone
-        + Copy
-        + Add<Self, Output = Self>
-        + AddAssign<Self>
-        + Sub<Self, Output = Self>
-        + SubAssign<Self>
-        + Mul<Self, Output = Self>
-        + MulAssign<Self>
-        + Div<Self, Output = Self>
-        + DivAssign<Self>
-        + Shl<u8, Output = Self>
-        + Shr<usize, Output = Self>
-        + Into<u16>
-        + Into<i32>
-        + Into<u32>
-        + Into<i64>
-        + Into<u64>
-        + Into<f32>
-        + From<u8>
-        + TryFrom<u16>
-        + TryFrom<u32>
-        + TryFrom<u64>
-        + FromFloatLossy
-        + MaxValue
-        + PartialOrd
-        + Ord
-        + PartialEq
-        + Eq,
+    T: Component + Copy + Clone + Default + Send + Sync + PrimInt + FromFloatLossy + 'static,
 {
     fn from_u32_or_max_value(value: u32) -> Self {
-        Self::try_from(value).unwrap_or_else(|_| {
+        Self::from(value).unwrap_or_else(|| {
             // If conversion fails (shouldn't happen with our inputs), fallback to max
             Self::max_value()
         })
-    }
-}
-
-pub trait MaxValue {
-    #[must_use]
-    fn max_value() -> Self;
-}
-
-impl MaxValue for u8 {
-    fn max_value() -> Self {
-        u8::MAX
-    }
-}
-
-impl MaxValue for u16 {
-    fn max_value() -> Self {
-        u16::MAX
     }
 }
 

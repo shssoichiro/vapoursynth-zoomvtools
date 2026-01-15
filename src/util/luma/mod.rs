@@ -85,7 +85,7 @@ fn luma_sum_impl<T: Pixel, const WIDTH: usize, const HEIGHT: usize>(
     for j in 0..HEIGHT {
         let src_row = &src[j * src_pitch.get()..][..WIDTH];
         for &pix in src_row {
-            let pixel_value: u64 = pix.into();
+            let pixel_value: u64 = pix.to_u64().expect("fits in u64");
             luma_sum += pixel_value;
         }
     }

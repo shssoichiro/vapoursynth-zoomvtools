@@ -101,8 +101,8 @@ fn satd_4x4<
         let ref_row = &ref_[ref_offset..ref_offset + 4];
 
         let diff = |idx: usize| -> SUM2 {
-            let s: i32 = src_row[idx].into();
-            let r: i32 = ref_row[idx].into();
+            let s: i32 = src_row[idx].to_i32().expect("fits in i32");
+            let r: i32 = ref_row[idx].to_i32().expect("fits in i32");
             SUM2::from_diff(s - r)
         };
 
@@ -169,8 +169,8 @@ fn satd_8x4<
         let ref_row = &ref_[ref_offset..ref_offset + 8];
 
         let diff = |idx: usize| -> SUM2 {
-            let s: i32 = src_row[idx].into();
-            let r: i32 = ref_row[idx].into();
+            let s: i32 = src_row[idx].to_i32().expect("fits in i32");
+            let r: i32 = ref_row[idx].to_i32().expect("fits in i32");
             SUM2::from_diff(s - r)
         };
 

@@ -66,8 +66,10 @@ unsafe fn reduce_quadratic_vertical<T: Pixel>(
 
     // Special case for first line
     for x in 0..dest_width.get() {
-        let a: u32 = (*src.add(x)).into();
-        let b: u32 = (*src.add(x + src_pitch.get())).into();
+        let a: u32 = (*src.add(x)).to_u32().expect("fits in u32");
+        let b: u32 = (*src.add(x + src_pitch.get()))
+            .to_u32()
+            .expect("fits in u32");
         *dest.add(x) = T::from_u32_or_max_value((a + b + 1) / 2);
     }
     dest = dest.add(dest_pitch.get());
@@ -76,12 +78,24 @@ unsafe fn reduce_quadratic_vertical<T: Pixel>(
     for y in 1..(dest_height.get() - 1) {
         let src_row_offset = y * 2 * src_pitch.get();
         for x in 0..dest_width.get() {
-            let mut m0: u32 = (*src.add(src_row_offset + x - src_pitch.get() * 2)).into();
-            let mut m1: u32 = (*src.add(src_row_offset + x - src_pitch.get())).into();
-            let mut m2: u32 = (*src.add(src_row_offset + x)).into();
-            let m3: u32 = (*src.add(src_row_offset + x + src_pitch.get())).into();
-            let m4: u32 = (*src.add(src_row_offset + x + src_pitch.get() * 2)).into();
-            let m5: u32 = (*src.add(src_row_offset + x + src_pitch.get() * 3)).into();
+            let mut m0: u32 = (*src.add(src_row_offset + x - src_pitch.get() * 2))
+                .to_u32()
+                .expect("fits in u32");
+            let mut m1: u32 = (*src.add(src_row_offset + x - src_pitch.get()))
+                .to_u32()
+                .expect("fits in u32");
+            let mut m2: u32 = (*src.add(src_row_offset + x))
+                .to_u32()
+                .expect("fits in u32");
+            let m3: u32 = (*src.add(src_row_offset + x + src_pitch.get()))
+                .to_u32()
+                .expect("fits in u32");
+            let m4: u32 = (*src.add(src_row_offset + x + src_pitch.get() * 2))
+                .to_u32()
+                .expect("fits in u32");
+            let m5: u32 = (*src.add(src_row_offset + x + src_pitch.get() * 3))
+                .to_u32()
+                .expect("fits in u32");
 
             m2 = (m2 + m3) * 22;
             m1 = (m1 + m4) * 9;
@@ -97,8 +111,12 @@ unsafe fn reduce_quadratic_vertical<T: Pixel>(
     if dest_height.get() > 1 {
         let src_row_offset = (dest_height.get() - 1) * 2 * src_pitch.get();
         for x in 0..dest_width.get() {
-            let a: u32 = (*src.add(src_row_offset + x)).into();
-            let b: u32 = (*src.add(src_row_offset + x + src_pitch.get())).into();
+            let a: u32 = (*src.add(src_row_offset + x))
+                .to_u32()
+                .expect("fits in u32");
+            let b: u32 = (*src.add(src_row_offset + x + src_pitch.get()))
+                .to_u32()
+                .expect("fits in u32");
             *dest.add(x) = T::from_u32_or_max_value((a + b + 1) / 2);
         }
     }
@@ -120,18 +138,18 @@ unsafe fn reduce_quadratic_horizontal_inplace<T: Pixel>(
 
     for _y in 0..dest_height.get() {
         // Special case start of line
-        let a: u32 = (*dest).into();
-        let b: u32 = (*dest.add(1)).into();
+        let a: u32 = (*dest).to_u32().expect("fits in u32");
+        let b: u32 = (*dest.add(1)).to_u32().expect("fits in u32");
         let src0 = (a + b + 1) / 2;
 
         // Middle of line
         for x in 1..(dest_width.get() - 1) {
-            let mut m0: u32 = (*dest.add(x * 2 - 2)).into();
-            let mut m1: u32 = (*dest.add(x * 2 - 1)).into();
-            let mut m2: u32 = (*dest.add(x * 2)).into();
-            let m3: u32 = (*dest.add(x * 2 + 1)).into();
-            let m4: u32 = (*dest.add(x * 2 + 2)).into();
-            let m5: u32 = (*dest.add(x * 2 + 3)).into();
+            let mut m0: u32 = (*dest.add(x * 2 - 2)).to_u32().expect("fits in u32");
+            let mut m1: u32 = (*dest.add(x * 2 - 1)).to_u32().expect("fits in u32");
+            let mut m2: u32 = (*dest.add(x * 2)).to_u32().expect("fits in u32");
+            let m3: u32 = (*dest.add(x * 2 + 1)).to_u32().expect("fits in u32");
+            let m4: u32 = (*dest.add(x * 2 + 2)).to_u32().expect("fits in u32");
+            let m5: u32 = (*dest.add(x * 2 + 3)).to_u32().expect("fits in u32");
 
             m2 = (m2 + m3) * 22;
             m1 = (m1 + m4) * 9;
@@ -146,8 +164,8 @@ unsafe fn reduce_quadratic_horizontal_inplace<T: Pixel>(
         // Special case end of line
         if dest_width.get() > 1 {
             let x = dest_width.get() - 1;
-            let a: u32 = (*dest.add(x * 2)).into();
-            let b: u32 = (*dest.add(x * 2 + 1)).into();
+            let a: u32 = (*dest.add(x * 2)).to_u32().expect("fits in u32");
+            let b: u32 = (*dest.add(x * 2 + 1)).to_u32().expect("fits in u32");
             *dest.add(x) = T::from_u32_or_max_value((a + b + 1) / 2);
         }
 

@@ -71,8 +71,10 @@ unsafe fn reduce_triangle_vertical<T: Pixel>(
 
     // Process first output row: average of first two input rows
     for x in 0..width_usize {
-        let a: u32 = (*src.add(x)).into();
-        let b: u32 = (*src.add(x + src_pitch_usize)).into();
+        let a: u32 = (*src.add(x)).to_u32().expect("fits in u32");
+        let b: u32 = (*src.add(x + src_pitch_usize))
+            .to_u32()
+            .expect("fits in u32");
         *dest.add(x) = T::from_u32_or_max_value((a + b + 1) / 2);
     }
 
@@ -83,9 +85,13 @@ unsafe fn reduce_triangle_vertical<T: Pixel>(
 
         for x in 0..width_usize {
             // Access three consecutive input rows for the 1/4, 1/2, 1/4 filter
-            let a: u32 = (*src.add(src_offset + x - src_pitch_usize)).into(); // Previous row
-            let b: u32 = (*src.add(src_offset + x)).into(); // Current row
-            let c: u32 = (*src.add(src_offset + x + src_pitch_usize)).into(); // Next row
+            let a: u32 = (*src.add(src_offset + x - src_pitch_usize))
+                .to_u32()
+                .expect("fits in u32"); // Previous row
+            let b: u32 = (*src.add(src_offset + x)).to_u32().expect("fits in u32"); // Current row
+            let c: u32 = (*src.add(src_offset + x + src_pitch_usize))
+                .to_u32()
+                .expect("fits in u32"); // Next row
             *dest.add(dest_offset + x) = T::from_u32_or_max_value((a + b * 2 + c + 2) / 4);
         }
     }
@@ -108,14 +114,14 @@ unsafe fn reduce_triangle_horizontal_inplace<T: Pixel>(
     for _y in 0..height.get() {
         let x = 0;
         let mut a: u32;
-        let mut b: u32 = (*dest.add(x * 2)).into();
-        let mut c: u32 = (*dest.add(x * 2 + 1)).into();
+        let mut b: u32 = (*dest.add(x * 2)).to_u32().expect("fits in u32");
+        let mut c: u32 = (*dest.add(x * 2 + 1)).to_u32().expect("fits in u32");
         let src0 = (b + c + 1) / 2;
 
         for x in 1..width.get() {
-            a = (*dest.add(x * 2 - 1)).into();
-            b = (*dest.add(x * 2)).into();
-            c = (*dest.add(x * 2 + 1)).into();
+            a = (*dest.add(x * 2 - 1)).to_u32().expect("fits in u32");
+            b = (*dest.add(x * 2)).to_u32().expect("fits in u32");
+            c = (*dest.add(x * 2 + 1)).to_u32().expect("fits in u32");
 
             *dest.add(x) = T::from_u32_or_max_value((a + b * 2 + c + 2) / 4);
         }

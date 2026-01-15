@@ -45,12 +45,12 @@ pub fn refine_horizontal_wiener<T: Pixel>(
 
         // Handle first two pixels with bilinear interpolation (if width >= 2)
         if width.get() >= 2 {
-            let a: u32 = src_row[0].into();
-            let b: u32 = src_row[1].into();
+            let a: u32 = src_row[0].to_u32().expect("fits in u32");
+            let b: u32 = src_row[1].to_u32().expect("fits in u32");
             dest_row[0] = T::from_u32_or_max_value((a + b + 1) / 2);
 
             if width.get() >= 3 {
-                let c: u32 = src_row[2].into();
+                let c: u32 = src_row[2].to_u32().expect("fits in u32");
                 dest_row[1] = T::from_u32_or_max_value((b + c + 1) / 2);
             }
         }
@@ -64,12 +64,12 @@ pub fn refine_horizontal_wiener<T: Pixel>(
         };
 
         for i in wiener_start..wiener_end {
-            let mut m0: i32 = src_row[i - 2].into();
-            let m1: i32 = src_row[i - 1].into();
-            let mut m2: i32 = src_row[i].into();
-            let m3: i32 = src_row[i + 1].into();
-            let m4: i32 = src_row[i + 2].into();
-            let m5: i32 = src_row[i + 3].into();
+            let mut m0: i32 = src_row[i - 2].to_i32().expect("fits in i32");
+            let m1: i32 = src_row[i - 1].to_i32().expect("fits in i32");
+            let mut m2: i32 = src_row[i].to_i32().expect("fits in i32");
+            let m3: i32 = src_row[i + 1].to_i32().expect("fits in i32");
+            let m4: i32 = src_row[i + 2].to_i32().expect("fits in i32");
+            let m5: i32 = src_row[i + 3].to_i32().expect("fits in i32");
 
             m2 = (m2 + m3) * 4;
 
@@ -84,8 +84,8 @@ pub fn refine_horizontal_wiener<T: Pixel>(
 
         // Handle last few pixels with bilinear interpolation
         for i in wiener_end..(width.get() - 1).min(width.get()) {
-            let a: u32 = src_row[i].into();
-            let b: u32 = src_row[i + 1].into();
+            let a: u32 = src_row[i].to_u32().expect("fits in u32");
+            let b: u32 = src_row[i + 1].to_u32().expect("fits in u32");
             dest_row[i] = T::from_u32_or_max_value((a + b + 1) / 2);
         }
 
@@ -133,8 +133,8 @@ pub fn refine_vertical_wiener<T: Pixel>(
 
     for _j in 0..2 {
         for i in 0..width.get() {
-            let a: u32 = src[offset + i].into();
-            let b: u32 = src[offset + i + pitch.get()].into();
+            let a: u32 = src[offset + i].to_u32().expect("fits in u32");
+            let b: u32 = src[offset + i + pitch.get()].to_u32().expect("fits in u32");
             dest[offset + i] = T::from_u32_or_max_value((a + b + 1) / 2);
         }
         offset += pitch.get();
@@ -142,12 +142,18 @@ pub fn refine_vertical_wiener<T: Pixel>(
 
     for _j in 2..(height.get() - 4) {
         for i in 0..width.get() {
-            let mut m0: i32 = src[offset + i - pitch.get() * 2].into();
-            let m1: i32 = src[offset + i - pitch.get()].into();
-            let mut m2: i32 = src[offset + i].into();
-            let m3: i32 = src[offset + i + pitch.get()].into();
-            let m4: i32 = src[offset + i + pitch.get() * 2].into();
-            let m5: i32 = src[offset + i + pitch.get() * 3].into();
+            let mut m0: i32 = src[offset + i - pitch.get() * 2]
+                .to_i32()
+                .expect("fits in i32");
+            let m1: i32 = src[offset + i - pitch.get()].to_i32().expect("fits in i32");
+            let mut m2: i32 = src[offset + i].to_i32().expect("fits in i32");
+            let m3: i32 = src[offset + i + pitch.get()].to_i32().expect("fits in i32");
+            let m4: i32 = src[offset + i + pitch.get() * 2]
+                .to_i32()
+                .expect("fits in i32");
+            let m5: i32 = src[offset + i + pitch.get() * 3]
+                .to_i32()
+                .expect("fits in i32");
 
             m2 = (m2 + m3) * 4;
 
@@ -164,8 +170,8 @@ pub fn refine_vertical_wiener<T: Pixel>(
 
     for _j in (height.get() - 4)..(height.get() - 1) {
         for i in 0..width.get() {
-            let a: u32 = src[offset + i].into();
-            let b: u32 = src[offset + i + pitch.get()].into();
+            let a: u32 = src[offset + i].to_u32().expect("fits in u32");
+            let b: u32 = src[offset + i + pitch.get()].to_u32().expect("fits in u32");
             dest[offset + i] = T::from_u32_or_max_value((a + b + 1) / 2);
         }
 

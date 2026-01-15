@@ -35,10 +35,14 @@ pub fn reduce_average<T: Pixel>(
         for _y in 0..dest_height.get() {
             for x in 0..dest_width.get() {
                 // Convert to u32 for intermediate calculation to prevent overflow
-                let a: u32 = (*src.add(x * 2)).into();
-                let b: u32 = (*src.add(x * 2 + 1)).into();
-                let c: u32 = (*src.add(x * 2 + src_pitch.get())).into();
-                let d: u32 = (*src.add(x * 2 + src_pitch.get() + 1)).into();
+                let a: u32 = (*src.add(x * 2)).to_u32().expect("fits in u32");
+                let b: u32 = (*src.add(x * 2 + 1)).to_u32().expect("fits in u32");
+                let c: u32 = (*src.add(x * 2 + src_pitch.get()))
+                    .to_u32()
+                    .expect("fits in u32");
+                let d: u32 = (*src.add(x * 2 + src_pitch.get() + 1))
+                    .to_u32()
+                    .expect("fits in u32");
 
                 // Calculate average with proper rounding
                 *dest.add(x) = T::from_u32_or_max_value((a + b + c + d + 2) / 4);

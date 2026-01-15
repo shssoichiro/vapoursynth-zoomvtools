@@ -29,8 +29,8 @@ pub fn average2<T: Pixel>(
     let mut offset = 0;
     for _j in 0..height.get() {
         for i in 0..width.get() {
-            let a: u32 = src1[offset + i].into();
-            let b: u32 = src2[offset + i].into();
+            let a: u32 = src1[offset + i].to_u32().expect("fits in u32");
+            let b: u32 = src2[offset + i].to_u32().expect("fits in u32");
             dest[offset + i] = T::from_u32_or_max_value((a + b + 1) / 2);
         }
         offset += pitch.get();

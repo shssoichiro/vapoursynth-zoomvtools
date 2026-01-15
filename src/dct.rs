@@ -78,7 +78,7 @@ impl DctHelper {
             let f_src = &mut self.src[j * self.size_x.get()..][..self.size_x.get()];
             let p_src = &src_plane[j * src_pitch.get()..][..self.size_x.get()];
             for (f, p) in f_src.iter_mut().zip(p_src.iter()) {
-                *f = (*p).into();
+                *f = p.to_f32().expect("fits in f32");
             }
         }
     }
@@ -86,11 +86,11 @@ impl DctHelper {
     fn float_src_to_pixels<T: Pixel>(&self, dst: &mut [T], dst_pitch: NonZeroUsize) {
         let sqrt_2_div_2: f32 = (2f32).sqrt() / 2.0;
         let real_data = &self.src_dct;
-        let one = T::from(1);
-        let zero = T::from(0);
+        let one = T::one();
+        let zero = T::zero();
 
-        let pixel_max = (one << self.bits_per_sample.get()) - one;
-        let pixel_half = one << (self.bits_per_sample.get() - 1);
+        let pixel_max = (one << self.bits_per_sample.get() as usize) - one;
+        let pixel_half = one << (self.bits_per_sample.get() as usize - 1);
 
         for j in 0..(self.size_y.get()) {
             let real_data = &real_data[j * self.size_x.get()..][..self.size_x.get()];

@@ -162,17 +162,17 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 .saturating_mul(blk_size_y)
                 .saturating_mul(unsafe { NonZeroUsize::new_unchecked(1 << bits_per_sample.get()) }),
             dct: None,
-            dct_src: SmallVec::from_elem(T::from(0), blk_size_y.get() * dct_pitch.get()),
-            dct_ref: SmallVec::from_elem(T::from(0), blk_size_y.get() * dct_pitch.get()),
+            dct_src: SmallVec::from_elem(T::zero(), blk_size_y.get() * dct_pitch.get()),
+            dct_ref: SmallVec::from_elem(T::zero(), blk_size_y.get() * dct_pitch.get()),
             src_pitch_temp,
             src_temp: [
-                SmallVec::from_elem(T::from(0), blk_size_y.get() * src_pitch_temp[0].get()),
+                SmallVec::from_elem(T::zero(), blk_size_y.get() * src_pitch_temp[0].get()),
                 SmallVec::from_elem(
-                    T::from(0),
+                    T::zero(),
                     blk_size_y.get() / y_ratio_uv.get() as usize * src_pitch_temp[1].get(),
                 ),
                 SmallVec::from_elem(
-                    T::from(0),
+                    T::zero(),
                     blk_size_y.get() / y_ratio_uv.get() as usize * src_pitch_temp[2].get(),
                 ),
             ],
@@ -1004,7 +1004,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         const BADCOUNT_LIMIT: u64 = 16;
         if self.blk_idx > 1
             && found_sad
-                > ((self.bad_sad + self.bad_sad * self.bad_count as u64 / BADCOUNT_LIMIT) as i64)
+                > (self.bad_sad + self.bad_sad * self.bad_count as u64 / BADCOUNT_LIMIT) as i64
         {
             // bad vector, try wide search with some soft limit of bad cured vectors (time consumed)
             self.bad_count += 1;
@@ -1075,6 +1075,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         };
         Ok(&plane[offset..])
     }
+
     fn get_ref_block_u<'a, const LOG_PEL: usize>(
         &self,
         ref_frame: &MVFrame,
@@ -1103,8 +1104,16 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         vy: i32,
         plane_idx: usize,
     ) -> Result<&'a [T]> {
-        let xbias = if vx < 0 { -1 } else { 1 } * ((1 << self.log_x_ratio_uv) - 1);
-        let ybias = if vy < 0 { -1 } else { 1 } * ((1 << self.log_y_ratio_uv) - 1);
+        let xbias = if vx < 0 {
+            (1 << self.log_x_ratio_uv) - 1
+        } else {
+            0
+        };
+        let ybias = if vy < 0 {
+            (1 << self.log_y_ratio_uv) - 1
+        } else {
+            0
+        };
 
         let plane = plane_with_padding(ref_frame_data, plane_idx)?;
         let mvplane = &ref_frame.planes[plane_idx];
@@ -1464,8 +1473,8 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             .expect("dct should not fail with valid params");
 
         // correct reduced DC component
-        let src0: i64 = self.dct_src[0].into();
-        let ref0: i64 = self.dct_ref[0].into();
+        let src0: i64 = self.dct_src[0].to_i64().expect("fits in i64");
+        let ref0: i64 = self.dct_ref[0].to_i64().expect("fits in i64");
         get_sad(
             self.blk_size_x,
             self.blk_size_y,
@@ -1630,7 +1639,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         // here the chance for default values are high especially
         // for zeroMVfieldShifted (on left/top border)
         self.check_mv_impl::<DCT_MODE, LOG_PEL, { CheckMVFlags::PENALTY_NEW.bits() | CheckMVFlags::UPDATE_BEST_MV.bits() }>(
-            src_planes,ref_frame,ref_frame_data,vx, vy, &mut 0, 0,
+            src_planes, ref_frame, ref_frame_data, vx, vy, &mut 0, 0,
         )
     }
 

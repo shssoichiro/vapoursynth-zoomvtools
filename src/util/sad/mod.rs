@@ -54,11 +54,19 @@ fn get_sad_impl<T: Pixel, const WIDTH: usize, const HEIGHT: usize>(
     for y in 0..HEIGHT {
         let src_row = &src[y * src_pitch.get()..][..WIDTH];
         let ref_row = &ref_[y * ref_pitch.get()..][..WIDTH];
-        for x in 0..WIDTH {
-            let val1: i64 = src_row[x].into();
-            let val2: i64 = ref_row[x].into();
-            sum += (val1 + val2).unsigned_abs();
-        }
+        sum += src_row.iter().zip(ref_row.iter()).fold(0, |acc, (s, r)| {
+            if size_of::<T>() == 1 {
+                // smaller types for 8-bit for faster code generation
+                // branch elided at compile time
+                let val1: i16 = s.to_i16().expect("fits in i16");
+                let val2: i16 = r.to_i16().expect("fits in i16");
+                acc + (val1 - val2).unsigned_abs() as u64
+            } else {
+                let val1: i32 = s.to_i32().expect("fits in i16");
+                let val2: i32 = r.to_i32().expect("fits in i16");
+                acc + (val1 - val2).unsigned_abs() as u64
+            }
+        });
     }
     sum
 }
