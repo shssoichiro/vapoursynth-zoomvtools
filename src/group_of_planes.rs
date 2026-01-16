@@ -177,11 +177,12 @@ impl<T: Pixel> GroupOfPlanes<T> {
             meander,
             try_many_level,
         )?;
+        out_idx += self.planes[self.level_count - 1]
+            .get_array_size(self.divide_extra)
+            .get();
 
         // Refining the search until we reach the highest detail interpolation.
         for i in (0..=(self.level_count - 2)).rev() {
-            out_idx += 1;
-
             // full search for coarse planes
             let search_type_level = if i == 0
                 || search_type == SearchType::Horizontal
@@ -233,6 +234,7 @@ impl<T: Pixel> GroupOfPlanes<T> {
                 meander,
                 try_many_level,
             )?;
+            out_idx += self.planes[i].get_array_size(self.divide_extra).get();
         }
 
         Ok(vectors)
