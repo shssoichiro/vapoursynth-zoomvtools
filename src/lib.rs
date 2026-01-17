@@ -6,7 +6,6 @@ use vapoursynth::{
     core::CoreRef,
     export_vapoursynth_plugin,
     make_filter_function,
-    map::Map,
     node::Node,
     plugins::{Filter, FilterArgument, Metadata},
 };

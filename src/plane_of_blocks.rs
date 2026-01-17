@@ -11,7 +11,7 @@ use vapoursynth::frame::Frame;
 
 use crate::{
     dct::DctHelper,
-    mv::{CheckMVFlags, MV_SIZE, MotionVector},
+    mv::{CheckMVFlags, MotionVector},
     mv_frame::MVFrame,
     params::{DctMode, DivideMode, MVPlaneSet, MotionFlags, PenaltyScaling, SearchType, Subpel},
     util::{Pixel, get_sad, get_satd, luma_sum, median, plane_with_padding},
@@ -359,8 +359,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
         // SAFETY: We only modify the contents of this data within this function,
         // so we control the layout.
-        let blk_data: &mut [MotionVector] =
-            unsafe { transmute(&mut out.block_data[out_idx * MV_SIZE..]) };
+        let blk_data: &mut [MotionVector] = unsafe { transmute(&mut out.block_data[out_idx..]) };
         self.y[0] = src_frame.planes[0].vpad as i32;
         if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
             self.y[1] = src_frame.planes[1].vpad as i32;
@@ -519,11 +518,11 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             }
             self.y[0] += (self.blk_size_y.get() - self.overlap_y) as i32;
             if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
-                self.y[0] +=
+                self.y[1] +=
                     ((self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv) as i32;
             }
             if (src_frame.yuv_mode & MVPlaneSet::VPLANE).bits() > 0 {
-                self.y[0] +=
+                self.y[2] +=
                     ((self.blk_size_y.get() - self.overlap_y) >> self.log_y_ratio_uv) as i32;
             }
         }
