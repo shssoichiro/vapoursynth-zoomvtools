@@ -121,10 +121,21 @@ impl<T: Pixel> GroupOfPlanes<T> {
         try_many: bool,
         search_type_coarse: SearchType,
     ) -> Result<MvsOutput> {
+        let mut out_idx = 0;
+        let size = self.get_array_size();
         let mut vectors = MvsOutput {
             validity: true,
-            block_data: vec![0; self.get_array_size()].into_boxed_slice(),
+            block_data: vec![0; size].into_boxed_slice(),
         };
+        // write group size
+        vectors.block_data[out_idx..][..size_of::<i32>()]
+            .copy_from_slice(&(size as i32).to_le_bytes());
+        out_idx += size_of::<i32>();
+        // write validity
+        let validity = vectors.validity;
+        vectors.block_data[out_idx..][..size_of::<i32>()]
+            .copy_from_slice(&(validity as i32).to_le_bytes());
+        out_idx += size_of::<i32>();
 
         let field_shift_cur = if self.level_count - 1 == 0 {
             field_shift
@@ -152,7 +163,6 @@ impl<T: Pixel> GroupOfPlanes<T> {
             search_param
         };
         let try_many_level = try_many && self.level_count > 1;
-        let mut out_idx = 0;
         self.planes[self.level_count - 1].search_mvs(
             out_idx,
             &src_gof.frames[self.level_count - 1],

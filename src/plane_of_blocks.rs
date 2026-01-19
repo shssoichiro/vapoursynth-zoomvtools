@@ -393,7 +393,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
         // Functions using float must not be used here
         // TODO: why?
-        let mut blk_data_offset = 0;
         for blk_y in 0..self.blk_y.get() {
             self.blk_y_i = blk_y;
             self.blk_scan_dir = if blk_y % 2 == 0 || !meander { 1 } else { -1 };
@@ -482,8 +481,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 )?;
 
                 // write the results
-                blk_data[blk_data_offset] = self.best_mv;
-                blk_data_offset += 1;
+                blk_data[self.blk_idx] = self.best_mv;
 
                 if self.smallest_plane {
                     self.sum_luma_change += luma_sum(
@@ -495,7 +493,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         - luma_sum(
                             self.blk_size_x,
                             self.blk_size_y,
-                            plane_with_padding::<T>(src_frame_data, 0)?,
+                            &plane_with_padding::<T>(src_frame_data, 0)?[self.src_offset[0]..],
                             self.src_pitch[0],
                         ) as i64;
                 }
@@ -516,6 +514,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                     }
                 }
             }
+
             self.y[0] += (self.blk_size_y.get() - self.overlap_y) as i32;
             if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
                 self.y[1] +=
