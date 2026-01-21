@@ -251,17 +251,17 @@ impl<T: Pixel> GroupOfPlanes<T> {
     }
 
     pub fn extra_divide(&self, out: &mut MvsOutput) {
-        let mut start_idx = 0;
+        let mut start_idx = 2 * size_of::<i32>();
         // skip all levels up to finest estimated
         for i in (1..self.level_count).rev() {
             start_idx += self.planes[i].get_array_size(DivideMode::None).get();
         }
 
-        let size = usize::from_le_bytes(
-            out.block_data[start_idx..][..size_of::<usize>()]
+        let size = i32::from_le_bytes(
+            out.block_data[start_idx..][..size_of::<i32>()]
                 .try_into()
                 .expect("slice with incorrect length"),
-        );
+        ) as usize;
         let blk_y = self.planes[0].blk_y.get();
         let blk_x = self.planes[0].blk_x.get();
         // finest estimated plane
@@ -339,15 +339,15 @@ impl<T: Pixel> GroupOfPlanes<T> {
             block_data: vec![0; array_size].into_boxed_slice(),
         };
 
-        // Store the size as u32 for compatibility with C plugin
-        let u32_size = size_of::<u32>();
-        vectors.block_data[0..u32_size].copy_from_slice(&(array_size as u32).to_le_bytes());
+        // Store the size as i32 for compatibility with C plugin
+        let i32_size = size_of::<i32>();
+        vectors.block_data[0..i32_size].copy_from_slice(&(array_size as i32).to_le_bytes());
 
-        // Store the validity as u32 for compatibility with C plugin
-        vectors.block_data[u32_size..][..u32_size]
-            .copy_from_slice(&(vectors.validity as u32).to_le_bytes());
+        // Store the validity as i32 for compatibility with C plugin
+        vectors.block_data[i32_size..][..i32_size]
+            .copy_from_slice(&(vectors.validity as i32).to_le_bytes());
 
-        let mut start = u32_size * 2;
+        let mut start = i32_size * 2;
         for i in (0..self.level_count).rev() {
             let plane_array = self.planes[i].write_default_to_array(self.divide_extra);
             vectors.block_data[start..][..plane_array.len()].copy_from_slice(&plane_array);
