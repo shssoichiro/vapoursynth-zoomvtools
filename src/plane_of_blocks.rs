@@ -2436,7 +2436,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         break;
                     }
                     bmx += HEX2[(direction + 1) as usize][0];
-                    bmx += HEX2[(direction + 1) as usize][1];
+                    bmy += HEX2[(direction + 1) as usize][1];
                 }
             }
 
@@ -2508,7 +2508,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             }
 
             i += 1;
-            if i <= me_range / 4 {
+            if i > me_range / 4 {
                 break;
             }
         }
