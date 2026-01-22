@@ -6,7 +6,7 @@ mod satd;
 #[cfg(test)]
 mod tests;
 
-use std::num::NonZeroUsize;
+use std::{fmt::Display, num::NonZeroUsize};
 
 pub use luma::*;
 pub use math::*;
@@ -23,7 +23,7 @@ cpufeatures::new!(cpuid_avx2, "avx2");
 pub use cpuid_avx2::get as has_avx2;
 
 pub trait Pixel:
-    Component + Copy + Clone + Default + Send + Sync + PrimInt + FromFloatLossy + 'static
+    Component + Copy + Clone + Default + Send + Sync + PrimInt + Display + FromFloatLossy + 'static
 {
     #[must_use]
     fn from_u32_or_max_value(value: u32) -> Self;
@@ -31,7 +31,16 @@ pub trait Pixel:
 
 impl<T> Pixel for T
 where
-    T: Component + Copy + Clone + Default + Send + Sync + PrimInt + FromFloatLossy + 'static,
+    T: Component
+        + Copy
+        + Clone
+        + Default
+        + Send
+        + Sync
+        + PrimInt
+        + Display
+        + FromFloatLossy
+        + 'static,
 {
     fn from_u32_or_max_value(value: u32) -> Self {
         Self::from(value).unwrap_or_else(|| {

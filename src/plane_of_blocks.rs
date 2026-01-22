@@ -75,6 +75,7 @@ pub(crate) struct PlaneOfBlocks<T: Pixel> {
     x: [i32; 3],
     /// absolute y coordinate of the origin of the block in the reference frame
     y: [i32; 3],
+    /// pitch in pixels
     src_pitch: [NonZeroUsize; 3],
     ref_pitch: [NonZeroUsize; 3],
     search_type: SearchType,
@@ -393,7 +394,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
         // Functions using float must not be used here
         // TODO: why?
-        let mut blk_idx = 0;
         for blk_y in 0..self.blk_y.get() {
             self.blk_y_i = blk_y;
             self.blk_scan_dir = if blk_y % 2 == 0 || !meander { 1 } else { -1 };
@@ -482,7 +482,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 )?;
 
                 // write the results
-                blk_data[blk_idx + self.blk_x_i] = self.best_mv;
+                blk_data[self.blk_idx] = self.best_mv;
 
                 if self.smallest_plane {
                     self.sum_luma_change += luma_sum(
@@ -515,7 +515,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                     }
                 }
             }
-            blk_idx += self.blk_x.get();
 
             self.y[0] += (self.blk_size_y.get() - self.overlap_y) as i32;
             if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {

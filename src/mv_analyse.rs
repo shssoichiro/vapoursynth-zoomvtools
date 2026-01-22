@@ -674,19 +674,19 @@ impl<'core> Analyse<'core> {
 
             let src_pitch = [
                 // SAFETY: stride cannot be 0
-                unsafe { NonZeroUsize::new_unchecked(src.stride(0)) },
+                unsafe { NonZeroUsize::new_unchecked(src.stride(0) / size_of::<T>()) },
                 // SAFETY: stride cannot be 0
-                unsafe { NonZeroUsize::new_unchecked(src.stride(1)) },
+                unsafe { NonZeroUsize::new_unchecked(src.stride(1) / size_of::<T>()) },
                 // SAFETY: stride cannot be 0
-                unsafe { NonZeroUsize::new_unchecked(src.stride(2)) },
+                unsafe { NonZeroUsize::new_unchecked(src.stride(2) / size_of::<T>()) },
             ];
             let ref_pitch = [
                 // SAFETY: stride cannot be 0
-                unsafe { NonZeroUsize::new_unchecked(ref_.stride(0)) },
+                unsafe { NonZeroUsize::new_unchecked(ref_.stride(0) / size_of::<T>()) },
                 // SAFETY: stride cannot be 0
-                unsafe { NonZeroUsize::new_unchecked(ref_.stride(1)) },
+                unsafe { NonZeroUsize::new_unchecked(ref_.stride(1) / size_of::<T>()) },
                 // SAFETY: stride cannot be 0
-                unsafe { NonZeroUsize::new_unchecked(ref_.stride(2)) },
+                unsafe { NonZeroUsize::new_unchecked(ref_.stride(2) / size_of::<T>()) },
             ];
             let src_gof = MVGroupOfFrames::new(
                 self.super_levels,
