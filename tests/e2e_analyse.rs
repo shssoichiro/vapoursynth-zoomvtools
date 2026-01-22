@@ -47,22 +47,12 @@ fn test_analyse_default_params() -> Result<()> {
 
         let c_vectors = c_props.get_data("MVTools_vectors")?;
         let r_vectors = r_props.get_data("MVTools_vectors")?;
-        assert_eq!(
-            c_vectors.len(),
-            r_vectors.len(),
-            "MVTools_vectors size mismatch at frame {}",
-            n
-        );
-        assert_eq!(
-            c_vectors, r_vectors,
-            "MVTools_vectors content mismatch at frame {}",
-            n
-        );
+        compare_vectors_data(c_vectors, r_vectors, n);
 
         // Compare MVAnalysisData
         let c_analysis = c_props.get_data("MVTools_MVAnalysisData")?;
         let r_analysis = r_props.get_data("MVTools_MVAnalysisData")?;
-        compare_analysis_data(c_analysis, r_analysis);
+        compare_analysis_data(c_analysis, r_analysis, n);
     }
 
     Ok(())
@@ -114,18 +104,7 @@ fn test_analyse_search_types() -> Result<()> {
         let r_props = r_frame.props();
         let c_vectors = c_props.get_data("MVTools_vectors")?;
         let r_vectors = r_props.get_data("MVTools_vectors")?;
-
-        assert_eq!(
-            c_vectors.len(),
-            r_vectors.len(),
-            "MVTools_vectors size mismatch for search {}",
-            search
-        );
-        assert_eq!(
-            c_vectors, r_vectors,
-            "MVTools_vectors content mismatch for search {}",
-            search
-        );
+        compare_vectors_data(c_vectors, r_vectors, *search as usize);
     }
 
     Ok(())
@@ -167,17 +146,7 @@ fn test_analyse_backward_motion() -> Result<()> {
         let c_vectors = c_props.get_data("MVTools_vectors")?;
         let r_vectors = r_props.get_data("MVTools_vectors")?;
 
-        assert_eq!(
-            c_vectors.len(),
-            r_vectors.len(),
-            "MVTools_vectors size mismatch at frame {}",
-            n
-        );
-        assert_eq!(
-            c_vectors, r_vectors,
-            "MVTools_vectors content mismatch at frame {}",
-            n
-        );
+        compare_vectors_data(c_vectors, r_vectors, n);
     }
 
     Ok(())
@@ -221,24 +190,13 @@ fn test_analyse_different_block_sizes() -> Result<()> {
         let r_props = r_frame.props();
         let c_vectors = c_props.get_data("MVTools_vectors")?;
         let r_vectors = r_props.get_data("MVTools_vectors")?;
-
-        assert_eq!(
-            c_vectors.len(),
-            r_vectors.len(),
-            "MVTools_vectors size mismatch for blksize {}",
-            blksize
-        );
-        assert_eq!(
-            c_vectors, r_vectors,
-            "MVTools_vectors content mismatch for blksize {}",
-            blksize
-        );
+        compare_vectors_data(c_vectors, r_vectors, *blksize as usize);
 
         // Verify analysis data matches
         let c_analysis = c_props.get_data("MVTools_MVAnalysisData")?;
         let r_analysis = r_props.get_data("MVTools_MVAnalysisData")?;
 
-        compare_analysis_data(c_analysis, r_analysis);
+        compare_analysis_data(c_analysis, r_analysis, *blksize as usize);
     }
 
     Ok(())
@@ -276,34 +234,24 @@ fn test_analyse_16bit() -> Result<()> {
         let r_props = r_frame.props();
         let c_vectors = c_props.get_data("MVTools_vectors")?;
         let r_vectors = r_props.get_data("MVTools_vectors")?;
-        assert_eq!(
-            c_vectors.len(),
-            r_vectors.len(),
-            "MVTools_vectors size mismatch at frame {}",
-            n
-        );
-        assert_eq!(
-            c_vectors, r_vectors,
-            "MVTools_vectors content mismatch at frame {}",
-            n
-        );
+        compare_vectors_data(c_vectors, r_vectors, n);
 
         // Verify analysis data
         let c_analysis = c_props.get_data("MVTools_MVAnalysisData")?;
         let r_analysis = r_props.get_data("MVTools_MVAnalysisData")?;
 
-        compare_analysis_data(c_analysis, r_analysis);
+        compare_analysis_data(c_analysis, r_analysis, n);
     }
 
     Ok(())
 }
 
-fn compare_analysis_data(c_analysis: &[u8], r_analysis: &[u8]) {
+fn compare_analysis_data(c_analysis: &[u8], r_analysis: &[u8], test_no: usize) {
     // Expected size difference of 12, to account for removed fields
     assert_eq!(
         c_analysis.len(),
         r_analysis.len() + 12,
-        "MVAnalysisData size mismatch",
+        "MVAnalysisData size mismatch, test {test_no}",
     );
     for ((_, c_field), (i, r_field)) in c_analysis
         .chunks_exact(4)
@@ -321,7 +269,40 @@ fn compare_analysis_data(c_analysis: &[u8], r_analysis: &[u8]) {
         };
         assert_eq!(
             c_field, r_field,
-            "MVAnalysisData content mismatch on field {i}",
+            "MVAnalysisData content mismatch on field {i}, test {test_no}",
         );
     }
+}
+
+fn compare_vectors_data(c_vectors: &[u8], r_vectors: &[u8], test_no: usize) {
+    assert_eq!(
+        c_vectors.len(),
+        r_vectors.len(),
+        "MVTools_vectors size mismatch, test {test_no}",
+    );
+
+    // Compare the size and validity headers
+    let (c_header, c_vectors) = c_vectors.split_at(8);
+    let (r_header, r_vectors) = r_vectors.split_at(8);
+    assert_eq!(
+        c_header, r_header,
+        "MVTools_vectors headers mismatch, test {test_no}"
+    );
+
+    // Parse each motion vector and compare, this makes failures easier to read
+    c_vectors
+        .chunks_exact(16)
+        .zip(r_vectors.chunks_exact(16))
+        .enumerate()
+        .for_each(|(i, (c_mv, r_mv))| {
+            let (c_x, c_mv) = c_mv.split_at(4);
+            let (c_y, c_sad) = c_mv.split_at(4);
+
+            let (r_x, r_mv) = r_mv.split_at(4);
+            let (r_y, r_sad) = r_mv.split_at(4);
+
+            assert_eq!(c_x, r_x, "X value mismatch on MV {i}, test {test_no}");
+            assert_eq!(c_y, r_y, "Y value mismatch on MV {i}, test {test_no}");
+            assert_eq!(c_sad, r_sad, "SAD value mismatch on MV {i}, test {test_no}");
+        });
 }

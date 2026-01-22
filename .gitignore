@@ -1,6 +1,7 @@
 /.ck
 /.claude
 /.vscode
+/.zed
 /target
 /.ckignore
 *.log
