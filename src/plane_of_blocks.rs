@@ -808,7 +808,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             // make dct of source block
             // don't do the slow dct conversion if SATD used
             self.dct.as_mut().unwrap().bytes_2d(
-                src_plane_y,
+                src_planes[0],
                 self.src_pitch[0],
                 &mut self.dct_src,
                 self.dct_pitch,
@@ -821,7 +821,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             self.src_luma = luma_sum(
                 self.blk_size_x,
                 self.blk_size_y,
-                src_plane_y,
+                src_planes[0],
                 self.src_pitch[0],
             )
         }
@@ -832,7 +832,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         self.best_mv.y = self.zero_mv_field_shifted.y;
         // Compute zero MV blocks
         let mut sad = self.luma_sad::<DCT_MODE>(
-            src_plane_y,
+            src_planes[0],
             self.src_pitch[0],
             self.get_ref_block::<LOG_PEL>(
                 ref_frame,
@@ -844,13 +844,13 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         );
         if self.chroma {
             sad += self.chroma_sad(
-                src_plane_u,
+                src_planes[1],
                 self.src_pitch[1],
                 self.get_ref_block_u::<LOG_PEL>(ref_frame, ref_frame_data, 0, 0)?,
                 self.ref_pitch[1],
             );
             sad += self.chroma_sad(
-                src_plane_v,
+                src_planes[2],
                 self.src_pitch[2],
                 self.get_ref_block_v::<LOG_PEL>(ref_frame, ref_frame_data, 0, 0)?,
                 self.ref_pitch[2],
@@ -871,7 +871,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         // Global MV predictor
         self.global_mv_predictor = self.clip_mv(self.global_mv_predictor);
         let mut sad = self.luma_sad::<DCT_MODE>(
-            src_plane_y,
+            src_planes[0],
             self.src_pitch[0],
             self.get_ref_block::<LOG_PEL>(
                 ref_frame,
@@ -883,7 +883,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         );
         if self.chroma {
             sad += self.chroma_sad(
-                src_plane_u,
+                src_planes[1],
                 self.src_pitch[1],
                 self.get_ref_block_u::<LOG_PEL>(
                     ref_frame,
@@ -894,7 +894,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 self.ref_pitch[1],
             );
             sad += self.chroma_sad(
-                src_plane_v,
+                src_planes[2],
                 self.src_pitch[2],
                 self.get_ref_block_v::<LOG_PEL>(
                     ref_frame,
@@ -922,7 +922,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
         // Predictor blocks
         let mut sad = self.luma_sad::<DCT_MODE>(
-            src_plane_y,
+            src_planes[0],
             self.src_pitch[0],
             self.get_ref_block::<LOG_PEL>(
                 ref_frame,
@@ -934,7 +934,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         );
         if self.chroma {
             sad += self.chroma_sad(
-                src_plane_u,
+                src_planes[1],
                 self.src_pitch[1],
                 self.get_ref_block_u::<LOG_PEL>(
                     ref_frame,
@@ -945,7 +945,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 self.ref_pitch[1],
             );
             sad += self.chroma_sad(
-                src_plane_v,
+                src_planes[2],
                 self.src_pitch[2],
                 self.get_ref_block_v::<LOG_PEL>(
                     ref_frame,

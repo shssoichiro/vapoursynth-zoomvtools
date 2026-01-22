@@ -62,8 +62,8 @@ fn get_sad_impl<T: Pixel, const WIDTH: usize, const HEIGHT: usize>(
                 let val2: i16 = r.to_i16().expect("fits in i16");
                 acc + (val1 - val2).unsigned_abs() as u64
             } else {
-                let val1: i32 = s.to_i32().expect("fits in i16");
-                let val2: i32 = r.to_i32().expect("fits in i16");
+                let val1: i32 = s.to_i32().expect("fits in i32");
+                let val2: i32 = r.to_i32().expect("fits in i32");
                 acc + (val1 - val2).unsigned_abs() as u64
             }
         });
