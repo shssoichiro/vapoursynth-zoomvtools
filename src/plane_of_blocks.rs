@@ -796,7 +796,11 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         } else {
             &[]
         };
-        let src_planes = [src_plane_y, src_plane_u, src_plane_v];
+        let src_planes = [
+            &src_plane_y[self.src_offset[0]..],
+            &src_plane_u[self.src_offset[1]..],
+            &src_plane_v[self.src_offset[2]..],
+        ];
 
         self.fetch_predictors();
 
@@ -817,7 +821,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             self.src_luma = luma_sum(
                 self.blk_size_x,
                 self.blk_size_y,
-                &src_plane_y[self.src_offset[0]..],
+                src_plane_y,
                 self.src_pitch[0],
             )
         }

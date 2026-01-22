@@ -495,7 +495,7 @@ impl MVPlane {
 
     #[must_use]
     pub fn get_absolute_offset_pel1(&self, x: i32, y: i32) -> usize {
-        (self.subpel_window_offsets[0] as i32 + x + y * self.pitch.get() as i32) as usize
+        self.get_pel_offset(x, y)
     }
 
     #[must_use]
