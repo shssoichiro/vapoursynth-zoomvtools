@@ -2660,7 +2660,11 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     /// computes the cost of a vector (vx, vy)
     #[must_use]
     fn motion_distortion(&self, vx: i32, vy: i32) -> i64 {
-        let dist = self.predictor.square_difference_norm(vx, vy);
+        let dist = MotionVector::square_difference_norm(self.predictor, MotionVector {
+            x: vx,
+            y: vy,
+            sad: 0,
+        });
         (self.lambda as i64 * dist as i64) >> 8
     }
 

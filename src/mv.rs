@@ -15,8 +15,8 @@ pub struct MotionVector {
 impl MotionVector {
     /// computes square distance between two vectors
     #[must_use]
-    pub fn square_difference_norm(&self, v2x: i32, v2y: i32) -> u64 {
-        ((self.x - v2x).pow(2) + (self.y - v2y).pow(2)) as u64
+    pub fn square_difference_norm(v1: MotionVector, v2: MotionVector) -> u64 {
+        ((v1.x - v2.x).pow(2) + (v1.y - v2.y).pow(2)) as u64
     }
 }
 

@@ -25,7 +25,7 @@ pub struct GroupOfPlanes<T: Pixel> {
     pub x_ratio_uv: NonZeroU8,
     pub y_ratio_uv: NonZeroU8,
     pub divide_extra: DivideMode,
-    pub planes: Vec<PlaneOfBlocks<T>>,
+    planes: Vec<PlaneOfBlocks<T>>,
 }
 
 impl<T: Pixel> GroupOfPlanes<T> {
