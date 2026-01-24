@@ -1210,8 +1210,9 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         if self.smallest_plane {
             self.predictor = self.predictors[0];
         }
-        let scale = self.lambda_sad as i64 / (self.lambda_sad as i64 + (self.predictor.sad >> 1));
-        self.lambda = (self.lambda as i64 * scale * scale) as u32;
+        let scale =
+            self.lambda_sad as f64 / (self.lambda_sad as i64 + (self.predictor.sad >> 1)) as f64;
+        self.lambda = (self.lambda as f64 * scale * scale) as u32;
     }
 
     #[must_use]
