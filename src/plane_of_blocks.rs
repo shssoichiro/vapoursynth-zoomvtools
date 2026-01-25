@@ -79,7 +79,7 @@ pub(crate) struct PlaneOfBlocks<T: Pixel> {
     src_pitch: [NonZeroUsize; 3],
     ref_pitch: [NonZeroUsize; 3],
     search_type: SearchType,
-    search_param: usize,
+    search_param: i32,
     penalty_zero: u16,
     penalty_global: u16,
     penalty_new: u16,
@@ -225,7 +225,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         ref_frame: &'a MVFrame,
         ref_frame_data: &'a Frame<'a>,
         search_type: SearchType,
-        search_param: usize,
+        search_param: i32,
         lambda: u32,
         lambda_sad: u32,
         penalty_new: u16,
@@ -358,9 +358,15 @@ impl<T: Pixel> PlaneOfBlocks<T> {
             sad: global_mv.sad,
         };
 
+        let plane_data_size =
+            (size_of::<i32>() + self.blk_count.get() * size_of::<MotionVector>()) as i32;
+        out.block_data[out_idx..][..size_of::<i32>()]
+            .copy_from_slice(&plane_data_size.to_le_bytes());
+
         // SAFETY: We only modify the contents of this data within this function,
         // so we control the layout.
-        let blk_data: &mut [MotionVector] = unsafe { transmute(&mut out.block_data[out_idx..]) };
+        let blk_data: &mut [MotionVector] =
+            unsafe { transmute(&mut out.block_data[(out_idx + size_of::<i32>())..]) };
         self.y[0] = src_frame.planes[0].vpad as i32;
         if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
             self.y[1] = src_frame.planes[1].vpad as i32;
@@ -746,8 +752,9 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
                     // Dead branch. The overlap is no longer allowed to be more than
                     // half the block size.
-                    self.vectors[index].x = (vecs[0].x + vecs[1].x + vecs[2].x + vecs[3].x) << 2;
-                    self.vectors[index].y = (vecs[0].y + vecs[1].y + vecs[2].y + vecs[3].y) << 2;
+                    let cur_vec = &mut self.vectors[index];
+                    cur_vec.x = (vecs[0].x + vecs[1].x + vecs[2].x + vecs[3].x) << 2;
+                    cur_vec.y = (vecs[0].y + vecs[1].y + vecs[2].y + vecs[3].y) << 2;
                     temp_sad = (vecs[0].sad + vecs[1].sad + vecs[2].sad + vecs[3].sad + 2) << 2;
                 }
 
@@ -1505,7 +1512,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         src_planes,
                         ref_frame,
                         ref_frame_data,
-                        i as i32,
+                        i,
                     )?;
                     i /= 2;
                 }
@@ -1515,7 +1522,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                     src_planes,
                     ref_frame,
                     ref_frame_data,
-                    self.search_param as i32,
+                    self.search_param,
                 )?;
             }
             SearchType::Logarithmic => {
@@ -1525,7 +1532,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         src_planes,
                         ref_frame,
                         ref_frame_data,
-                        i as i32,
+                        i,
                     )?;
                     i /= 2;
                 }
@@ -1539,7 +1546,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         src_planes,
                         ref_frame,
                         ref_frame_data,
-                        i as i32,
+                        i,
                         1,
                         mvx,
                         mvy,
@@ -1551,7 +1558,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                     src_planes,
                     ref_frame,
                     ref_frame_data,
-                    self.search_param as i32,
+                    self.search_param,
                 )?;
             }
             SearchType::UnevenMultiHexagon => {
@@ -1559,7 +1566,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                     src_planes,
                     ref_frame,
                     ref_frame_data,
-                    self.search_param as i32,
+                    self.search_param,
                     self.best_mv.x,
                     self.best_mv.y,
                 )?;
@@ -1572,14 +1579,14 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         src_planes,
                         ref_frame,
                         ref_frame_data,
-                        mvx - i as i32,
+                        mvx - i,
                         mvy,
                     )?;
                     self.check_mv::<DCT_MODE, LOG_PEL>(
                         src_planes,
                         ref_frame,
                         ref_frame_data,
-                        mvx + i as i32,
+                        mvx + i,
                         mvy,
                     )?;
                 }
@@ -1593,14 +1600,14 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                         ref_frame,
                         ref_frame_data,
                         mvx,
-                        mvy - i as i32,
+                        mvy - i,
                     )?;
                     self.check_mv::<DCT_MODE, LOG_PEL>(
                         src_planes,
                         ref_frame,
                         ref_frame_data,
                         mvx,
-                        mvy + i as i32,
+                        mvy + i,
                     )?;
                 }
             }
@@ -2719,7 +2726,7 @@ struct SearchMvsArgs<'a> {
     pub ref_frame: &'a MVFrame,
     pub ref_frame_data: &'a Frame<'a>,
     pub search_type: SearchType,
-    pub search_param: usize,
+    pub search_param: i32,
     pub lambda: u32,
     pub lambda_sad: u32,
     pub penalty_new: u16,

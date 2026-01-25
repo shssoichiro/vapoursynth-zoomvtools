@@ -38,9 +38,9 @@ pub struct Analyse<'core> {
     /// search type chosen for refinement in the EPZ
     search_type: SearchType,
     search_type_coarse: SearchType,
-    search_param: usize,
+    search_param: i32,
     /// search radius at finest level
-    pel_search: usize,
+    pel_search: i32,
     /// set to true, it allows to take chroma into account when doing the motion estimation
     chroma: bool,
     /// A preset of these parameters values.
@@ -245,7 +245,7 @@ impl<'core> Analyse<'core> {
         let search_type = search
             .map(SearchType::try_from)
             .unwrap_or(Ok(SearchType::Hex2))?;
-        let mut search_param = searchparam.map(isize::try_from).unwrap_or(Ok(2))?;
+        let mut search_param = searchparam.map(i32::try_from).unwrap_or(Ok(2))?;
         let divide_extra = divide
             .map(DivideMode::try_from)
             .unwrap_or(Ok(DivideMode::None))?;
@@ -542,8 +542,8 @@ impl<'core> Analyse<'core> {
             search_type_coarse: search_coarse
                 .map(SearchType::try_from)
                 .unwrap_or(Ok(SearchType::Exhaustive))?,
-            search_param: search_param as usize,
-            pel_search,
+            search_param,
+            pel_search: pel_search as i32,
             chroma,
             truemotion,
             lambda,
@@ -723,6 +723,7 @@ impl<'core> Analyse<'core> {
                 &ref_gof,
                 &ref_,
                 self.search_type,
+                self.search_type_coarse,
                 self.search_param,
                 self.pel_search,
                 self.lambda,
@@ -738,7 +739,6 @@ impl<'core> Analyse<'core> {
                 self.bad_range,
                 self.meander,
                 self.try_many,
-                self.search_type_coarse,
             )?;
             if self.divide_extra != DivideMode::None {
                 vector_fields.extra_divide(&mut vectors);

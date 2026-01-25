@@ -104,8 +104,9 @@ impl<T: Pixel> GroupOfPlanes<T> {
         ref_gof: &MVGroupOfFrames,
         ref_frame_data: &Frame,
         search_type: SearchType,
-        search_param: usize,
-        pel_search: usize,
+        search_type_coarse: SearchType,
+        search_param: i32,
+        pel_search: i32,
         lambda: u32,
         lambda_sad: u32,
         penalty_new: u16,
@@ -119,7 +120,6 @@ impl<T: Pixel> GroupOfPlanes<T> {
         bad_range: i32,
         meander: bool,
         try_many: bool,
-        search_type_coarse: SearchType,
     ) -> Result<MvsOutput> {
         let mut out_idx = 0;
         let size = self.get_array_size();

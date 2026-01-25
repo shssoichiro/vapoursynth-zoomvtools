@@ -295,12 +295,18 @@ fn compare_vectors_data(c_vectors: &[u8], r_vectors: &[u8], test_no: usize) {
         .zip(r_vectors.chunks_exact(16))
         .enumerate()
         .for_each(|(i, (c_mv, r_mv))| {
+            let (c_size, c_mv) = c_mv.split_at(4);
             let (c_x, c_mv) = c_mv.split_at(4);
             let (c_y, c_sad) = c_mv.split_at(4);
 
+            let (r_size, r_mv) = r_mv.split_at(4);
             let (r_x, r_mv) = r_mv.split_at(4);
             let (r_y, r_sad) = r_mv.split_at(4);
 
+            assert_eq!(
+                c_size, r_size,
+                "Size header mismatch on MV {i}, test {test_no}"
+            );
             assert_eq!(c_x, r_x, "X value mismatch on MV {i}, test {test_no}");
             assert_eq!(c_y, r_y, "Y value mismatch on MV {i}, test {test_no}");
             assert_eq!(c_sad, r_sad, "SAD value mismatch on MV {i}, test {test_no}");
