@@ -4,6 +4,34 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bench]]
+harness = false
+name = "average"
+required-features = ["bench"]
+
+[[bench]]
+harness = false
+name = "pad"
+required-features = ["bench"]
+
+[[bench]]
+harness = false
+name = "reduce"
+required-features = ["bench"]
+
+[[bench]]
+harness = false
+name = "refine"
+required-features = ["bench"]
+
+[[bench]]
+harness = false
+name = "util"
+required-features = ["bench"]
+
 [dependencies]
 anyhow = "1.0.98"
 bitflags = "2.9.1"
@@ -23,44 +51,12 @@ quickcheck_macros = "1.1.0"
 rand = "0.9.1"
 rand_xoshiro = "0.7.0"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[[bench]]
-name = "average"
-harness = false
-required-features = ["bench"]
-
-[[bench]]
-name = "pad"
-harness = false
-required-features = ["bench"]
-
-[[bench]]
-name = "reduce"
-harness = false
-required-features = ["bench"]
-
-[[bench]]
-name = "refine"
-harness = false
-required-features = ["bench"]
-
-[[bench]]
-name = "util"
-harness = false
-required-features = ["bench"]
-
 [features]
 bench = []
 e2e = []
 # This feature is ONLY for testing and benchmarking.
 # If you use it in production it will make me sad.
 no_simd = []
-
-[lints.rust]
-# this rule is dumb when you're writing simd.
-unsafe_op_in_unsafe_fn = "allow"
 
 [lints.clippy]
 # This can result in worse performance. It should probably be allow by default...
@@ -72,3 +68,11 @@ undocumented_unsafe_blocks = "warn"
 uninlined_format_args = "allow"
 # false positive: https://github.com/rust-lang/rust-clippy/issues/14918
 unnecessary_to_owned = "allow"
+
+[lints.rust]
+# this rule is dumb when you're writing simd.
+unsafe_op_in_unsafe_fn = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
