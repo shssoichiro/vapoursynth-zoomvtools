@@ -13,7 +13,7 @@ use crate::util::Pixel;
 ///
 /// # Parameters
 /// - `src1`: First source image buffer
-/// - `src2`: Second source image buffer  
+/// - `src2`: Second source image buffer
 /// - `dest`: Destination buffer to store the averaged result
 /// - `pitch`: Number of pixels per row (including any padding)
 /// - `width`: Width of the image in pixels
@@ -26,12 +26,45 @@ pub fn average2<T: Pixel>(
     width: NonZeroUsize,
     height: NonZeroUsize,
 ) {
+    let max_offset = (height.get() - 1) * pitch.get() + width.get();
+    assert!(src1.len() >= max_offset);
+    assert!(src2.len() >= max_offset);
+    assert!(dest.len() >= max_offset);
+
     let mut offset = 0;
     for _j in 0..height.get() {
         for i in 0..width.get() {
-            let a: u32 = src1[offset + i].to_u32().expect("fits in u32");
-            let b: u32 = src2[offset + i].to_u32().expect("fits in u32");
-            dest[offset + i] = T::from_u32_or_max_value((a + b + 1) / 2);
+            // SAFETY: Bounds are checked at top of function
+            unsafe {
+                match size_of::<T>() {
+                    1 => {
+                        // Smaller types for faster 8-bit path
+                        let a: u16 = src1
+                            .get_unchecked(offset + i)
+                            .to_u16()
+                            .expect("fits in u16");
+                        let b: u16 = src2
+                            .get_unchecked(offset + i)
+                            .to_u16()
+                            .expect("fits in u16");
+                        *dest.get_unchecked_mut(offset + i) =
+                            T::from_u16_or_max_value((a + b + 1) / 2);
+                    }
+                    2 => {
+                        let a: u32 = src1
+                            .get_unchecked(offset + i)
+                            .to_u32()
+                            .expect("fits in u32");
+                        let b: u32 = src2
+                            .get_unchecked(offset + i)
+                            .to_u32()
+                            .expect("fits in u32");
+                        *dest.get_unchecked_mut(offset + i) =
+                            T::from_u32_or_max_value((a + b + 1) / 2);
+                    }
+                    _ => unreachable!(),
+                }
+            }
         }
         offset += pitch.get();
     }

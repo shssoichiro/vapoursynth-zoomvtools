@@ -26,6 +26,9 @@ pub trait Pixel:
     Component + Copy + Clone + Default + Send + Sync + PrimInt + Display + FromFloatLossy + 'static
 {
     #[must_use]
+    fn from_u16_or_max_value(value: u16) -> Self;
+
+    #[must_use]
     fn from_u32_or_max_value(value: u32) -> Self;
 }
 
@@ -42,6 +45,13 @@ where
         + FromFloatLossy
         + 'static,
 {
+    fn from_u16_or_max_value(value: u16) -> Self {
+        Self::from(value).unwrap_or_else(|| {
+            // If conversion fails (shouldn't happen with our inputs), fallback to max
+            Self::max_value()
+        })
+    }
+
     fn from_u32_or_max_value(value: u32) -> Self {
         Self::from(value).unwrap_or_else(|| {
             // If conversion fails (shouldn't happen with our inputs), fallback to max
