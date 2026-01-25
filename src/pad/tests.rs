@@ -397,14 +397,17 @@ fn test_pad_corner_basic() {
     let val = 42u8;
     let offset = 0;
 
-    pad_corner(
-        offset,
-        val,
-        hpad,
-        vpad,
-        NonZeroUsize::new(pitch).unwrap(),
-        &mut dest,
-    );
+    // SAFETY: test function
+    unsafe {
+        pad_corner(
+            offset,
+            val,
+            hpad,
+            vpad,
+            NonZeroUsize::new(pitch).unwrap(),
+            &mut dest,
+        );
+    }
 
     // Verify all pixels in the corner are set to the expected value
     for y in 0..vpad {
@@ -429,14 +432,17 @@ fn test_pad_corner_u16() {
     let val = 1337u16;
     let offset = 0;
 
-    pad_corner(
-        offset,
-        val,
-        hpad,
-        vpad,
-        NonZeroUsize::new(pitch).unwrap(),
-        &mut dest,
-    );
+    // SAFETY: test function
+    unsafe {
+        pad_corner(
+            offset,
+            val,
+            hpad,
+            vpad,
+            NonZeroUsize::new(pitch).unwrap(),
+            &mut dest,
+        );
+    }
 
     // Verify all pixels in the corner are set to the expected value
     for y in 0..vpad {
@@ -462,14 +468,17 @@ fn test_pad_corner_with_offset() {
     let mut dest = vec![0u8; total_size];
     let val = 99u8;
 
-    pad_corner(
-        offset,
-        val,
-        hpad,
-        vpad,
-        NonZeroUsize::new(pitch).unwrap(),
-        &mut dest,
-    );
+    // SAFETY: test function
+    unsafe {
+        pad_corner(
+            offset,
+            val,
+            hpad,
+            vpad,
+            NonZeroUsize::new(pitch).unwrap(),
+            &mut dest,
+        );
+    }
 
     // Verify the area before offset is unchanged
     for (i, &value) in dest.iter().take(offset).enumerate() {
