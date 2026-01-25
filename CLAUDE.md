@@ -75,6 +75,7 @@ Available benchmarks: `average`, `pad`, `reduce`, `refine`, `util`
 ### VapourSynth Plugin Structure
 
 The plugin exports two main filters via `lib.rs`:
+
 - **Super**: Creates hierarchical multi-resolution representations with optional padding and sub-pixel precision (`src/mv_super.rs`)
 - **Analyse**: Performs motion vector estimation on super clips (`src/mv_analyse.rs`)
 
@@ -100,6 +101,7 @@ The core motion estimation is organized hierarchically:
 ### Interpolation and Downsampling
 
 Multi-resolution support uses specialized filters:
+
 - **reduce/** (`src/reduce/`): Downsampling filters (Average, Triangle, Bilinear, Quadratic, Cubic)
 - **refine/** (`src/refine/`): Sub-pixel interpolation (Bicubic, Bilinear, Wiener)
 - **pad.rs**: Edge padding strategies for block matching at frame boundaries
@@ -107,6 +109,7 @@ Multi-resolution support uses specialized filters:
 ### Performance-Critical Components
 
 Performance-sensitive code in `src/util/`:
+
 - **sad/** (`src/util/sad/mod.rs`): Sum of Absolute Differences calculation with size-specific optimizations
 - **satd/** (`src/util/satd/mod.rs`): Sum of Absolute Transformed Differences (uses Hadamard transform via DCT)
 - **luma/** (`src/util/luma/mod.rs`): Luma sum calculations
@@ -130,6 +133,7 @@ AVX2 detection via `cpufeatures` crate is available but SIMD implementations may
 ### Linter Configuration
 
 Notable clippy overrides in `Cargo.toml`:
+
 - `manual_div_ceil = "allow"` - Manual division can have better performance
 - `needless_range_loop = "allow"` - Sometimes explicit indexing is clearer for SIMD
 - `too_many_arguments = "allow"` - Complex filter parameters require many arguments
@@ -139,12 +143,14 @@ Notable clippy overrides in `Cargo.toml`:
 ### Code Style
 
 Uses custom rustfmt.toml with:
+
 - `use_field_init_shorthand = true`
 - `use_try_shorthand = true`
 
 ### Testing Structure
 
 Tests are co-located with modules:
+
 - Unit tests in `#[cfg(test)] mod tests` within each module
 - Test-specific data in subdirectories (e.g., `src/pad/tests.rs`, `src/refine/tests.rs`)
 - Integration tests use `#[macro_use] mod tests` in `src/tests.rs`
@@ -152,6 +158,7 @@ Tests are co-located with modules:
 ### Motion Search Implementation Details
 
 The `PlaneOfBlocks` struct contains the core search logic. Key aspects:
+
 - Supports multiple search patterns (exhaustive, diamond, hexagon, UMH with increasing complexity)
 - Uses predictors from neighboring blocks and previous frames
 - Implements hierarchical search from coarse to fine levels
