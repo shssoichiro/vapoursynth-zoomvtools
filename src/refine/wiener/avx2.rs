@@ -147,7 +147,7 @@ pub unsafe fn refine_vertical_wiener<T: Pixel>(
     }
 }
 
-/// # Performance Notes
+/// # Notes
 ///
 /// This implementation is ported from C++, and was found to be 15% faster than our first attempt.
 #[target_feature(enable = "avx2")]
@@ -317,7 +317,7 @@ unsafe fn refine_horizontal_wiener_u16(
     }
 }
 
-/// # Performance Notes
+/// # Notes
 ///
 /// This implementation is approximately 10% faster than the C++ implementation.
 #[target_feature(enable = "avx2")]
