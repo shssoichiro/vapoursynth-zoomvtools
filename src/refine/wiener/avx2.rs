@@ -2,11 +2,44 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 use std::{
-    arch::x86_64::*,
+    arch::x86_64::{
+        __m256i,
+        _mm_loadu_si128,
+        _mm_storeu_si128,
+        _mm256_add_epi16,
+        _mm256_add_epi32,
+        _mm256_castsi256_si128,
+        _mm256_cvtepu8_epi16,
+        _mm256_loadu_si256,
+        _mm256_max_epi16,
+        _mm256_max_epi32,
+        _mm256_min_epi16,
+        _mm256_min_epi32,
+        _mm256_mullo_epi16,
+        _mm256_mullo_epi32,
+        _mm256_packus_epi16,
+        _mm256_packus_epi32,
+        _mm256_permute4x64_epi64,
+        _mm256_set1_epi16,
+        _mm256_set1_epi32,
+        _mm256_setzero_si256,
+        _mm256_slli_epi16,
+        _mm256_srai_epi16,
+        _mm256_srai_epi32,
+        _mm256_srli_epi16,
+        _mm256_srli_epi32,
+        _mm256_storeu_si256,
+        _mm256_sub_epi16,
+        _mm256_sub_epi32,
+        _mm256_unpackhi_epi8,
+        _mm256_unpackhi_epi16,
+        _mm256_unpacklo_epi8,
+        _mm256_unpacklo_epi16,
+    },
     num::{NonZeroU8, NonZeroUsize},
 };
 
-use crate::util::Pixel;
+use crate::{simd::_MM_SHUFFLE, util::Pixel};
 
 /// Performs horizontal Wiener filtering for sub-pixel motion estimation refinement.
 ///
@@ -114,118 +147,61 @@ pub unsafe fn refine_vertical_wiener<T: Pixel>(
     }
 }
 
+/// # Performance Notes
+///
+/// This implementation is ported from C++, and was found to be 15% faster than our first attempt.
 #[target_feature(enable = "avx2")]
 unsafe fn refine_horizontal_wiener_u8(
-    src: *const u8,
-    dest: *mut u8,
+    mut src: *const u8,
+    mut dest: *mut u8,
     pitch: NonZeroUsize,
     width: NonZeroUsize,
     height: NonZeroUsize,
-    bits_per_sample: NonZeroU8,
+    _bits_per_sample: NonZeroU8,
 ) {
-    let pixel_max = _mm256_set1_epi16(((1i32 << bits_per_sample.get()) - 1) as i16);
-    let zero = _mm256_setzero_si256();
-    let _one = _mm256_set1_epi16(1);
-    let _two = _mm256_set1_epi16(2);
-    let four = _mm256_set1_epi16(4);
-    let five = _mm256_set1_epi16(5);
-    let sixteen = _mm256_set1_epi16(16);
+    let width = width.get();
+    let height = height.get();
+    let pitch = pitch.get();
 
-    let mut offset = 0;
+    for _y in 0..height {
+        *dest = ((*src as u16 + *src.add(1) as u16 + 1) >> 1) as u8;
+        *dest.add(1) = ((*src.add(1) as u16 + *src.add(2) as u16 + 1) >> 1) as u8;
 
-    for _j in 0..height.get() {
-        // Handle first two pixels with bilinear interpolation
-        if width.get() >= 2 {
-            let a = *src.add(offset) as u16;
-            let b = *src.add(offset + 1) as u16;
-            *dest.add(offset) = ((a + b + 1) / 2) as u8;
+        for x in (2..(width.saturating_sub(4))).step_by(16) {
+            let mut m0 = _mm256_cvtepu8_epi16(_mm_loadu_si128(src.add(x - 2).cast()));
+            let mut m1 = _mm256_cvtepu8_epi16(_mm_loadu_si128(src.add(x - 1).cast()));
+            let mut m2 = _mm256_cvtepu8_epi16(_mm_loadu_si128(src.add(x).cast()));
+            let mut m3 = _mm256_cvtepu8_epi16(_mm_loadu_si128(src.add(x + 1).cast()));
+            let m4 = _mm256_cvtepu8_epi16(_mm_loadu_si128(src.add(x + 2).cast()));
+            let m5 = _mm256_cvtepu8_epi16(_mm_loadu_si128(src.add(x + 3).cast()));
 
-            if width.get() >= 3 {
-                let c = *src.add(offset + 2) as u16;
-                *dest.add(offset + 1) = ((b + c + 1) / 2) as u8;
-            }
+            m2 = _mm256_add_epi16(m2, m3);
+            m2 = _mm256_slli_epi16(m2, 2);
+
+            m1 = _mm256_add_epi16(m1, m4);
+
+            m2 = _mm256_sub_epi16(m2, m1);
+            m3 = _mm256_slli_epi16(m2, 2);
+            m2 = _mm256_add_epi16(m2, m3);
+
+            m0 = _mm256_add_epi16(m0, m5);
+            m0 = _mm256_add_epi16(m0, m2);
+            m0 = _mm256_add_epi16(m0, _mm256_set1_epi16(16));
+
+            m0 = _mm256_srai_epi16(m0, 5);
+            m0 = _mm256_packus_epi16(m0, m0);
+            m0 = _mm256_permute4x64_epi64(m0, _MM_SHUFFLE(0, 0, 2, 0));
+            _mm_storeu_si128(dest.add(x).cast(), _mm256_castsi256_si128(m0));
         }
 
-        // Process middle pixels with Wiener filter (SIMD)
-        let wiener_start = 2;
-        let wiener_end = if width.get() >= 4 {
-            width.get() - 4
-        } else {
-            wiener_start
-        };
-
-        let mut i = wiener_start;
-        while i + 32 <= wiener_end {
-            // Load 32 pixels centered around current position
-            let m0_bytes = _mm256_loadu_si256((src.add(offset + i - 2)) as *const __m256i);
-            let m1_bytes = _mm256_loadu_si256((src.add(offset + i - 1)) as *const __m256i);
-            let m2_bytes = _mm256_loadu_si256((src.add(offset + i)) as *const __m256i);
-            let m3_bytes = _mm256_loadu_si256((src.add(offset + i + 1)) as *const __m256i);
-            let m4_bytes = _mm256_loadu_si256((src.add(offset + i + 2)) as *const __m256i);
-            let m5_bytes = _mm256_loadu_si256((src.add(offset + i + 3)) as *const __m256i);
-
-            // Process first 16 pixels
-            let m0_lo = _mm256_unpacklo_epi8(m0_bytes, zero);
-            let m1_lo = _mm256_unpacklo_epi8(m1_bytes, zero);
-            let m2_lo = _mm256_unpacklo_epi8(m2_bytes, zero);
-            let m3_lo = _mm256_unpacklo_epi8(m3_bytes, zero);
-            let m4_lo = _mm256_unpacklo_epi8(m4_bytes, zero);
-            let m5_lo = _mm256_unpacklo_epi8(m5_bytes, zero);
-
-            let result_lo = apply_wiener_kernel_u8(
-                m0_lo, m1_lo, m2_lo, m3_lo, m4_lo, m5_lo, four, five, sixteen, pixel_max,
-            );
-
-            // Process next 16 pixels
-            let m0_hi = _mm256_unpackhi_epi8(m0_bytes, zero);
-            let m1_hi = _mm256_unpackhi_epi8(m1_bytes, zero);
-            let m2_hi = _mm256_unpackhi_epi8(m2_bytes, zero);
-            let m3_hi = _mm256_unpackhi_epi8(m3_bytes, zero);
-            let m4_hi = _mm256_unpackhi_epi8(m4_bytes, zero);
-            let m5_hi = _mm256_unpackhi_epi8(m5_bytes, zero);
-
-            let result_hi = apply_wiener_kernel_u8(
-                m0_hi, m1_hi, m2_hi, m3_hi, m4_hi, m5_hi, four, five, sixteen, pixel_max,
-            );
-
-            // Pack results back to bytes
-            let result = _mm256_packus_epi16(result_lo, result_hi);
-            _mm256_storeu_si256((dest.add(offset + i)) as *mut __m256i, result);
-
-            i += 32;
+        for x in width.saturating_sub(4)..(width - 1) {
+            *dest.add(x) = ((*src.add(x) as u16 + *src.add(x + 1) as u16 + 1) >> 1) as u8;
         }
 
-        // Handle remaining pixels with scalar code
-        while i < wiener_end {
-            let m0 = *src.add(offset + i - 2) as i16;
-            let m1 = *src.add(offset + i - 1) as i16;
-            let mut m2 = *src.add(offset + i) as i16;
-            let m3 = *src.add(offset + i + 1) as i16;
-            let m4 = *src.add(offset + i + 2) as i16;
-            let m5 = *src.add(offset + i + 3) as i16;
+        *dest.add(width - 1) = *src.add(width - 1);
 
-            m2 = (m2 + m3) * 4;
-            m2 -= m1 + m4;
-            m2 *= 5;
-            let result = (m0 + m5 + m2 + 16) >> 5;
-
-            *dest.add(offset + i) = result.max(0).min((1 << bits_per_sample.get()) - 1) as u8;
-            i += 1;
-        }
-
-        // Handle last few pixels with bilinear interpolation
-        for i in wiener_end..(width.get() - 1).min(width.get()) {
-            let a = *src.add(offset + i) as u16;
-            let b = *src.add(offset + i + 1) as u16;
-            *dest.add(offset + i) = ((a + b + 1) / 2) as u8;
-        }
-
-        // Copy last pixel
-        if width.get() > 0 {
-            *dest.add(offset + width.get() - 1) = *src.add(offset + width.get() - 1);
-        }
-
-        offset += pitch.get();
+        dest = dest.add(pitch);
+        src = src.add(pitch);
     }
 }
 
@@ -341,6 +317,9 @@ unsafe fn refine_horizontal_wiener_u16(
     }
 }
 
+/// # Performance Notes
+///
+/// This implementation is approximately 10% faster than the C++ implementation.
 #[target_feature(enable = "avx2")]
 unsafe fn refine_vertical_wiener_u8(
     src: *const u8,

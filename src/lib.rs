@@ -73,6 +73,7 @@ mod plane_of_blocks;
 mod reduce;
 #[cfg(not(feature = "bench"))]
 mod refine;
+mod simd;
 #[cfg(not(feature = "bench"))]
 mod util;
 
