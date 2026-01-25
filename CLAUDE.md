@@ -40,17 +40,35 @@ just precommit
 ## Testing and Coverage
 
 ```bash
-# Generate coverage report
+# Generate coverage report (lcov.info + HTML report in target/coverage_html/)
 just coverage
-
-# Generate HTML coverage report
-just lcov
 
 # Generate codecov JSON
 just codecov
 
 # Upload to codecov (requires ZOOMV_CODECOV_TOKEN)
 just codecov-upload
+```
+
+## End-to-End Testing
+
+E2E tests compare the Rust implementation against the original C MVTools plugin. Requires C MVTools to be installed.
+
+```bash
+# Check if C MVTools is installed
+just check-mvtools
+
+# Run end-to-end tests
+just e2e
+
+# Install debug build and run e2e tests (development workflow)
+just e2e-dev
+
+# Run e2e tests with coverage
+just coverage-e2e
+
+# Run specific e2e test with output
+cargo test --features e2e test_name -- --nocapture
 ```
 
 ## Benchmarking
@@ -120,6 +138,7 @@ AVX2 detection via `cpufeatures` crate is available but SIMD implementations may
 ### Feature Flags
 
 - `bench`: Exposes internal modules as `pub` for benchmarking
+- `e2e`: Enables end-to-end tests that compare against C MVTools
 - `no_simd`: Disables SIMD optimizations (testing/debugging only - "will make me sad" per Cargo.toml)
 
 ## Development Notes
