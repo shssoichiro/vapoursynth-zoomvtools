@@ -99,17 +99,13 @@ impl<'core> Super<'core> {
         pelclip: Option<Node<'core>>,
     ) -> Result<Self> {
         // Parse arguments
-        let hpad = hpad.map(usize::try_from).unwrap_or(Ok(16))?;
-        let vpad = vpad.map(usize::try_from).unwrap_or(Ok(16))?;
-        let pel = pel.map(Subpel::try_from).unwrap_or(Ok(Subpel::Half))?;
-        let mut levels = levels.map(usize::try_from).unwrap_or(Ok(0))?;
-        let mut chroma = chroma.map(|chroma| chroma > 0).unwrap_or(true);
-        let sharp = sharp
-            .map(SubpelMethod::try_from)
-            .unwrap_or(Ok(SubpelMethod::Wiener))?;
-        let rfilter = rfilter
-            .map(ReduceFilter::try_from)
-            .unwrap_or(Ok(ReduceFilter::Bilinear))?;
+        let hpad = hpad.map_or(Ok(16), usize::try_from)?;
+        let vpad = vpad.map_or(Ok(16), usize::try_from)?;
+        let pel = pel.map_or(Ok(Subpel::Half), Subpel::try_from)?;
+        let mut levels = levels.map_or(Ok(0), usize::try_from)?;
+        let mut chroma = chroma.is_none_or(|chroma| chroma > 0);
+        let sharp = sharp.map_or(Ok(SubpelMethod::Wiener), SubpelMethod::try_from)?;
+        let rfilter = rfilter.map_or(Ok(ReduceFilter::Bilinear), ReduceFilter::try_from)?;
 
         // Validate video info
         let video_info = clip.info();

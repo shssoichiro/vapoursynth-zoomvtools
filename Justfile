@@ -40,7 +40,7 @@ precommit:
     cargo fmt
     cargo clippy
     cargo clippy --tests
-    cargo test
+    cargo test --features e2e
     just bench-build
 
 # Run end-to-end tests (requires C MVTools)

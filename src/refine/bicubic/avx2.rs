@@ -43,7 +43,7 @@ pub unsafe fn refine_horizontal_bicubic<T: Pixel>(
                 width,
                 height,
                 bits_per_sample,
-            )
+            );
         },
         2 => unsafe {
             refine_horizontal_bicubic_u16(
@@ -53,7 +53,7 @@ pub unsafe fn refine_horizontal_bicubic<T: Pixel>(
                 width,
                 height,
                 bits_per_sample,
-            )
+            );
         },
         _ => unreachable!(),
     }
@@ -99,7 +99,7 @@ pub unsafe fn refine_vertical_bicubic<T: Pixel>(
                 width,
                 height,
                 bits_per_sample,
-            )
+            );
         },
         2 => unsafe {
             refine_vertical_bicubic_u16(
@@ -109,7 +109,7 @@ pub unsafe fn refine_vertical_bicubic<T: Pixel>(
                 width,
                 height,
                 bits_per_sample,
-            )
+            );
         },
         _ => unreachable!(),
     }

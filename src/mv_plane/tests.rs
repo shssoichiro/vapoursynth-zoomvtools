@@ -1,3 +1,6 @@
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
+
 use std::num::{NonZeroU8, NonZeroUsize};
 
 use super::*;
@@ -28,7 +31,7 @@ fn create_test_mvplane(
 }
 
 #[test]
-fn test_mvplane_new_basic() {
+fn mvplane_new_basic() {
     let plane = create_test_mvplane(64, 48, Subpel::Full, 8, 8, 8, 0, 80);
 
     assert_eq!(plane.width.get(), 64);
@@ -50,7 +53,7 @@ fn test_mvplane_new_basic() {
 }
 
 #[test]
-fn test_mvplane_new_half_pel() {
+fn mvplane_new_half_pel() {
     let plane = create_test_mvplane(32, 24, Subpel::Half, 4, 4, 8, 100, 40);
 
     assert_eq!(plane.pel, Subpel::Half);
@@ -68,7 +71,7 @@ fn test_mvplane_new_half_pel() {
 }
 
 #[test]
-fn test_mvplane_new_quarter_pel() {
+fn mvplane_new_quarter_pel() {
     let plane = create_test_mvplane(16, 16, Subpel::Quarter, 2, 2, 16, 0, 24);
 
     assert_eq!(plane.pel, Subpel::Quarter);
@@ -80,7 +83,7 @@ fn test_mvplane_new_quarter_pel() {
 }
 
 #[test]
-fn test_mvplane_new_with_plane_offset() {
+fn mvplane_new_with_plane_offset() {
     let plane_offset = 1000;
     let plane = create_test_mvplane(8, 8, Subpel::Half, 2, 2, 8, plane_offset, 12);
 
@@ -92,7 +95,7 @@ fn test_mvplane_new_with_plane_offset() {
 }
 
 #[test]
-fn test_mvplane_fill_plane_basic() {
+fn mvplane_fill_plane_basic() {
     let mut plane = create_test_mvplane(4, 4, Subpel::Full, 2, 2, 8, 0, 8);
 
     // Create source data
@@ -120,7 +123,7 @@ fn test_mvplane_fill_plane_basic() {
 }
 
 #[test]
-fn test_mvplane_fill_plane_already_filled() {
+fn mvplane_fill_plane_already_filled() {
     let mut plane = create_test_mvplane(2, 2, Subpel::Full, 1, 1, 8, 0, 4);
 
     let src_data = vec![1u8, 2, 3, 4];
@@ -146,7 +149,7 @@ fn test_mvplane_fill_plane_already_filled() {
 }
 
 #[test]
-fn test_mvplane_fill_plane_different_pitch() {
+fn mvplane_fill_plane_different_pitch() {
     let mut plane = create_test_mvplane(3, 2, Subpel::Full, 1, 1, 8, 0, 5);
 
     // Source has different pitch than plane
@@ -170,7 +173,7 @@ fn test_mvplane_fill_plane_different_pitch() {
 }
 
 #[test]
-fn test_mvplane_refine_ext_full_pel() {
+fn mvplane_refine_ext_full_pel() {
     let mut plane = create_test_mvplane(4, 4, Subpel::Full, 2, 2, 8, 0, 8);
 
     let src_2x = vec![0u8; 32]; // 8x4 for 2x upsampled
@@ -185,7 +188,7 @@ fn test_mvplane_refine_ext_full_pel() {
 }
 
 #[test]
-fn test_mvplane_refine_ext_half_pel() {
+fn mvplane_refine_ext_half_pel() {
     let mut plane = create_test_mvplane(2, 2, Subpel::Half, 1, 1, 8, 0, 4);
 
     let src_2x = vec![0u8; 16]; // 4x4 for 2x upsampled
@@ -198,7 +201,7 @@ fn test_mvplane_refine_ext_half_pel() {
 }
 
 #[test]
-fn test_mvplane_refine_ext_quarter_pel() {
+fn mvplane_refine_ext_quarter_pel() {
     let mut plane = create_test_mvplane(1, 1, Subpel::Quarter, 1, 1, 8, 0, 3);
 
     let src_2x = vec![0u8; 16]; // 4x4 for 4x upsampled
@@ -214,7 +217,7 @@ fn test_mvplane_refine_ext_quarter_pel() {
 }
 
 #[test]
-fn test_mvplane_refine_ext_already_refined() {
+fn mvplane_refine_ext_already_refined() {
     let mut plane = create_test_mvplane(2, 2, Subpel::Half, 1, 1, 8, 0, 4);
 
     let src_2x = vec![0u8; 16];
@@ -234,7 +237,7 @@ fn test_mvplane_refine_ext_already_refined() {
 }
 
 #[test]
-fn test_mvplane_reduce_to_already_filled() {
+fn mvplane_reduce_to_already_filled() {
     let plane = create_test_mvplane(8, 8, Subpel::Full, 2, 2, 8, 0, 12);
     let mut reduced_plane = create_test_mvplane(4, 4, Subpel::Full, 1, 1, 8, 0, 6);
 
@@ -262,7 +265,7 @@ fn test_mvplane_reduce_to_already_filled() {
 }
 
 #[test]
-fn test_mvplane_reduce_to_basic() {
+fn mvplane_reduce_to_basic() {
     let plane = create_test_mvplane(4, 4, Subpel::Full, 1, 1, 8, 0, 6);
     let mut reduced_plane = create_test_mvplane(2, 2, Subpel::Full, 1, 1, 8, 0, 4);
 
@@ -289,7 +292,7 @@ fn test_mvplane_reduce_to_basic() {
 }
 
 #[test]
-fn test_mvplane_reduce_to_different_filters() {
+fn mvplane_reduce_to_different_filters() {
     let plane = create_test_mvplane(4, 2, Subpel::Full, 0, 0, 8, 0, 4);
 
     let src = vec![1u8, 2, 3, 4, 5, 6, 7, 8];
@@ -320,7 +323,7 @@ fn test_mvplane_reduce_to_different_filters() {
 }
 
 #[test]
-fn test_mvplane_pad_basic() {
+fn mvplane_pad_basic() {
     let mut plane = create_test_mvplane(2, 2, Subpel::Full, 1, 1, 8, 0, 4);
 
     // Create source data that includes the plane area and padding
@@ -348,7 +351,7 @@ fn test_mvplane_pad_basic() {
 }
 
 #[test]
-fn test_mvplane_pad_already_padded() {
+fn mvplane_pad_already_padded() {
     let mut plane = create_test_mvplane(2, 2, Subpel::Full, 1, 1, 8, 0, 4);
 
     let total_size = plane.pitch.get() * (plane.height.get() + 2 * plane.vpad);
@@ -367,7 +370,7 @@ fn test_mvplane_pad_already_padded() {
 }
 
 #[test]
-fn test_mvplane_refine_full_pel() {
+fn mvplane_refine_full_pel() {
     let mut plane = create_test_mvplane(4, 4, Subpel::Full, 2, 2, 8, 0, 8);
 
     let total_size = plane.pitch.get() * (plane.height.get() + 2 * plane.vpad);
@@ -381,7 +384,7 @@ fn test_mvplane_refine_full_pel() {
 }
 
 #[test]
-fn test_mvplane_refine_half_pel() {
+fn mvplane_refine_half_pel() {
     let mut plane = create_test_mvplane(4, 4, Subpel::Half, 2, 2, 8, 0, 8);
 
     // Need buffer large enough for all subpel windows - use much larger buffer
@@ -396,7 +399,7 @@ fn test_mvplane_refine_half_pel() {
 }
 
 #[test]
-fn test_mvplane_refine_quarter_pel() {
+fn mvplane_refine_quarter_pel() {
     let mut plane = create_test_mvplane(4, 4, Subpel::Quarter, 2, 2, 8, 0, 8);
 
     // Need buffer large enough for all 16 subpel windows
@@ -411,7 +414,7 @@ fn test_mvplane_refine_quarter_pel() {
 }
 
 #[test]
-fn test_mvplane_refine_different_subpel_methods() {
+fn mvplane_refine_different_subpel_methods() {
     for subpel_method in [
         SubpelMethod::Bilinear,
         SubpelMethod::Bicubic,
@@ -431,7 +434,7 @@ fn test_mvplane_refine_different_subpel_methods() {
 }
 
 #[test]
-fn test_mvplane_refine_already_refined() {
+fn mvplane_refine_already_refined() {
     let mut plane = create_test_mvplane(4, 4, Subpel::Half, 2, 2, 8, 0, 8);
 
     let max_offset = plane.subpel_window_offsets.iter().max().unwrap_or(&0);
@@ -454,7 +457,7 @@ fn test_mvplane_refine_already_refined() {
 }
 
 #[test]
-fn test_mvplane_constructor_valid_bits() {
+fn mvplane_constructor_valid_bits() {
     // Test with various valid bits per sample values
     for bits in [8, 10, 12, 16] {
         let result = MVPlane::new(
@@ -473,7 +476,7 @@ fn test_mvplane_constructor_valid_bits() {
 }
 
 #[test]
-fn test_mvplane_offset_calculations() {
+fn mvplane_offset_calculations() {
     let plane = create_test_mvplane(8, 6, Subpel::Half, 4, 3, 8, 100, 16);
 
     // Verify offset_padding calculation
@@ -495,7 +498,7 @@ fn test_mvplane_offset_calculations() {
 
 // Tests for the standalone functions
 #[test]
-fn test_plane_height_luma_level_0() {
+fn plane_height_luma_level_0() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 8;
@@ -507,7 +510,7 @@ fn test_plane_height_luma_level_0() {
 }
 
 #[test]
-fn test_plane_height_luma_downscaling() {
+fn plane_height_luma_downscaling() {
     let src_height = NonZeroUsize::new(200).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 4; // vpad < y_ratio_uv
@@ -522,7 +525,7 @@ fn test_plane_height_luma_downscaling() {
 }
 
 #[test]
-fn test_plane_height_luma_with_large_vpad() {
+fn plane_height_luma_with_large_vpad() {
     let src_height = NonZeroUsize::new(200).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap();
     let vpad = 8; // vpad >= y_ratio_uv
@@ -533,7 +536,7 @@ fn test_plane_height_luma_with_large_vpad() {
 }
 
 #[test]
-fn test_plane_height_luma_multiple_levels() {
+fn plane_height_luma_multiple_levels() {
     let src_height = NonZeroUsize::new(1600).unwrap();
     let y_ratio_uv = NonZeroU8::new(1).unwrap(); // 4:4:4 format
     let vpad = 0;
@@ -552,7 +555,7 @@ fn test_plane_height_luma_multiple_levels() {
 }
 
 #[test]
-fn test_plane_height_luma_4_2_0_format() {
+fn plane_height_luma_4_2_0_format() {
     let src_height = NonZeroUsize::new(480).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap(); // 4:2:0 format
     let vpad = 0;
@@ -567,7 +570,7 @@ fn test_plane_height_luma_4_2_0_format() {
 }
 
 #[test]
-fn test_plane_width_luma_level_0() {
+fn plane_width_luma_level_0() {
     let src_width = NonZeroUsize::new(100).unwrap();
     let x_ratio_uv = NonZeroU8::new(2).unwrap();
     let hpad = 8;
@@ -579,7 +582,7 @@ fn test_plane_width_luma_level_0() {
 }
 
 #[test]
-fn test_plane_width_luma_downscaling() {
+fn plane_width_luma_downscaling() {
     let src_width = NonZeroUsize::new(400).unwrap();
     let x_ratio_uv = NonZeroU8::new(2).unwrap();
     let hpad = 1; // hpad < x_ratio_uv
@@ -594,7 +597,7 @@ fn test_plane_width_luma_downscaling() {
 }
 
 #[test]
-fn test_plane_width_luma_with_large_hpad() {
+fn plane_width_luma_with_large_hpad() {
     let src_width = NonZeroUsize::new(400).unwrap();
     let x_ratio_uv = NonZeroU8::new(2).unwrap();
     let hpad = 4; // hpad >= x_ratio_uv
@@ -605,7 +608,7 @@ fn test_plane_width_luma_with_large_hpad() {
 }
 
 #[test]
-fn test_plane_width_luma_4_4_4_format() {
+fn plane_width_luma_4_4_4_format() {
     let src_width = NonZeroUsize::new(1920).unwrap();
     let x_ratio_uv = NonZeroU8::new(1).unwrap(); // 4:4:4 format
     let hpad = 0;
@@ -620,7 +623,7 @@ fn test_plane_width_luma_4_4_4_format() {
 }
 
 #[test]
-fn test_plane_width_luma_4_2_0_format() {
+fn plane_width_luma_4_2_0_format() {
     let src_width = NonZeroUsize::new(640).unwrap();
     let x_ratio_uv = NonZeroU8::new(2).unwrap(); // 4:2:0 format
     let hpad = 1;
@@ -635,7 +638,7 @@ fn test_plane_width_luma_4_2_0_format() {
 }
 
 #[test]
-fn test_plane_super_offset_level_0() {
+fn plane_super_offset_level_0() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let plane_pitch = NonZeroUsize::new(120).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap();
@@ -666,7 +669,7 @@ fn test_plane_super_offset_level_0() {
 }
 
 #[test]
-fn test_plane_super_offset_level_1_luma() {
+fn plane_super_offset_level_1_luma() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let plane_pitch = NonZeroUsize::new(120).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap();
@@ -680,7 +683,7 @@ fn test_plane_super_offset_level_1_luma() {
 }
 
 #[test]
-fn test_plane_super_offset_level_1_chroma() {
+fn plane_super_offset_level_1_chroma() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let plane_pitch = NonZeroUsize::new(120).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap();
@@ -694,7 +697,7 @@ fn test_plane_super_offset_level_1_chroma() {
 }
 
 #[test]
-fn test_plane_super_offset_half_pel() {
+fn plane_super_offset_half_pel() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let plane_pitch = NonZeroUsize::new(120).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap();
@@ -708,7 +711,7 @@ fn test_plane_super_offset_half_pel() {
 }
 
 #[test]
-fn test_plane_super_offset_quarter_pel() {
+fn plane_super_offset_quarter_pel() {
     let src_height = NonZeroUsize::new(100).unwrap();
     let plane_pitch = NonZeroUsize::new(120).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap();
@@ -722,7 +725,7 @@ fn test_plane_super_offset_quarter_pel() {
 }
 
 #[test]
-fn test_plane_super_offset_multiple_levels() {
+fn plane_super_offset_multiple_levels() {
     let src_height = NonZeroUsize::new(200).unwrap();
     let plane_pitch = NonZeroUsize::new(240).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap();
@@ -739,7 +742,7 @@ fn test_plane_super_offset_multiple_levels() {
 }
 
 #[test]
-fn test_plane_super_offset_chroma_vs_luma() {
+fn plane_super_offset_chroma_vs_luma() {
     let src_height = NonZeroUsize::new(200).unwrap();
     let plane_pitch = NonZeroUsize::new(240).unwrap();
     let y_ratio_uv = NonZeroU8::new(2).unwrap();
@@ -756,7 +759,7 @@ fn test_plane_super_offset_chroma_vs_luma() {
 }
 
 #[test]
-fn test_plane_super_offset_realistic_video_dimensions() {
+fn plane_super_offset_realistic_video_dimensions() {
     // Test with realistic HD video dimensions
     let src_height = NonZeroUsize::new(1080).unwrap();
     let plane_pitch = NonZeroUsize::new(1920).unwrap();
@@ -773,7 +776,7 @@ fn test_plane_super_offset_realistic_video_dimensions() {
 }
 
 #[test]
-fn test_plane_height_width_consistency() {
+fn plane_height_width_consistency() {
     // Test that height and width functions behave consistently
     let src_dim = NonZeroUsize::new(320).unwrap();
     let ratio_uv = NonZeroU8::new(2).unwrap();
@@ -787,7 +790,7 @@ fn test_plane_height_width_consistency() {
 }
 
 #[test]
-fn test_mvplane_refine_no_clones_performance() {
+fn mvplane_refine_no_clones_performance() {
     // Test that the refine method works efficiently without clones on larger data
     let mut plane = create_test_mvplane(64, 64, Subpel::Quarter, 8, 8, 8, 0, 80);
 
@@ -821,7 +824,7 @@ fn test_mvplane_refine_no_clones_performance() {
 }
 
 #[test]
-fn test_mvplane_refine_different_pel_methods_no_clones() {
+fn mvplane_refine_different_pel_methods_no_clones() {
     // Test all subpel methods work correctly without clones
     for pel in [Subpel::Half, Subpel::Quarter] {
         for method in [

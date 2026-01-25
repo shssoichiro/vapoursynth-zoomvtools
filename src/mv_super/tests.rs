@@ -1,3 +1,6 @@
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
+
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 use vapoursynth::format::PresetFormat;
@@ -9,7 +12,7 @@ use crate::{
 };
 
 #[test]
-fn test_new_with_default_args() {
+fn new_with_default_args() {
     let env = create_test_env(640, 480, PresetFormat::YUV420P8, 10).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -25,7 +28,7 @@ fn test_new_with_default_args() {
 }
 
 #[quickcheck]
-fn test_new_with_specified_args(
+fn new_with_specified_args(
     hpad: usize,
     vpad: usize,
     pel: u8,
@@ -72,7 +75,7 @@ fn test_new_with_specified_args(
 }
 
 #[test]
-fn test_super_dimension_calculations() {
+fn super_dimension_calculations() {
     let env = create_test_env(64, 48, PresetFormat::YUV420P8, 5).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -99,7 +102,7 @@ fn test_super_dimension_calculations() {
 }
 
 #[test]
-fn test_levels_calculation() {
+fn levels_calculation() {
     let env = create_test_env(128, 96, PresetFormat::YUV420P8, 5).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -139,7 +142,7 @@ fn test_levels_calculation() {
 }
 
 #[test]
-fn test_different_pel_values() {
+fn different_pel_values() {
     for pel in [1, 2, 4] {
         let env = create_test_env(64, 48, PresetFormat::YUV420P8, 5).unwrap();
         let (node, _) = env.get_output(0).unwrap();
@@ -162,7 +165,7 @@ fn test_different_pel_values() {
 }
 
 #[test]
-fn test_different_formats() {
+fn different_formats() {
     let formats = [
         PresetFormat::YUV420P8,
         PresetFormat::YUV420P16,
@@ -204,7 +207,7 @@ fn test_different_formats() {
 }
 
 #[test]
-fn test_gray_format_chroma_handling() {
+fn gray_format_chroma_handling() {
     let env = create_test_env(64, 48, PresetFormat::Gray8, 5).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -229,7 +232,7 @@ fn test_gray_format_chroma_handling() {
 }
 
 #[test]
-fn test_error_handling_invalid_format() {
+fn error_handling_invalid_format() {
     // This test verifies that Super::new properly handles invalid inputs
     // Note: We can't easily test with invalid formats using create_test_env,
     // but we can verify the validation logic is in place by testing edge cases
@@ -281,7 +284,7 @@ fn test_error_handling_invalid_format() {
 }
 
 #[test]
-fn test_8bit_vs_16bit_format_handling() {
+fn format_handling_8bit_vs_16bit() {
     // Test 8-bit format
     let env_8bit = create_test_env(64, 48, PresetFormat::YUV420P8, 5).unwrap();
     let (node_8bit, _) = env_8bit.get_output(0).unwrap();
@@ -334,7 +337,7 @@ fn test_8bit_vs_16bit_format_handling() {
 }
 
 #[test]
-fn test_subsampling_handling() {
+fn subsampling_handling() {
     let formats_and_ratios = [
         (PresetFormat::YUV420P8, (2, 2)), // 4:2:0 subsampling
         (PresetFormat::YUV422P8, (2, 1)), // 4:2:2 subsampling
@@ -366,7 +369,7 @@ fn test_subsampling_handling() {
 }
 
 #[test]
-fn test_padding_values() {
+fn padding_values() {
     let env = create_test_env(64, 48, PresetFormat::YUV420P8, 5).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 

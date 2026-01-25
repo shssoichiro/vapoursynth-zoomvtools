@@ -1,3 +1,6 @@
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
+
 use std::num::{NonZeroU8, NonZeroUsize};
 
 use crate::{mv_plane::MVPlane, params::Subpel};
@@ -202,7 +205,7 @@ fn verify_pel4_interpolation<T: Copy + PartialEq + std::fmt::Debug + From<u8>>(
 }
 
 #[test]
-fn test_refine_ext_pel2_u8_basic() {
+fn refine_ext_pel2_u8_basic() {
     let width = 4;
     let height = 4;
     let hpad = 2;
@@ -230,7 +233,7 @@ fn test_refine_ext_pel2_u8_basic() {
 }
 
 #[test]
-fn test_refine_ext_pel2_u16_basic() {
+fn refine_ext_pel2_u16_basic() {
     let width = 3;
     let height = 3;
     let hpad = 1;
@@ -258,7 +261,7 @@ fn test_refine_ext_pel2_u16_basic() {
 }
 
 #[test]
-fn test_refine_ext_pel2_not_padded() {
+fn refine_ext_pel2_not_padded() {
     let width = 2;
     let height = 2;
     let hpad = 1;
@@ -285,7 +288,7 @@ fn test_refine_ext_pel2_not_padded() {
 }
 
 #[test]
-fn test_refine_ext_pel4_u8_basic() {
+fn refine_ext_pel4_u8_basic() {
     let width = 2;
     let height = 2;
     let hpad = 1;
@@ -313,7 +316,7 @@ fn test_refine_ext_pel4_u8_basic() {
 }
 
 #[test]
-fn test_refine_ext_pel4_u16_basic() {
+fn refine_ext_pel4_u16_basic() {
     let width = 3;
     let height = 2;
     let hpad = 2;
@@ -341,7 +344,7 @@ fn test_refine_ext_pel4_u16_basic() {
 }
 
 #[test]
-fn test_refine_ext_pel4_not_padded() {
+fn refine_ext_pel4_not_padded() {
     let width = 2;
     let height = 1;
     let hpad = 1;
@@ -368,7 +371,7 @@ fn test_refine_ext_pel4_not_padded() {
 }
 
 #[test]
-fn test_refine_ext_pel2_larger_frame() {
+fn refine_ext_pel2_larger_frame() {
     let width = 8;
     let height = 6;
     let hpad = 4;
@@ -395,7 +398,7 @@ fn test_refine_ext_pel2_larger_frame() {
 }
 
 #[test]
-fn test_refine_ext_pel4_larger_frame() {
+fn refine_ext_pel4_larger_frame() {
     let width = 4;
     let height = 3;
     let hpad = 2;
@@ -422,7 +425,7 @@ fn test_refine_ext_pel4_larger_frame() {
 }
 
 #[test]
-fn test_refine_ext_pel2_minimal_size() {
+fn refine_ext_pel2_minimal_size() {
     let width = 1;
     let height = 1;
     let hpad = 1;
@@ -455,7 +458,7 @@ fn test_refine_ext_pel2_minimal_size() {
 }
 
 #[test]
-fn test_refine_ext_pel4_minimal_size() {
+fn refine_ext_pel4_minimal_size() {
     let width = 1;
     let height = 1;
     let hpad = 1;
@@ -489,7 +492,7 @@ fn test_refine_ext_pel4_minimal_size() {
 }
 
 #[test]
-fn test_refine_ext_pel2_with_plane_offset() {
+fn refine_ext_pel2_with_plane_offset() {
     let width = 2;
     let height = 2;
     let hpad = 1;
@@ -517,7 +520,7 @@ fn test_refine_ext_pel2_with_plane_offset() {
 }
 
 #[test]
-fn test_refine_ext_pel4_with_plane_offset() {
+fn refine_ext_pel4_with_plane_offset() {
     let width = 2;
     let height = 1;
     let hpad = 1;
@@ -545,7 +548,7 @@ fn test_refine_ext_pel4_with_plane_offset() {
 }
 
 #[test]
-fn test_refine_ext_pel2_different_pitch() {
+fn refine_ext_pel2_different_pitch() {
     let width = 4;
     let height = 2;
     let hpad = 2;
@@ -580,7 +583,7 @@ fn test_refine_ext_pel2_different_pitch() {
 }
 
 #[test]
-fn test_refine_ext_pel4_different_pitch() {
+fn refine_ext_pel4_different_pitch() {
     let width = 2;
     let height = 2;
     let hpad = 1;

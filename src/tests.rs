@@ -26,21 +26,21 @@ clip.set_output()
 
 macro_rules! verify_asm {
     ($module:ident, $func:ident($dest:expr, $($args:expr),* $(,)?)) => {{
+        #[allow(unused_unsafe)]
         if stringify!($module) != "rust" {
             // Compare the rust version against the SIMD version we are testing.
             let mut rust_dest = $dest.clone();
-            unsafe {
-                super::rust::$func(
-                    &mut rust_dest,
-                    $($args),*
-                );
-            }
+            super::rust::$func(
+                &mut rust_dest,
+                $($args),*
+            );
             unsafe {
                 super::$module::$func(
                     $dest,
                     $($args),*
                 );
             }
+
             assert_eq!(rust_dest, *$dest,
                 "Mismatch between Rust and {} in {}",
                 stringify!($module),

@@ -1,5 +1,5 @@
-#![allow(unused_unsafe)]
-#![allow(clippy::undocumented_unsafe_blocks)]
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
 
 use std::num::{NonZeroU8, NonZeroUsize};
 
@@ -675,6 +675,7 @@ macro_rules! edge_case_tests {
                 let height = NonZeroUsize::new(3).unwrap();
                 let bits = NonZeroU8::new(8).unwrap();
 
+                #[allow(unused_unsafe)]
                 unsafe {
                     super::$module::refine_horizontal_bilinear(&mut dest_h, &src, pitch, width, height, bits);
                     super::$module::refine_vertical_bilinear(&mut dest_v, &src, pitch, width, height, bits);

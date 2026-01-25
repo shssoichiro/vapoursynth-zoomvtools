@@ -40,7 +40,7 @@ pub fn reduce_average<T: Pixel>(
                 src_pitch,
                 dest_width,
                 dest_height,
-            )
+            );
         },
         2 => unsafe {
             reduce_average_u16(
@@ -50,7 +50,7 @@ pub fn reduce_average<T: Pixel>(
                 src_pitch,
                 dest_width,
                 dest_height,
-            )
+            );
         },
         _ => unreachable!(),
     }

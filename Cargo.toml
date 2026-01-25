@@ -2,7 +2,7 @@
 name = "vapoursynth-zoomvtools"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.89"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -57,21 +57,6 @@ e2e = []
 # This feature is ONLY for testing and benchmarking.
 # If you use it in production it will make me sad.
 no_simd = []
-
-[lints.clippy]
-# This can result in worse performance. It should probably be allow by default...
-manual_div_ceil = "allow"
-must_use_candidate = "warn"
-needless_range_loop = "allow"
-too_many_arguments = "allow"
-undocumented_unsafe_blocks = "warn"
-uninlined_format_args = "allow"
-# false positive: https://github.com/rust-lang/rust-clippy/issues/14918
-unnecessary_to_owned = "allow"
-
-[lints.rust]
-# this rule is dumb when you're writing simd.
-unsafe_op_in_unsafe_fn = "allow"
 
 [profile.release]
 lto = "thin"

@@ -1,7 +1,7 @@
 use std::{
     cmp::{max, min},
-    mem::transmute,
     num::{NonZeroU8, NonZeroUsize},
+    ptr::slice_from_raw_parts_mut,
 };
 
 use anyhow::Result;
@@ -339,7 +339,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 self.bits_per_sample,
             )?);
         }
-        self.dct_mode = Some(DctMode::try_from(DCT_MODE as i64).unwrap());
+        self.dct_mode = Some(DctMode::try_from(DCT_MODE as i64).expect("DCT_MODE must be valid"));
         self.dct_weight_16 = min(
             16,
             mean_luma_change.unsigned_abs()
@@ -365,8 +365,13 @@ impl<T: Pixel> PlaneOfBlocks<T> {
 
         // SAFETY: We only modify the contents of this data within this function,
         // so we control the layout.
-        let blk_data: &mut [MotionVector] =
-            unsafe { transmute(&mut out.block_data[(out_idx + size_of::<i32>())..]) };
+        let blk_data: &mut [MotionVector] = unsafe {
+            let data = &mut out.block_data[(out_idx + size_of::<i32>())..];
+            &mut *slice_from_raw_parts_mut(
+                data.as_mut_ptr().cast(),
+                data.len() / size_of::<MotionVector>(),
+            )
+        };
         self.y[0] = src_frame.planes[0].vpad as i32;
         if (src_frame.yuv_mode & MVPlaneSet::UPLANE).bits() > 0 {
             self.y[1] = src_frame.planes[1].vpad as i32;
@@ -647,7 +652,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         let mut norm_factor = 3i32 - log_pel_1 + log_pel_2;
         let mul_factor = if norm_factor < 0 { -norm_factor } else { 0 };
         if norm_factor < 0 {
-            norm_factor = 0
+            norm_factor = 0;
         };
         let normov = (blk_size_x_1 - overlap_x_1) * (blk_size_y_1 - overlap_y_1);
         let aoddx = blk_size_x_1 * 3 - overlap_x_1 * 2;
@@ -814,7 +819,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
         if (1..=4).contains(&DCT_MODE) {
             // make dct of source block
             // don't do the slow dct conversion if SATD used
-            self.dct.as_mut().unwrap().bytes_2d(
+            self.dct.as_mut().expect("dct should exist here").bytes_2d(
                 src_planes[0],
                 self.src_pitch[0],
                 &mut self.dct_src,
@@ -830,7 +835,7 @@ impl<T: Pixel> PlaneOfBlocks<T> {
                 self.blk_size_y,
                 src_planes[0],
                 self.src_pitch[0],
-            )
+            );
         }
 
         // We treat zero alone
@@ -1433,7 +1438,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     #[must_use]
-    #[inline(always)]
     fn chroma_sad(
         &self,
         src_plane: &[T],
@@ -1617,7 +1621,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     /// check if the vector (vx, vy) is better than the best vector found so far without penalty new
-    #[inline(always)]
     fn check_mv0<const DCT_MODE: u8, const LOG_PEL: usize>(
         &mut self,
         src_planes: [&[T]; 3],
@@ -1640,7 +1643,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     /// check if the vector (vx, vy) is better than the best vector found so far
-    #[inline(always)]
     fn check_mv<const DCT_MODE: u8, const LOG_PEL: usize>(
         &mut self,
         src_planes: [&[T]; 3],
@@ -1657,7 +1659,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     /// check if the vector (vx, vy) is better, and update dir accordingly
-    #[inline(always)]
     fn check_mv2<const DCT_MODE: u8, const LOG_PEL: usize>(
         &mut self,
         src_planes: [&[T]; 3],
@@ -1684,7 +1685,6 @@ impl<T: Pixel> PlaneOfBlocks<T> {
     }
 
     /// check if the vector (vx, vy) is better, and update dir accordingly, but not bestMV.x, y
-    #[inline(always)]
     fn check_mv_dir<const DCT_MODE: u8, const LOG_PEL: usize>(
         &mut self,
         src_planes: [&[T]; 3],

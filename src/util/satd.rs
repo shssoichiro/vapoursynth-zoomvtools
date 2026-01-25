@@ -200,7 +200,6 @@ fn satd_8x4<
 /// in: a pseudo-simd number of the form x+(y<<bits_per_sum)
 /// return: abs(x)+(abs(y)<<bits_per_sum)
 #[must_use]
-#[inline(always)]
 fn abs2<SUM: PrimInt, SUM2>(a: SUM2) -> SUM2
 where
     SUM2: PrimInt
@@ -227,20 +226,17 @@ trait FromDiff {
 }
 
 impl FromDiff for u32 {
-    #[inline(always)]
     fn from_diff(diff: i32) -> Self {
         diff as u32
     }
 }
 
 impl FromDiff for u64 {
-    #[inline(always)]
     fn from_diff(diff: i32) -> Self {
         diff as u64
     }
 }
 
-#[inline(always)]
 fn hadamard4<SUM: Copy + Add<SUM, Output = SUM> + Sub<SUM, Output = SUM>>(
     dest0: &mut SUM,
     dest1: &mut SUM,

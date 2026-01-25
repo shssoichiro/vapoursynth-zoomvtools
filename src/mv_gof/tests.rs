@@ -1,12 +1,13 @@
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
+
 use vapoursynth::format::PresetFormat;
 
 use super::*;
 use crate::tests::create_test_env;
 
-// FIXME: One of these tests is intermittently segfaulting.
-
 #[test]
-fn test_mvgof_struct_fields() {
+fn mvgof_struct_fields() {
     // Test that the struct can be created and basic field access works
     // This test doesn't require complex VapourSynth setup
     let env = create_test_env(64, 48, PresetFormat::YUV420P8, 1).unwrap();
@@ -71,7 +72,7 @@ fn test_mvgof_struct_fields() {
 }
 
 #[test]
-fn test_mvgof_different_level_counts() {
+fn mvgof_different_level_counts() {
     let env = create_test_env(64, 48, PresetFormat::YUV420P8, 1).unwrap();
     let (node, _) = env.get_output(0).unwrap();
     let video_info = node.info();
@@ -116,7 +117,7 @@ fn test_mvgof_different_level_counts() {
 }
 
 #[test]
-fn test_mvgof_debug_and_clone() {
+fn mvgof_debug_and_clone() {
     let env = create_test_env(32, 32, PresetFormat::YUV420P8, 1).unwrap();
     let (node, _) = env.get_output(0).unwrap();
     let video_info = node.info();

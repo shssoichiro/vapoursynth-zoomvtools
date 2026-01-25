@@ -231,37 +231,32 @@ impl<'core> Analyse<'core> {
         search_coarse: Option<i64>,
         dct: Option<i64>,
     ) -> Result<Self> {
-        let blk_size_x = blksize.map(usize::try_from).unwrap_or(Ok(8))?;
-        let blk_size_y = blksizev.map(usize::try_from).unwrap_or(Ok(blk_size_x))?;
-        let overlap_x = overlap.map(usize::try_from).unwrap_or(Ok(0))?;
-        let overlap_y = overlapv.map(usize::try_from).unwrap_or(Ok(overlap_x))?;
-        let truemotion = truemotion.map(|truemotion| truemotion > 0).unwrap_or(true);
-        let penalty_new = pnew
-            .map(u16::try_from)
-            .unwrap_or(Ok(if truemotion { 50 } else { 0 }))?;
-        let penalty_zero = pzero.map(u16::try_from).unwrap_or(Ok(penalty_new))?;
-        let penalty_global = pglobal.map(u16::try_from).unwrap_or(Ok(0))?;
-        let dctmode = dct.map(DctMode::try_from).unwrap_or(Ok(DctMode::Spatial))?;
-        let search_type = search
-            .map(SearchType::try_from)
-            .unwrap_or(Ok(SearchType::Hex2))?;
-        let mut search_param = searchparam.map(i32::try_from).unwrap_or(Ok(2))?;
-        let divide_extra = divide
-            .map(DivideMode::try_from)
-            .unwrap_or(Ok(DivideMode::None))?;
-        let mut chroma = chroma.map(|chroma| chroma > 0).unwrap_or(true);
-        let mut lambda = lambda.map(u32::try_from).unwrap_or(Ok(if truemotion {
-            (1000 * blk_size_x * blk_size_y / 64) as u32
-        } else {
-            0
-        }))?;
-        let mut lambda_sad =
-            lsad.map(u32::try_from)
-                .unwrap_or(Ok(if truemotion { 1200 } else { 400 }))?;
-        let mut bad_sad = badsad.map(u64::try_from).unwrap_or(Ok(10_000))?;
-        let is_backward = isb.map(|isb| isb > 0).unwrap_or(false);
-        let delta_frame = delta.map(isize::try_from).unwrap_or(Ok(1))?;
-        let mut pel_search = pelsearch.map(usize::try_from).unwrap_or(Ok(0))?;
+        let blk_size_x = blksize.map_or(Ok(8), usize::try_from)?;
+        let blk_size_y = blksizev.map_or(Ok(blk_size_x), usize::try_from)?;
+        let overlap_x = overlap.map_or(Ok(0), usize::try_from)?;
+        let overlap_y = overlapv.map_or(Ok(overlap_x), usize::try_from)?;
+        let truemotion = truemotion.is_none_or(|truemotion| truemotion > 0);
+        let penalty_new = pnew.map_or(Ok(if truemotion { 50 } else { 0 }), u16::try_from)?;
+        let penalty_zero = pzero.map_or(Ok(penalty_new), u16::try_from)?;
+        let penalty_global = pglobal.map_or(Ok(0), u16::try_from)?;
+        let dctmode = dct.map_or(Ok(DctMode::Spatial), DctMode::try_from)?;
+        let search_type = search.map_or(Ok(SearchType::Hex2), SearchType::try_from)?;
+        let mut search_param = searchparam.map_or(Ok(2), i32::try_from)?;
+        let divide_extra = divide.map_or(Ok(DivideMode::None), DivideMode::try_from)?;
+        let mut chroma = chroma.is_none_or(|chroma| chroma > 0);
+        let mut lambda = lambda.map_or(
+            Ok(if truemotion {
+                (1000 * blk_size_x * blk_size_y / 64) as u32
+            } else {
+                0
+            }),
+            u32::try_from,
+        )?;
+        let mut lambda_sad = lsad.map_or(Ok(if truemotion { 1200 } else { 400 }), u32::try_from)?;
+        let mut bad_sad = badsad.map_or(Ok(10_000), u64::try_from)?;
+        let is_backward = isb.is_some_and(|isb| isb > 0);
+        let delta_frame = delta.map_or(Ok(1), isize::try_from)?;
+        let mut pel_search = pelsearch.map_or(Ok(0), usize::try_from)?;
 
         if dctmode.uses_satd() && blk_size_x == 16 && blk_size_y == 2 {
             bail!("Analyse: dct 5-10 cannot work with 16x2 blocks");
@@ -333,7 +328,8 @@ impl<'core> Analyse<'core> {
         if format.color_family() == ColorFamily::Gray {
             chroma = false;
         }
-        let bits_per_sample = NonZeroU8::new(format.bits_per_sample()).unwrap();
+        let bits_per_sample =
+            NonZeroU8::new(format.bits_per_sample()).expect("VS should not return 0 BPP");
         let yuv_mode = if chroma {
             MVPlaneSet::YUVPLANES
         } else {
@@ -394,8 +390,8 @@ impl<'core> Analyse<'core> {
             },
         };
 
-        let x_ratio_uv = NonZeroU8::new(1 << format.sub_sampling_w()).unwrap();
-        let y_ratio_uv = NonZeroU8::new(1 << format.sub_sampling_h()).unwrap();
+        let x_ratio_uv = NonZeroU8::new(1 << format.sub_sampling_w()).expect("cannot be zero");
+        let y_ratio_uv = NonZeroU8::new(1 << format.sub_sampling_h()).expect("cannot be zero");
 
         // I like that this is called `evil`, but I don't really know a better way to handle it.
         let evil = match super_.get_frame(0) {
@@ -446,7 +442,7 @@ impl<'core> Analyse<'core> {
             )
             .map_err(|_| anyhow!(super_props_err2))?,
         )
-        .unwrap();
+        .ok_or_else(|| anyhow!(super_props_err2))?;
         let super_levels = usize::try_from(
             super_props
                 .get_int("Super_levels")
@@ -461,7 +457,8 @@ impl<'core> Analyse<'core> {
             bail!("Analyse: super clip does not contain needed colour data.");
         }
 
-        let super_width = NonZeroUsize::new(width.get() - super_hpad * 2).unwrap();
+        let super_width = NonZeroUsize::new(width.get() - super_hpad * 2)
+            .expect("super width should not be zero");
         let blk_x = (super_width.get() - overlap_x) / (blk_size_x - overlap_x);
         let blk_y = (super_height.get() - overlap_y) / (blk_size_y - overlap_y);
         let width_b = (blk_size_x - overlap_x) * blk_x + overlap_x;
@@ -474,10 +471,9 @@ impl<'core> Analyse<'core> {
         {
             levels_max += 1;
         }
-        let level_count = match levels.filter(|l| *l > 0) {
-            Some(levels) => min(levels_max, levels as usize),
-            None => levels_max,
-        };
+        let level_count = levels
+            .filter(|l| *l > 0)
+            .map_or(levels_max, |levels| min(levels_max, levels as usize));
         debug_assert!(level_count > 0);
 
         if level_count > super_levels {
@@ -506,8 +502,8 @@ impl<'core> Analyse<'core> {
             height: super_height,
             overlap_x,
             overlap_y,
-            blk_x: NonZeroUsize::new(blk_x).unwrap(),
-            blk_y: NonZeroUsize::new(blk_y).unwrap(),
+            blk_x: NonZeroUsize::new(blk_x).expect("block count should not be zero"),
+            blk_y: NonZeroUsize::new(blk_y).expect("block count should not be zero"),
             bits_per_sample,
             y_ratio_uv,
             x_ratio_uv,
@@ -515,7 +511,7 @@ impl<'core> Analyse<'core> {
             v_padding: super_vpad,
         };
 
-        let analysis_data_divided = if divide_extra != DivideMode::None {
+        let analysis_data_divided = (divide_extra != DivideMode::None).then(|| {
             let mut div_data = analysis_data;
             // SAFETY: constant is non-zero
             div_data.blk_x = div_data
@@ -525,47 +521,49 @@ impl<'core> Analyse<'core> {
             div_data.blk_y = div_data
                 .blk_y
                 .saturating_mul(unsafe { NonZeroUsize::new_unchecked(2) });
-            div_data.blk_size_x = NonZeroUsize::new(div_data.blk_size_x.get() / 2).unwrap();
-            div_data.blk_size_y = NonZeroUsize::new(div_data.blk_size_y.get() / 2).unwrap();
+            div_data.blk_size_x = NonZeroUsize::new(div_data.blk_size_x.get() / 2)
+                .expect("block size cannot not be 1");
+            div_data.blk_size_y = NonZeroUsize::new(div_data.blk_size_y.get() / 2)
+                .expect("block size cannot not be 1");
             div_data.overlap_x /= 2;
             div_data.overlap_y /= 2;
             div_data.level_count += 1;
-            Some(div_data)
-        } else {
-            None
-        };
+            div_data
+        });
 
         Ok(Self {
             node: super_,
-            levels: levels.map(u16::try_from).unwrap_or(Ok(0))?,
+            levels: levels.map_or(Ok(0), u16::try_from)?,
             search_type,
             search_type_coarse: search_coarse
-                .map(SearchType::try_from)
-                .unwrap_or(Ok(SearchType::Exhaustive))?,
+                .map_or(Ok(SearchType::Exhaustive), SearchType::try_from)?,
             search_param,
             pel_search: pel_search as i32,
             chroma,
             truemotion,
             lambda,
             lambda_sad,
-            penalty_level: plevel.map(PenaltyScaling::try_from).unwrap_or_else(|| {
-                Ok(if truemotion {
-                    PenaltyScaling::Linear
-                } else {
-                    PenaltyScaling::None
-                })
-            })?,
-            global: global.map(|global| global > 0).unwrap_or(truemotion),
+            penalty_level: plevel.map_or_else(
+                || {
+                    Ok(if truemotion {
+                        PenaltyScaling::Linear
+                    } else {
+                        PenaltyScaling::None
+                    })
+                },
+                PenaltyScaling::try_from,
+            )?,
+            global: global.map_or(truemotion, |global| global > 0),
             penalty_new,
             penalty_zero,
             penalty_global,
             dct_mode: dctmode,
             divide_extra,
             bad_sad,
-            bad_range: badrange.map(i32::try_from).unwrap_or(Ok(24))?,
-            meander: meander.map(|meander| meander > 0).unwrap_or(true),
-            try_many: trymany.map(|trymany| trymany > 0).unwrap_or(false),
-            fields: fields.map(|fields| fields > 0).unwrap_or(false),
+            bad_range: badrange.map_or(Ok(24), i32::try_from)?,
+            meander: meander.is_none_or(|meander| meander > 0),
+            try_many: trymany.is_some_and(|trymany| trymany > 0),
+            fields: fields.is_some_and(|fields| fields > 0),
             tff: tff.map(|tff| tff > 0),
             analysis_data,
             analysis_data_divided,
@@ -617,7 +615,7 @@ impl<'core> Analyse<'core> {
         let src = self
             .node
             .get_frame_filter(context, n)
-            .ok_or(anyhow!("Analyse: get_frame_filter past end of video"))?;
+            .ok_or_else(|| anyhow!("Analyse: get_frame_filter past end of video"))?;
         let src_props = src.props();
 
         let mut src_top_field = match src_props.get_int("_Field") {
@@ -639,7 +637,7 @@ impl<'core> Analyse<'core> {
             let ref_ = self
                 .node
                 .get_frame_filter(context, nref as usize)
-                .ok_or(anyhow!("Analyse: get_frame_filter ref past end of video"))?;
+                .ok_or_else(|| anyhow!("Analyse: get_frame_filter ref past end of video"))?;
             let ref_props = ref_.props();
             let mut ref_top_field = match ref_props.get_int("_Field") {
                 Ok(field) => field > 0,
@@ -754,10 +752,9 @@ impl<'core> Analyse<'core> {
         dest_props.set_data(
             PROP_MVANALYSISDATA,
             &if self.divide_extra != DivideMode::None {
-                match self.analysis_data_divided.as_ref() {
-                    Some(data) => data.bytes(),
-                    _ => Vec::new(),
-                }
+                self.analysis_data_divided
+                    .as_ref()
+                    .map_or_else(Vec::new, |data| data.bytes())
             } else {
                 self.analysis_data.bytes()
             },

@@ -1,3 +1,6 @@
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
+
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -82,7 +85,7 @@ fn create_test_mvframe() -> MVFrame {
 }
 
 #[test]
-fn test_mvframe_new_creates_correct_number_of_planes() {
+fn mvframe_new_creates_correct_number_of_planes() {
     let (
         width,
         height,
@@ -117,7 +120,7 @@ fn test_mvframe_new_creates_correct_number_of_planes() {
 }
 
 #[test]
-fn test_mvframe_new_y_plane_only() {
+fn mvframe_new_y_plane_only() {
     let (
         width,
         height,
@@ -155,7 +158,7 @@ fn test_mvframe_new_y_plane_only() {
 }
 
 #[test]
-fn test_mvframe_new_chroma_calculation() {
+fn mvframe_new_chroma_calculation() {
     let width = NonZeroUsize::new(64).unwrap();
     let height = NonZeroUsize::new(48).unwrap();
     let pel = Subpel::Full;
@@ -201,7 +204,7 @@ fn test_mvframe_new_chroma_calculation() {
 }
 
 #[test]
-fn test_mvframe_new_padding_calculation() {
+fn mvframe_new_padding_calculation() {
     let width = NonZeroUsize::new(64).unwrap();
     let height = NonZeroUsize::new(48).unwrap();
     let pel = Subpel::Full;
@@ -245,7 +248,7 @@ fn test_mvframe_new_padding_calculation() {
 }
 
 #[test]
-fn test_mvframe_new_different_pel_values() {
+fn mvframe_new_different_pel_values() {
     let (
         width,
         height,
@@ -288,7 +291,7 @@ fn test_mvframe_new_different_pel_values() {
 }
 
 #[test]
-fn test_mvframe_new_edge_case_small_dimensions() {
+fn mvframe_new_edge_case_small_dimensions() {
     let width = NonZeroUsize::new(4).unwrap(); // Large enough for x_ratio_uv of 2
     let height = NonZeroUsize::new(4).unwrap(); // Large enough for y_ratio_uv of 2
     let pel = Subpel::Full;
@@ -329,7 +332,7 @@ fn test_mvframe_new_edge_case_small_dimensions() {
 }
 
 #[test]
-fn test_mvframe_new_plane_selection() {
+fn mvframe_new_plane_selection() {
     let (
         width,
         height,
@@ -382,13 +385,7 @@ fn test_mvframe_new_plane_selection() {
 }
 
 #[quickcheck]
-fn test_mvframe_new_property_based(
-    width: u16,
-    height: u16,
-    hpad: u8,
-    vpad: u8,
-    bits: u8,
-) -> TestResult {
+fn mvframe_new_property_based(width: u16, height: u16, hpad: u8, vpad: u8, bits: u8) -> TestResult {
     // Ensure inputs are within valid ranges
     if width == 0 || height == 0 || bits == 0 || bits > 16 {
         return TestResult::discard();
@@ -435,7 +432,7 @@ fn test_mvframe_new_property_based(
 }
 
 #[test]
-fn test_mvframe_clone() {
+fn mvframe_clone() {
     let frame = create_test_mvframe();
     let cloned_frame = frame.clone();
 
@@ -448,7 +445,7 @@ fn test_mvframe_clone() {
 }
 
 #[test]
-fn test_mvframe_debug_format() {
+fn mvframe_debug_format() {
     let frame = create_test_mvframe();
     let debug_str = format!("{:?}", frame);
     assert!(debug_str.contains("MVFrame"));
@@ -461,7 +458,7 @@ fn test_mvframe_debug_format() {
 // The following tests focus on the structure and error handling aspects we can test.
 
 #[test]
-fn test_mvframe_plane_access_patterns() {
+fn mvframe_plane_access_patterns() {
     let frame = create_test_mvframe();
 
     // Test that we can safely access planes
@@ -473,7 +470,7 @@ fn test_mvframe_plane_access_patterns() {
 }
 
 #[test]
-fn test_mvframe_plane_dimensions_consistency() {
+fn mvframe_plane_dimensions_consistency() {
     let frame = create_test_mvframe();
 
     // For YUV mode with 2:1 ratios, check dimension relationships
@@ -491,7 +488,7 @@ fn test_mvframe_plane_dimensions_consistency() {
 }
 
 #[test]
-fn test_mvframe_memory_layout_expectations() {
+fn mvframe_memory_layout_expectations() {
     let frame = create_test_mvframe();
 
     for plane in &frame.planes {
@@ -512,7 +509,7 @@ fn test_mvframe_memory_layout_expectations() {
 }
 
 #[test]
-fn test_mvframe_subpel_window_offsets() {
+fn mvframe_subpel_window_offsets() {
     let (
         width,
         height,

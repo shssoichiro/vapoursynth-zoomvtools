@@ -1,7 +1,10 @@
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
+
 use super::*;
 
 #[test]
-fn test_vs_bitblt_same_stride() {
+fn vs_bitblt_same_stride() {
     // Test case where src_stride == dst_stride == row_size
     let src = vec![1u8, 2, 3, 4, 5, 6, 7, 8, 9];
     let mut dest = vec![0u8; 9];
@@ -15,7 +18,7 @@ fn test_vs_bitblt_same_stride() {
 }
 
 #[test]
-fn test_vs_bitblt_different_stride() {
+fn vs_bitblt_different_stride() {
     // Test case where strides are larger than row_size
     let src = vec![
         1u8, 2, 3, 0, 0, // src_stride = 5
@@ -56,7 +59,7 @@ fn test_vs_bitblt_different_stride() {
 }
 
 #[test]
-fn test_median_distinct_values() {
+fn median_distinct_values() {
     // Test all permutations of three distinct values
     assert_eq!(median(1, 2, 3), 2);
     assert_eq!(median(1, 3, 2), 2);
@@ -67,7 +70,7 @@ fn test_median_distinct_values() {
 }
 
 #[test]
-fn test_median_duplicate_values() {
+fn median_duplicate_values() {
     // Test cases with two identical values
     assert_eq!(median(1, 1, 2), 1);
     assert_eq!(median(1, 2, 1), 1);
@@ -83,7 +86,7 @@ fn test_median_duplicate_values() {
 }
 
 #[test]
-fn test_median_all_same_values() {
+fn median_all_same_values() {
     // Test cases where all three values are identical
     assert_eq!(median(5, 5, 5), 5);
     assert_eq!(median(0, 0, 0), 0);
@@ -91,7 +94,7 @@ fn test_median_all_same_values() {
 }
 
 #[test]
-fn test_median_different_types() {
+fn median_different_types() {
     // Test with different integer types
     assert_eq!(median(1u8, 2u8, 3u8), 2u8);
     assert_eq!(median(10u16, 20u16, 30u16), 20u16);
@@ -108,7 +111,7 @@ fn test_median_different_types() {
 }
 
 #[test]
-fn test_median_edge_cases() {
+fn median_edge_cases() {
     // Test with extreme values for u8
     assert_eq!(median(0u8, 255u8, 128u8), 128u8);
     assert_eq!(median(0u8, 0u8, 255u8), 0u8);
@@ -120,7 +123,7 @@ fn test_median_edge_cases() {
 }
 
 #[test]
-fn test_median_ordering_edge_cases() {
+fn median_ordering_edge_cases() {
     // Test cases that might reveal issues with the ordering logic
     assert_eq!(median(10, 5, 15), 10);
     assert_eq!(median(15, 10, 5), 10);
@@ -133,7 +136,7 @@ fn test_median_ordering_edge_cases() {
 }
 
 #[test]
-fn test_round_ties_to_even_ties() {
+fn round_ties_to_even_ties() {
     // Positive ties
     assert_eq!(round_ties_to_even(0.5), 0.0);
     assert_eq!(round_ties_to_even(1.5), 2.0);
@@ -148,7 +151,7 @@ fn test_round_ties_to_even_ties() {
 }
 
 #[test]
-fn test_round_ties_to_even_non_ties() {
+fn round_ties_to_even_non_ties() {
     // Values just below/above .5 should round away from or toward zero accordingly
     assert_eq!(round_ties_to_even(1.4999), 1.0);
     assert_eq!(round_ties_to_even(1.5001), 2.0);
@@ -163,7 +166,7 @@ fn test_round_ties_to_even_non_ties() {
 }
 
 #[test]
-fn test_round_ties_to_even_integers_and_bounds() {
+fn round_ties_to_even_integers_and_bounds() {
     // Exact integers remain unchanged
     assert_eq!(round_ties_to_even(2.0), 2.0);
     assert_eq!(round_ties_to_even(-2.0), -2.0);

@@ -8,3 +8,5 @@
 *.txt
 lcov.info
 .asm-lsp.toml
+flamegraph.svg
+perf.data*

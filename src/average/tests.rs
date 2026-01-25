@@ -1,9 +1,12 @@
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
+
 use std::num::NonZeroUsize;
 
 use super::average2;
 
 #[test]
-fn test_average2_u8_basic() {
+fn average2_u8_basic() {
     let src1 = [0u8, 2, 4, 6];
     let src2 = [1u8, 3, 5, 7];
     let mut dest = [0u8; 4];
@@ -22,7 +25,7 @@ fn test_average2_u8_basic() {
 }
 
 #[test]
-fn test_average2_u8_ceiling_division() {
+fn average2_u8_ceiling_division() {
     let src1 = [0u8, 1, 2, 3];
     let src2 = [1u8, 2, 3, 4];
     let mut dest = [0u8; 4];
@@ -42,7 +45,7 @@ fn test_average2_u8_ceiling_division() {
 }
 
 #[test]
-fn test_average2_u8_max_values() {
+fn average2_u8_max_values() {
     let src1 = [254u8, 255, 254, 255];
     let src2 = [255u8, 254, 255, 254];
     let mut dest = [0u8; 4];
@@ -61,7 +64,7 @@ fn test_average2_u8_max_values() {
 }
 
 #[test]
-fn test_average2_u8_zero_values() {
+fn average2_u8_zero_values() {
     let src1 = [0u8, 0, 1, 1];
     let src2 = [0u8, 1, 0, 1];
     let mut dest = [0u8; 4];
@@ -81,7 +84,7 @@ fn test_average2_u8_zero_values() {
 }
 
 #[test]
-fn test_average2_u16_basic() {
+fn average2_u16_basic() {
     let src1 = [0u16, 2, 4, 6];
     let src2 = [1u16, 3, 5, 7];
     let mut dest = [0u16; 4];
@@ -100,7 +103,7 @@ fn test_average2_u16_basic() {
 }
 
 #[test]
-fn test_average2_u16_high_values() {
+fn average2_u16_high_values() {
     let src1 = [1000u16, 2000, 3000, 4000];
     let src2 = [1001u16, 2001, 3001, 4001];
     let mut dest = [0u16; 4];
@@ -119,7 +122,7 @@ fn test_average2_u16_high_values() {
 }
 
 #[test]
-fn test_average2_u16_max_values() {
+fn average2_u16_max_values() {
     let src1 = [65534u16, 65535, 65534, 65535];
     let src2 = [65535u16, 65534, 65535, 65534];
     let mut dest = [0u16; 4];
@@ -138,7 +141,7 @@ fn test_average2_u16_max_values() {
 }
 
 #[test]
-fn test_average2_u8_single_pixel() {
+fn average2_u8_single_pixel() {
     let src1 = [100u8];
     let src2 = [200u8];
     let mut dest = [0u8; 1];
@@ -157,7 +160,7 @@ fn test_average2_u8_single_pixel() {
 }
 
 #[test]
-fn test_average2_u8_different_pitch() {
+fn average2_u8_different_pitch() {
     // Test with pitch > width to simulate actual image data with padding
     let src1 = [10u8, 20, 0, 0, 30, 40, 0, 0]; // 2x2 image with pitch=4
     let src2 = [11u8, 21, 0, 0, 31, 41, 0, 0]; // 2x2 image with pitch=4
@@ -186,7 +189,7 @@ fn test_average2_u8_different_pitch() {
 }
 
 #[test]
-fn test_average2_u16_different_pitch() {
+fn average2_u16_different_pitch() {
     // Test with pitch > width
     let src1 = [1000u16, 2000, 0, 0, 3000, 4000, 0, 0];
     let src2 = [1001u16, 2001, 0, 0, 3001, 4001, 0, 0];
@@ -213,7 +216,7 @@ fn test_average2_u16_different_pitch() {
 }
 
 #[test]
-fn test_average2_u8_rectangular() {
+fn average2_u8_rectangular() {
     // Test with non-square dimensions: 3x1 rectangle
     let src1 = [10u8, 20, 30];
     let src2 = [11u8, 21, 31];
@@ -232,7 +235,7 @@ fn test_average2_u8_rectangular() {
 }
 
 #[test]
-fn test_average2_u8_odd_addition_results() {
+fn average2_u8_odd_addition_results() {
     // Test cases where addition results in odd numbers to verify ceiling division
     let src1 = [1u8, 3, 5, 7];
     let src2 = [2u8, 4, 6, 8];
@@ -253,7 +256,7 @@ fn test_average2_u8_odd_addition_results() {
 }
 
 #[test]
-fn test_average2_u16_odd_addition_results() {
+fn average2_u16_odd_addition_results() {
     // Test cases where addition results in odd numbers
     let src1 = [101u16, 103, 105, 107];
     let src2 = [102u16, 104, 106, 108];

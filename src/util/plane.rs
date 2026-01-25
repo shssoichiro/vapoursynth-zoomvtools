@@ -1,5 +1,4 @@
 use core::slice;
-use std::mem::transmute;
 
 use anyhow::{Result, bail};
 use vapoursynth::frame::Frame;
@@ -20,12 +19,7 @@ pub fn plane_with_padding<'a, T: Pixel>(frame: &'a Frame, plane: usize) -> Resul
     let bytes_per_pixel = size_of::<T>();
 
     // SAFETY: We know the layout of the plane
-    Ok(unsafe {
-        slice::from_raw_parts(
-            transmute::<*const u8, *const T>(data_ptr),
-            stride * height / bytes_per_pixel,
-        )
-    })
+    Ok(unsafe { slice::from_raw_parts(data_ptr.cast::<T>(), stride * height / bytes_per_pixel) })
 }
 
 /// Gets a slice to the plane's data including its padding.
@@ -46,10 +40,7 @@ pub fn plane_with_padding_mut<'a, T: Pixel>(
 
     // SAFETY: We know the layout of the plane
     Ok(unsafe {
-        slice::from_raw_parts_mut(
-            transmute::<*mut u8, *mut T>(data_ptr),
-            stride * height / bytes_per_pixel,
-        )
+        slice::from_raw_parts_mut(data_ptr.cast::<T>(), stride * height / bytes_per_pixel)
     })
 }
 
@@ -82,9 +73,8 @@ pub unsafe fn plane_with_padding_split<'a, T: Pixel>(
     // is responsible for ensuring they don't overlap in actual usage.
     // This is similar to how split_at_mut works, but for the same logical data.
     unsafe {
-        let src_slice = slice::from_raw_parts(transmute::<*mut u8, *const T>(data_ptr), total_len);
-        let dest_slice =
-            slice::from_raw_parts_mut(transmute::<*mut u8, *mut T>(data_ptr), total_len);
+        let src_slice = slice::from_raw_parts(data_ptr as *const T, total_len);
+        let dest_slice = slice::from_raw_parts_mut(data_ptr.cast::<T>(), total_len);
         Ok((src_slice, dest_slice))
     }
 }

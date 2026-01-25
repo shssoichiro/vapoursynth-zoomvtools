@@ -1,3 +1,6 @@
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
+
 use std::num::NonZeroUsize;
 
 use super::{pad_corner, pad_reference_frame};
@@ -153,7 +156,7 @@ fn verify_padding<T: Copy + PartialEq + std::fmt::Debug>(
 }
 
 #[test]
-fn test_pad_reference_frame_u8_basic() {
+fn pad_reference_frame_u8_basic() {
     let width = 4;
     let height = 4;
     let hpad = 2;
@@ -177,7 +180,7 @@ fn test_pad_reference_frame_u8_basic() {
 }
 
 #[test]
-fn test_pad_reference_frame_u16_basic() {
+fn pad_reference_frame_u16_basic() {
     let width = 4;
     let height = 4;
     let hpad = 2;
@@ -201,7 +204,7 @@ fn test_pad_reference_frame_u16_basic() {
 }
 
 #[test]
-fn test_pad_reference_frame_with_offset() {
+fn pad_reference_frame_with_offset() {
     let width = 3;
     let height = 3;
     let hpad = 1;
@@ -234,7 +237,7 @@ fn test_pad_reference_frame_with_offset() {
 }
 
 #[test]
-fn test_pad_reference_frame_minimal_size() {
+fn pad_reference_frame_minimal_size() {
     let width = 1;
     let height = 1;
     let hpad = 1;
@@ -269,7 +272,7 @@ fn test_pad_reference_frame_minimal_size() {
 }
 
 #[test]
-fn test_pad_reference_frame_asymmetric_padding() {
+fn pad_reference_frame_asymmetric_padding() {
     let width = 3;
     let height = 2;
     let hpad = 3; // Different horizontal padding
@@ -293,7 +296,7 @@ fn test_pad_reference_frame_asymmetric_padding() {
 }
 
 #[test]
-fn test_pad_reference_frame_large_frame() {
+fn pad_reference_frame_large_frame() {
     let width = 16;
     let height = 12;
     let hpad = 4;
@@ -317,7 +320,7 @@ fn test_pad_reference_frame_large_frame() {
 }
 
 #[test]
-fn test_pad_reference_frame_wide_frame() {
+fn pad_reference_frame_wide_frame() {
     let width = 20;
     let height = 2;
     let hpad = 2;
@@ -341,7 +344,7 @@ fn test_pad_reference_frame_wide_frame() {
 }
 
 #[test]
-fn test_pad_reference_frame_tall_frame() {
+fn pad_reference_frame_tall_frame() {
     let width = 2;
     let height = 20;
     let hpad = 2;
@@ -365,7 +368,7 @@ fn test_pad_reference_frame_tall_frame() {
 }
 
 #[test]
-fn test_pad_reference_frame_pitch_larger_than_padded_width() {
+fn pad_reference_frame_pitch_larger_than_padded_width() {
     let width = 4;
     let height = 3;
     let hpad = 2;
@@ -389,7 +392,7 @@ fn test_pad_reference_frame_pitch_larger_than_padded_width() {
 }
 
 #[test]
-fn test_pad_corner_basic() {
+fn pad_corner_basic() {
     let hpad = 2;
     let vpad = 2;
     let pitch = 6;
@@ -424,7 +427,7 @@ fn test_pad_corner_basic() {
 }
 
 #[test]
-fn test_pad_corner_u16() {
+fn pad_corner_u16() {
     let hpad = 3;
     let vpad = 1;
     let pitch = 8;
@@ -459,7 +462,7 @@ fn test_pad_corner_u16() {
 }
 
 #[test]
-fn test_pad_corner_with_offset() {
+fn pad_corner_with_offset() {
     let hpad = 2;
     let vpad = 2;
     let pitch = 6;
@@ -500,7 +503,7 @@ fn test_pad_corner_with_offset() {
 }
 
 #[test]
-fn test_pad_reference_frame_preserves_original_data() {
+fn pad_reference_frame_preserves_original_data() {
     let width = 3;
     let height = 3;
     let hpad = 1;
@@ -549,7 +552,7 @@ fn test_pad_reference_frame_preserves_original_data() {
 }
 
 #[test]
-fn test_pad_reference_frame_edge_values_correctness() {
+fn pad_reference_frame_edge_values_correctness() {
     let width = 3;
     let height = 3;
     let hpad = 2;

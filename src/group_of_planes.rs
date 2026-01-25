@@ -1,6 +1,7 @@
 use std::{
     mem::transmute,
     num::{NonZeroU8, NonZeroUsize},
+    ptr::slice_from_raw_parts_mut,
 };
 
 use anyhow::{Result, anyhow};
@@ -49,9 +50,9 @@ impl<T: Pixel> GroupOfPlanes<T> {
         let mut pel_current = pel;
         let mut motion_flags_current = motion_flags;
         let width_b = NonZeroUsize::new((blk_size_x.get() - overlap_x) * blk_x.get() + overlap_x)
-            .ok_or(anyhow!("invalid width calculation"))?;
+            .ok_or_else(|| anyhow!("invalid width calculation"))?;
         let height_b = NonZeroUsize::new((blk_size_y.get() - overlap_y) * blk_y.get() + overlap_y)
-            .ok_or(anyhow!("invalid height calculation"))?;
+            .ok_or_else(|| anyhow!("invalid height calculation"))?;
 
         for i in 0..level_count {
             if i == level_count - 1 {
@@ -61,11 +62,11 @@ impl<T: Pixel> GroupOfPlanes<T> {
             let blk_x_current = NonZeroUsize::new(
                 ((width_b.get() >> i) - overlap_x) / (blk_size_x.get() - overlap_x),
             )
-            .ok_or(anyhow!("invalid block x calculation"))?;
+            .ok_or_else(|| anyhow!("invalid block x calculation"))?;
             let blk_y_current = NonZeroUsize::new(
                 ((height_b.get() >> i) - overlap_y) / (blk_size_y.get() - overlap_y),
             )
-            .ok_or(anyhow!("invalid block y calculation"))?;
+            .ok_or_else(|| anyhow!("invalid block y calculation"))?;
 
             planes.push(PlaneOfBlocks::new(
                 blk_x_current,
@@ -145,7 +146,7 @@ impl<T: Pixel> GroupOfPlanes<T> {
 
         let mut global_mv = MotionVector::zero();
         if !global {
-            penalty_global = penalty_zero
+            penalty_global = penalty_zero;
         }
 
         // Search the motion vectors, for the low details interpolations first
@@ -375,7 +376,13 @@ fn extra_divide_block_data(
     block.sad >>= 2;
 
     // SAFETY: I hate every part of this, but this is what the C code does.
-    let blocks_out: &mut [MotionVector] = unsafe { transmute(&mut out.block_data[out_idx..]) };
+    let blocks_out: &mut [MotionVector] = unsafe {
+        let data = &mut out.block_data[out_idx..];
+        &mut *slice_from_raw_parts_mut(
+            data.as_mut_ptr().cast(),
+            data.len() / size_of::<MotionVector>(),
+        )
+    };
     // top left subblock
     blocks_out[bx * 2] = block;
     // top right subblock
@@ -434,11 +441,10 @@ fn assign_median(
     };
     // SAFETY: block data is always transmuted to and from `MotionVector`s
     let blkout: &mut MotionVector = unsafe {
-        transmute::<&mut [u8; MV_SIZE], _>(
-            &mut out.block_data[out_idx + out_offset * MV_SIZE..][..MV_SIZE]
-                .try_into()
-                .expect("slice with incorrect length"),
-        )
+        &mut *(&mut out.block_data[out_idx + out_offset * MV_SIZE..][..MV_SIZE]
+            .try_into()
+            .expect("slice with incorrect length") as *mut [u8; MV_SIZE]
+            as *mut MotionVector)
     };
     get_median(blkout, blkin_1, blkin_2, blkin_3);
 }

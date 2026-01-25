@@ -1,3 +1,6 @@
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
+
 use anyhow::Result;
 use vapoursynth::{
     format::{FormatID, PresetFormat},
@@ -51,7 +54,7 @@ clip.set_output()
 }
 
 #[test]
-fn test_analyse_new_defaults() {
+fn analyse_new_defaults() {
     // These are the expected results from a 640x480 input to Super.
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
@@ -243,7 +246,7 @@ fn test_analyse_new_defaults() {
 }
 
 #[test]
-fn test_analyse_new_custom_block_sizes() {
+fn analyse_new_custom_block_sizes() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -303,7 +306,7 @@ fn test_analyse_new_custom_block_sizes() {
 }
 
 #[test]
-fn test_analyse_new_invalid_block_sizes() {
+fn analyse_new_invalid_block_sizes() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -359,7 +362,7 @@ fn test_analyse_new_invalid_block_sizes() {
 }
 
 #[test]
-fn test_analyse_new_penalty_validation() {
+fn analyse_new_penalty_validation() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -540,7 +543,7 @@ fn test_analyse_new_penalty_validation() {
 }
 
 #[test]
-fn test_analyse_new_overlap_validation() {
+fn analyse_new_overlap_validation() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -626,7 +629,7 @@ fn test_analyse_new_overlap_validation() {
 }
 
 #[test]
-fn test_analyse_new_divide_validation() {
+fn analyse_new_divide_validation() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -709,7 +712,7 @@ fn test_analyse_new_divide_validation() {
 }
 
 #[test]
-fn test_analyse_new_dct_satd_validation() {
+fn analyse_new_dct_satd_validation() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -798,7 +801,7 @@ fn test_analyse_new_dct_satd_validation() {
 }
 
 #[test]
-fn test_analyse_new_truemotion_false() {
+fn analyse_new_truemotion_false() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -857,7 +860,7 @@ fn test_analyse_new_truemotion_false() {
 }
 
 #[test]
-fn test_analyse_new_backward_motion() {
+fn analyse_new_backward_motion() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -906,7 +909,7 @@ fn test_analyse_new_backward_motion() {
 }
 
 #[test]
-fn test_analyse_new_chroma_disabled() {
+fn analyse_new_chroma_disabled() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -957,7 +960,7 @@ fn test_analyse_new_chroma_disabled() {
 }
 
 #[test]
-fn test_analyse_new_grayscale_format() {
+fn analyse_new_grayscale_format() {
     let env = create_test_env(672, 2750, PresetFormat::Gray8, 10, 480, 16, 8, 1, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -979,7 +982,7 @@ fn test_analyse_new_grayscale_format() {
 }
 
 #[test]
-fn test_analyse_new_custom_delta() {
+fn analyse_new_custom_delta() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -1066,7 +1069,7 @@ fn test_analyse_new_custom_delta() {
 }
 
 #[test]
-fn test_analyse_new_divide_creates_extra_data() {
+fn analyse_new_divide_creates_extra_data() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -1135,7 +1138,7 @@ fn test_analyse_new_divide_creates_extra_data() {
 }
 
 #[test]
-fn test_analyse_new_search_param_adjustment() {
+fn analyse_new_search_param_adjustment() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -1217,7 +1220,7 @@ fn test_analyse_new_search_param_adjustment() {
 }
 
 #[test]
-fn test_analyse_new_pel_search_auto() {
+fn analyse_new_pel_search_auto() {
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
 
@@ -1299,7 +1302,7 @@ fn test_analyse_new_pel_search_auto() {
 }
 
 #[test]
-fn test_analyse_new_insufficient_super_levels() {
+fn analyse_new_insufficient_super_levels() {
     // Create a super clip with only 2 levels but request analysis that needs more
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 2, 7, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();
@@ -1350,7 +1353,7 @@ fn test_analyse_new_insufficient_super_levels() {
 }
 
 #[test]
-fn test_analyse_new_colour_data_mismatch() {
+fn analyse_new_colour_data_mismatch() {
     // Create a super clip that only has Y plane data but request chroma analysis
     let env = create_test_env(672, 2750, PresetFormat::YUV420P8, 10, 480, 16, 8, 1, 2, 16).unwrap();
     let (node, _) = env.get_output(0).unwrap();

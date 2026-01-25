@@ -1,5 +1,5 @@
-#![allow(unused_unsafe)]
-#![allow(clippy::undocumented_unsafe_blocks)]
+#![allow(clippy::unwrap_used, reason = "allow in test files")]
+#![allow(clippy::undocumented_unsafe_blocks, reason = "allow in test files")]
 
 use std::num::NonZeroUsize;
 
