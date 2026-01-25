@@ -20,7 +20,7 @@ Zoomy MV tools, written in Rust.
   - [x] Equivalent output to C
   - [x] Similar performance to C
 - [x] Analyse
-  - [x] Equivalent output to C
+  - [ ] Equivalent output to C
   - [ ] Similar performance to C
 
 ## TODO

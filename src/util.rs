@@ -23,7 +23,7 @@ cpufeatures::new!(cpuid_avx2, "avx2");
 pub use cpuid_avx2::get as has_avx2;
 
 pub trait Pixel:
-    Component + Copy + Clone + Default + Send + Sync + PrimInt + Display + FromFloatLossy + 'static
+    Component + Copy + Clone + Default + Send + Sync + PrimInt + Display + 'static
 {
     #[must_use]
     fn from_u16_or_max_value(value: u16) -> Self;
@@ -34,16 +34,7 @@ pub trait Pixel:
 
 impl<T> Pixel for T
 where
-    T: Component
-        + Copy
-        + Clone
-        + Default
-        + Send
-        + Sync
-        + PrimInt
-        + Display
-        + FromFloatLossy
-        + 'static,
+    T: Component + Copy + Clone + Default + Send + Sync + PrimInt + Display + 'static,
 {
     fn from_u16_or_max_value(value: u16) -> Self {
         Self::from(value).unwrap_or_else(|| {
@@ -57,23 +48,6 @@ where
             // If conversion fails (shouldn't happen with our inputs), fallback to max
             Self::max_value()
         })
-    }
-}
-
-pub trait FromFloatLossy {
-    #[must_use]
-    fn from_float_lossy(value: f32) -> Self;
-}
-
-impl FromFloatLossy for u8 {
-    fn from_float_lossy(value: f32) -> Self {
-        value as u8
-    }
-}
-
-impl FromFloatLossy for u16 {
-    fn from_float_lossy(value: f32) -> Self {
-        value as u16
     }
 }
 

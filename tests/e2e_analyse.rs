@@ -203,6 +203,62 @@ fn test_analyse_different_block_sizes() -> Result<()> {
 }
 
 #[test]
+fn test_analyse_dct_modes() -> Result<()> {
+    require_mvtools!();
+
+    let dct_modes = [
+        (0, "Spatial"),
+        (1, "Dct"),
+        (2, "MixedSpatialDct"),
+        (3, "AdaptiveSpatialMixed"),
+        (4, "AdaptiveSpatialDct"),
+        (5, "Satd"),
+        (6, "MixedSatdDct"),
+        (7, "AdaptiveSatdMixed"),
+        (8, "AdaptiveSatdDct"),
+        (9, "MixedSadEqSatdDct"),
+        (10, "AdaptiveSatdLuma"),
+    ];
+
+    for (dct, name) in &dct_modes {
+        let clip_config = TestClipConfig {
+            width: 128,
+            height: 96,
+            format: "vs.YUV420P8",
+            length: 10,
+            content_type: ClipContentType::MovingBox {
+                speed_x: 1,
+                speed_y: 0,
+            },
+        };
+
+        let super_params = FilterParams::default();
+        let analyse_params = FilterParams {
+            dct: Some(*dct),
+            ..Default::default()
+        };
+
+        let script = generate_comparison_script(&clip_config, &super_params, Some(&analyse_params));
+
+        let env = Environment::from_script(&script)
+            .with_context(|| format!("Failed with search type {}", name))?;
+        let (c_node, _) = env.get_output(0)?;
+        let (r_node, _) = env.get_output(1)?;
+
+        let c_frame = c_node.get_frame(5)?;
+        let r_frame = r_node.get_frame(5)?;
+
+        let c_props = c_frame.props();
+        let r_props = r_frame.props();
+        let c_vectors = c_props.get_data("MVTools_vectors")?;
+        let r_vectors = r_props.get_data("MVTools_vectors")?;
+        compare_vectors_data(c_vectors, r_vectors, *dct as usize);
+    }
+
+    Ok(())
+}
+
+#[test]
 fn test_analyse_16bit() -> Result<()> {
     require_mvtools!();
 

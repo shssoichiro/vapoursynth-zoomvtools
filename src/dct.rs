@@ -1,13 +1,11 @@
-use std::{
-    cmp::{max, min},
-    num::{NonZeroU8, NonZeroUsize},
-};
+use std::num::{NonZeroU8, NonZeroUsize};
 
 use anyhow::Result;
 use fftw::{
     plan::{R2RPlan, R2RPlan32},
     types::{Flag, R2RKind},
 };
+use num_traits::clamp;
 
 use crate::util::{Pixel, round_ties_to_even};
 
@@ -86,11 +84,10 @@ impl DctHelper {
     fn float_src_to_pixels<T: Pixel>(&self, dst: &mut [T], dst_pitch: NonZeroUsize) {
         let sqrt_2_div_2: f32 = (2f32).sqrt() / 2.0;
         let real_data = &self.src_dct;
-        let one = T::one();
-        let zero = T::zero();
 
-        let pixel_max = (one << self.bits_per_sample.get() as usize) - one;
-        let pixel_half = one << (self.bits_per_sample.get() as usize - 1);
+        // Have to do math in larger type to avoid overflow
+        let pixel_max = (1 << self.bits_per_sample.get() as usize) - 1;
+        let pixel_half = 1 << (self.bits_per_sample.get() as usize - 1);
 
         for j in 0..(self.size_y.get()) {
             let real_data = &real_data[j * self.size_x.get()..][..self.size_x.get()];
@@ -98,18 +95,17 @@ impl DctHelper {
             for (f, p) in real_data.iter().zip(dst.iter_mut()) {
                 // to be compatible with integer DCTINT8
                 let f = *f * sqrt_2_div_2;
-                let integ = T::from_float_lossy(round_ties_to_even(f));
-                *p = min(pixel_max, max(zero, (integ >> self.dct_shift) + pixel_half));
+                let integ = round_ties_to_even(f) as i32;
+                *p = T::from(clamp((integ >> self.dct_shift) + pixel_half, 0, pixel_max))
+                    .expect("clamp guarantees in range");
             }
         }
 
         // to be compatible with integer DCTINT8
         let f = real_data[0] * 0.5;
-        let integ = T::from_float_lossy(round_ties_to_even(f));
+        let integ = round_ties_to_even(f) as i32;
         // DC
-        dst[0] = min(
-            pixel_max,
-            max(zero, (integ >> self.dct_shift0) + pixel_half),
-        );
+        dst[0] = T::from(clamp((integ >> self.dct_shift0) + pixel_half, 0, pixel_max))
+            .expect("clamp guarantees in range");
     }
 }
