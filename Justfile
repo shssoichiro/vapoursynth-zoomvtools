@@ -39,6 +39,7 @@ bench-build:
 precommit:
     cargo fmt
     cargo clippy
+    cargo clippy --tests
     cargo test
     just bench-build
 
