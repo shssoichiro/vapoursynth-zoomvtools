@@ -6,3 +6,4 @@
 /.ckignore
 *.log
 *.txt
+lcov.info
