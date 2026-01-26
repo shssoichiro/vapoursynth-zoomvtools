@@ -173,6 +173,7 @@ Tests are co-located with modules:
 - Unit tests in `#[cfg(test)] mod tests` within each module
 - Test-specific data in subdirectories (e.g., `src/pad/tests.rs`, `src/refine/tests.rs`)
 - Integration tests use `#[macro_use] mod tests` in `src/tests.rs`
+- End-to-end tests require the C version of the plugin to be installed, and intend to verify our results are equivalent to theirs
 
 ### Motion Search Implementation Details
 

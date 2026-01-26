@@ -259,6 +259,102 @@ fn test_analyse_dct_modes() -> Result<()> {
 }
 
 #[test]
+fn test_analyse_divide_extra_original() -> Result<()> {
+    require_mvtools!();
+
+    let clip_config = TestClipConfig {
+        width: 320,
+        height: 240,
+        format: "vs.YUV420P8",
+        length: 20,
+        content_type: ClipContentType::MovingBox {
+            speed_x: 2,
+            speed_y: 1,
+        },
+    };
+
+    let super_params = FilterParams::default();
+    let analyse_params = FilterParams {
+        divide: Some(1),
+        ..FilterParams::default()
+    };
+
+    let script = generate_comparison_script(&clip_config, &super_params, Some(&analyse_params));
+
+    let env = Environment::from_script(&script)?;
+    let (c_node, _) = env.get_output(0)?;
+    let (r_node, _) = env.get_output(1)?;
+
+    for n in 0..clip_config.length {
+        let c_frame = c_node.get_frame(n)?;
+        let r_frame = r_node.get_frame(n)?;
+
+        // Get motion vector data
+        let c_props = c_frame.props();
+        let r_props = r_frame.props();
+
+        let c_vectors = c_props.get_data("MVTools_vectors")?;
+        let r_vectors = r_props.get_data("MVTools_vectors")?;
+        compare_vectors_data(c_vectors, r_vectors, n);
+
+        // Compare MVAnalysisData
+        let c_analysis = c_props.get_data("MVTools_MVAnalysisData")?;
+        let r_analysis = r_props.get_data("MVTools_MVAnalysisData")?;
+        compare_analysis_data(c_analysis, r_analysis, n);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_analyse_divide_extra_median() -> Result<()> {
+    require_mvtools!();
+
+    let clip_config = TestClipConfig {
+        width: 320,
+        height: 240,
+        format: "vs.YUV420P8",
+        length: 20,
+        content_type: ClipContentType::MovingBox {
+            speed_x: 2,
+            speed_y: 1,
+        },
+    };
+
+    let super_params = FilterParams::default();
+    let analyse_params = FilterParams {
+        divide: Some(2),
+        ..FilterParams::default()
+    };
+
+    let script = generate_comparison_script(&clip_config, &super_params, Some(&analyse_params));
+
+    let env = Environment::from_script(&script)?;
+    let (c_node, _) = env.get_output(0)?;
+    let (r_node, _) = env.get_output(1)?;
+
+    for n in 0..clip_config.length {
+        let c_frame = c_node.get_frame(n)?;
+        let r_frame = r_node.get_frame(n)?;
+
+        // Get motion vector data
+        let c_props = c_frame.props();
+        let r_props = r_frame.props();
+
+        let c_vectors = c_props.get_data("MVTools_vectors")?;
+        let r_vectors = r_props.get_data("MVTools_vectors")?;
+        compare_vectors_data(c_vectors, r_vectors, n);
+
+        // Compare MVAnalysisData
+        let c_analysis = c_props.get_data("MVTools_MVAnalysisData")?;
+        let r_analysis = r_props.get_data("MVTools_MVAnalysisData")?;
+        compare_analysis_data(c_analysis, r_analysis, n);
+    }
+
+    Ok(())
+}
+
+#[test]
 fn test_analyse_16bit() -> Result<()> {
     require_mvtools!();
 

@@ -1,7 +1,6 @@
 use std::{
     mem::transmute,
     num::{NonZeroU8, NonZeroUsize},
-    ptr::slice_from_raw_parts_mut,
 };
 
 use anyhow::{Result, anyhow};
@@ -265,9 +264,9 @@ impl<T: Pixel> GroupOfPlanes<T> {
         let blk_y = self.planes[0].blk_y.get();
         let blk_x = self.planes[0].blk_x.get();
         // finest estimated plane
-        let mut in_idx = start_idx + size_of::<usize>();
+        let mut in_idx = start_idx + size_of::<u32>();
         // position for divided subblocks data
-        let mut out_idx = start_idx + size + size_of::<usize>();
+        let mut out_idx = start_idx + size + size_of::<u32>();
 
         // top blocks
         for bx in 0..blk_x {
@@ -286,15 +285,31 @@ impl<T: Pixel> GroupOfPlanes<T> {
                 extra_divide_block_data(out, in_idx, out_idx, bx, blk_x);
 
                 if self.divide_extra == DivideMode::Median {
-                    assign_median(out, in_idx, out_idx, bx, bx - 1, bx - blk_x, bx * 2);
-                    assign_median(out, in_idx, out_idx, bx, bx + 1, bx - blk_x, bx * 2 + 1);
                     assign_median(
                         out,
                         in_idx,
                         out_idx,
                         bx,
                         bx - 1,
-                        bx + blk_x,
+                        bx as isize - blk_x as isize,
+                        bx * 2,
+                    );
+                    assign_median(
+                        out,
+                        in_idx,
+                        out_idx,
+                        bx,
+                        bx + 1,
+                        bx as isize - blk_x as isize,
+                        bx * 2 + 1,
+                    );
+                    assign_median(
+                        out,
+                        in_idx,
+                        out_idx,
+                        bx,
+                        bx - 1,
+                        (bx + blk_x) as isize,
                         bx * 2 + blk_x * 2,
                     );
                     assign_median(
@@ -303,7 +318,7 @@ impl<T: Pixel> GroupOfPlanes<T> {
                         out_idx,
                         bx,
                         bx + 1,
-                        bx + blk_x,
+                        (bx + blk_x) as isize,
                         bx * 2 + blk_x * 2 + 1,
                     );
                 }
@@ -374,22 +389,16 @@ fn extra_divide_block_data(
     };
     block.sad >>= 2;
 
-    // SAFETY: I hate every part of this, but this is what the C code does.
-    let blocks_out: &mut [MotionVector] = unsafe {
-        let data = &mut out.block_data[out_idx..];
-        &mut *slice_from_raw_parts_mut(
-            data.as_mut_ptr().cast(),
-            data.len() / size_of::<MotionVector>(),
-        )
-    };
+    let block_bytes = block.bytes();
+    let data = &mut out.block_data[out_idx..];
     // top left subblock
-    blocks_out[bx * 2] = block;
+    data[bx * 2 * MV_SIZE..][..MV_SIZE].copy_from_slice(block_bytes);
     // top right subblock
-    blocks_out[bx * 2 + 1] = block;
+    data[(bx * 2 + 1) * MV_SIZE..][..MV_SIZE].copy_from_slice(block_bytes);
     // bottom left subblock
-    blocks_out[bx * 2 + blk_x * 2] = block;
+    data[(bx * 2 + blk_x * 2) * MV_SIZE..][..MV_SIZE].copy_from_slice(block_bytes);
     // bottom right subblock
-    blocks_out[bx * 2 + blk_x * 2 + 1] = block;
+    data[(bx * 2 + blk_x * 2 + 1) * MV_SIZE..][..MV_SIZE].copy_from_slice(block_bytes);
 }
 
 fn get_median(v: &mut MotionVector, v1: MotionVector, v2: MotionVector, v3: MotionVector) {
@@ -411,7 +420,8 @@ fn assign_median(
     out_idx: usize,
     in_1_offset: usize,
     in_2_offset: usize,
-    in_3_offset: usize,
+    // In theory, any of these could be negative, but in practice, only offset 3 is ever negative.
+    in_3_offset: isize,
     out_offset: usize,
 ) {
     // SAFETY: block data is always transmuted to and from `MotionVector`s
@@ -432,18 +442,21 @@ fn assign_median(
     };
     // SAFETY: block data is always transmuted to and from `MotionVector`s
     let blkin_3: MotionVector = unsafe {
+        let start_idx = (in_idx as isize + in_3_offset * MV_SIZE as isize) as usize;
         transmute::<[u8; MV_SIZE], _>(
-            out.block_data[in_idx + in_3_offset * MV_SIZE..][..MV_SIZE]
+            out.block_data[start_idx..][..MV_SIZE]
                 .try_into()
                 .expect("slice with incorrect length"),
         )
     };
     // SAFETY: block data is always transmuted to and from `MotionVector`s
-    let blkout: &mut MotionVector = unsafe {
-        &mut *(&mut out.block_data[out_idx + out_offset * MV_SIZE..][..MV_SIZE]
-            .try_into()
-            .expect("slice with incorrect length") as *mut [u8; MV_SIZE]
-            as *mut MotionVector)
+    let mut blkout: MotionVector = unsafe {
+        transmute::<[u8; MV_SIZE], _>(
+            out.block_data[out_idx + out_offset * MV_SIZE..][..MV_SIZE]
+                .try_into()
+                .expect("slice with incorrect length"),
+        )
     };
-    get_median(blkout, blkin_1, blkin_2, blkin_3);
+    get_median(&mut blkout, blkin_1, blkin_2, blkin_3);
+    out.block_data[out_idx + out_offset * MV_SIZE..][..MV_SIZE].copy_from_slice(blkout.bytes());
 }
