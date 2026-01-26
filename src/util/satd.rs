@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::{
     mem::size_of,
     num::NonZeroUsize,
@@ -118,7 +121,7 @@ fn satd_4x4<
 
     let one = SUM2::one();
     let mask = (one << bits_per_sum) - one;
-    for i in 0..4 {
+    for i in 0..2 {
         let [ref mut d0, ref mut d1, ref mut d2, ref mut d3] = a;
         hadamard4(d0, d1, d2, d3, tmp[0][i], tmp[1][i], tmp[2][i], tmp[3][i]);
         a[0] = abs2::<SUM1, SUM2>(a[0])
