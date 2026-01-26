@@ -15,7 +15,6 @@ use crate::{
     util::{Pixel, median},
 };
 
-#[derive(Clone)]
 #[allow(dead_code)]
 pub struct GroupOfPlanes<T: Pixel> {
     pub blk_size_x: NonZeroUsize,

@@ -9,7 +9,6 @@ use num_traits::clamp;
 
 use crate::util::{Pixel, round_ties_to_even};
 
-#[derive(Clone)]
 pub struct DctHelper {
     size_x: NonZeroUsize,
     size_y: NonZeroUsize,
@@ -17,6 +16,7 @@ pub struct DctHelper {
     dct_shift: usize,
     dct_shift0: usize,
 
+    plan: R2RPlan32,
     src: Box<[f32]>,
     src_dct: Box<[f32]>,
 }
@@ -44,6 +44,11 @@ impl DctHelper {
             bits_per_sample,
             dct_shift,
             dct_shift0,
+            plan: R2RPlan32::aligned(
+                &[size_x.get(), size_y.get()],
+                R2RKind::FFTW_REDFT10,
+                Flag::ESTIMATE,
+            )?,
             src,
             src_dct,
         };
@@ -57,15 +62,8 @@ impl DctHelper {
         dct_plane: &mut [T],
         dct_pitch: NonZeroUsize,
     ) -> Result<()> {
-        // TODO: Do we need to cache this?
-        let mut plan = R2RPlan32::aligned(
-            &[self.size_x.get(), self.size_y.get()],
-            R2RKind::FFTW_REDFT10,
-            Flag::ESTIMATE,
-        )?;
-
         self.pixels_to_float_src(src_plane, src_pitch);
-        plan.r2r(&mut self.src, &mut self.src_dct)?;
+        self.plan.r2r(&mut self.src, &mut self.src_dct)?;
         self.float_src_to_pixels(dct_plane, dct_pitch);
 
         Ok(())

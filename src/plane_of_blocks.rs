@@ -22,7 +22,6 @@ const MAX_BLOCK_SIZE: usize = 128 * 128;
 // right now 5 should be enough (TSchniede)
 const MAX_PREDICTOR: usize = 5;
 
-#[derive(Clone)]
 #[allow(dead_code)]
 pub(crate) struct PlaneOfBlocks<T: Pixel> {
     pub pel: Subpel,
