@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::num::NonZeroUsize;
 
 use crate::util::Pixel;
