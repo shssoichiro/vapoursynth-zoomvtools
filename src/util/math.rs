@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::cmp::{max, min};
 
 /// Port of C's `nearbyintf` function which rounds `.5` values to the nearest even number.

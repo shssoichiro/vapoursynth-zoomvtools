@@ -151,29 +151,23 @@ AVX2 detection via `cpufeatures` crate is available but SIMD implementations may
 
 ### Linter Configuration
 
-Notable clippy overrides in `Cargo.toml`:
+Many clippy overrides at the top of `lib.rs`.
 
-- `manual_div_ceil = "allow"` - Manual division can have better performance
-- `needless_range_loop = "allow"` - Sometimes explicit indexing is clearer for SIMD
-- `too_many_arguments = "allow"` - Complex filter parameters require many arguments
-- `undocumented_unsafe_blocks = "warn"` - Unsafe code should be documented
-- `unnecessary_to_owned = "allow"` - False positive workaround
+Notable overrides:
 
-### Code Style
-
-Uses custom rustfmt.toml with:
-
-- `use_field_init_shorthand = true`
-- `use_try_shorthand = true`
+- We are using the `mod_module_files` pattern, so top-level modules remain e.g. `src/util.rs` and do _not_ get moved to `mod.rs` in a subfolder.
 
 ### Testing Structure
 
 Tests are co-located with modules:
 
-- Unit tests in `#[cfg(test)] mod tests` within each module
-- Test-specific data in subdirectories (e.g., `src/pad/tests.rs`, `src/refine/tests.rs`)
+- Unit tests in `#[cfg(test)] mod tests` within each module, in separate files (e.g., `src/pad/tests.rs`, `src/refine/tests.rs`)
 - Integration tests use `#[macro_use] mod tests` in `src/tests.rs`
 - End-to-end tests require the C version of the plugin to be installed, and intend to verify our results are equivalent to theirs
+
+Use parameterized tests via the `parameterized` crate to simplify validating functions that have many possible values to test, and to validate the most commonly processed image formats, which are "vs.YUV420P8", "vs.YUV420P10", and "vs.YUV420P16".
+
+The `parameterized` crate uses named parameter columns (not tuples). For multi-dimensional parameters, use separate columns that get zipped: `#[parameterized(w = { 4, 8 }, h = { 4, 8 })] fn test(w: usize, h: usize)` — not `width_height = { (4, 4), (8, 8) }`.
 
 ### Motion Search Implementation Details
 
