@@ -4,6 +4,7 @@
 mod common;
 
 use anyhow::Result;
+use parameterized::parameterized;
 use vapoursynth::prelude::Environment;
 
 use crate::common::{
@@ -11,14 +12,18 @@ use crate::common::{
     script_gen::{ClipContentType, FilterParams, TestClipConfig, generate_comparison_script},
 };
 
-#[test]
-fn test_super_8bit_yuv420_default_params() -> Result<()> {
+#[parameterized(
+    format = {
+        "vs.YUV420P8", "vs.YUV420P10", "vs.YUV420P16"
+    }
+)]
+fn test_super_default_params(format: &str) -> Result<()> {
     require_mvtools!();
 
     let clip_config = TestClipConfig {
         width: 640,
         height: 480,
-        format: "vs.YUV420P8",
+        format,
         length: 10,
         content_type: ClipContentType::Gradient,
     };
@@ -37,7 +42,11 @@ fn test_super_8bit_yuv420_default_params() -> Result<()> {
         let c_frame = c_node.get_frame(n)?;
         let r_frame = r_node.get_frame(n)?;
 
-        assert_frames_match::<u8>(&c_frame, &r_frame, &config, &format!("Super frame {}", n))?;
+        if format.ends_with("P8") {
+            assert_frames_match::<u8>(&c_frame, &r_frame, &config, &format!("Super frame {}", n))?;
+        } else {
+            assert_frames_match::<u16>(&c_frame, &r_frame, &config, &format!("Super frame {}", n))?;
+        }
 
         // Compare Super properties on first frame
         if n == 0 {
@@ -48,14 +57,18 @@ fn test_super_8bit_yuv420_default_params() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_super_16bit_yuv420_custom_params() -> Result<()> {
+#[parameterized(
+    format = {
+        "vs.YUV420P8", "vs.YUV420P10", "vs.YUV420P16"
+    }
+)]
+fn test_super_custom_params(format: &str) -> Result<()> {
     require_mvtools!();
 
     let clip_config = TestClipConfig {
         width: 320,
         height: 240,
-        format: "vs.YUV420P16",
+        format,
         length: 5,
         content_type: ClipContentType::Checkerboard,
     };
@@ -80,12 +93,11 @@ fn test_super_16bit_yuv420_custom_params() -> Result<()> {
         let c_frame = c_node.get_frame(n)?;
         let r_frame = r_node.get_frame(n)?;
 
-        assert_frames_match::<u16>(
-            &c_frame,
-            &r_frame,
-            &config,
-            &format!("Super 16-bit frame {}", n),
-        )?;
+        if format.ends_with("P8") {
+            assert_frames_match::<u8>(&c_frame, &r_frame, &config, &format!("Super frame {}", n))?;
+        } else {
+            assert_frames_match::<u16>(&c_frame, &r_frame, &config, &format!("Super frame {}", n))?;
+        }
 
         // Compare properties on first frame
         if n == 0 {
@@ -154,14 +166,18 @@ fn test_super_different_formats() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_super_with_pelclip() -> Result<()> {
+#[parameterized(
+    format = {
+        "vs.YUV420P8", "vs.YUV420P10", "vs.YUV420P16"
+    }
+)]
+fn test_super_with_pelclip(format: &str) -> Result<()> {
     require_mvtools!();
 
     let clip_config = TestClipConfig {
         width: 320,
         height: 240,
-        format: "vs.YUV420P8",
+        format,
         length: 5,
         content_type: ClipContentType::Blank,
     };
@@ -205,12 +221,11 @@ r_super.set_output(1)
         let c_frame = c_node.get_frame(n)?;
         let r_frame = r_node.get_frame(n)?;
 
-        assert_frames_match::<u8>(
-            &c_frame,
-            &r_frame,
-            &config,
-            &format!("Super with pelclip frame {}", n),
-        )?;
+        if format.ends_with("P8") {
+            assert_frames_match::<u8>(&c_frame, &r_frame, &config, &format!("Super frame {}", n))?;
+        } else {
+            assert_frames_match::<u16>(&c_frame, &r_frame, &config, &format!("Super frame {}", n))?;
+        }
     }
 
     Ok(())

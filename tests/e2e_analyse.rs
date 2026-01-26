@@ -4,6 +4,7 @@
 mod common;
 
 use anyhow::{Context, Result};
+use parameterized::parameterized;
 use vapoursynth::prelude::Environment;
 
 use crate::common::script_gen::{
@@ -13,14 +14,18 @@ use crate::common::script_gen::{
     generate_comparison_script,
 };
 
-#[test]
-fn test_analyse_default_params() -> Result<()> {
+#[parameterized(
+    format = {
+        "vs.YUV420P8", "vs.YUV420P10", "vs.YUV420P16"
+    }
+)]
+fn test_analyse_default_params(format: &str) -> Result<()> {
     require_mvtools!();
 
     let clip_config = TestClipConfig {
         width: 320,
         height: 240,
-        format: "vs.YUV420P8",
+        format,
         length: 20,
         content_type: ClipContentType::MovingBox {
             speed_x: 2,
@@ -58,8 +63,12 @@ fn test_analyse_default_params() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_analyse_search_types() -> Result<()> {
+#[parameterized(
+    format = {
+        "vs.YUV420P8", "vs.YUV420P10", "vs.YUV420P16"
+    }
+)]
+fn test_analyse_search_types(format: &str) -> Result<()> {
     require_mvtools!();
 
     let search_types = [
@@ -76,7 +85,7 @@ fn test_analyse_search_types() -> Result<()> {
         let clip_config = TestClipConfig {
             width: 128,
             height: 96,
-            format: "vs.YUV420P8",
+            format,
             length: 10,
             content_type: ClipContentType::MovingBox {
                 speed_x: 1,
@@ -110,14 +119,18 @@ fn test_analyse_search_types() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_analyse_backward_motion() -> Result<()> {
+#[parameterized(
+    format = {
+        "vs.YUV420P8", "vs.YUV420P10", "vs.YUV420P16"
+    }
+)]
+fn test_analyse_backward_motion(format: &str) -> Result<()> {
     require_mvtools!();
 
     let clip_config = TestClipConfig {
         width: 256,
         height: 192,
-        format: "vs.YUV420P8",
+        format,
         length: 15,
         content_type: ClipContentType::MovingBox {
             speed_x: 3,
@@ -152,8 +165,12 @@ fn test_analyse_backward_motion() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_analyse_different_block_sizes() -> Result<()> {
+#[parameterized(
+    format = {
+        "vs.YUV420P8", "vs.YUV420P10", "vs.YUV420P16"
+    }
+)]
+fn test_analyse_different_block_sizes(format: &str) -> Result<()> {
     require_mvtools!();
 
     let block_sizes = [4, 8, 16, 32];
@@ -162,7 +179,7 @@ fn test_analyse_different_block_sizes() -> Result<()> {
         let clip_config = TestClipConfig {
             width: 256,
             height: 192,
-            format: "vs.YUV420P8",
+            format,
             length: 10,
             content_type: ClipContentType::MovingBox {
                 speed_x: 1,
@@ -202,8 +219,12 @@ fn test_analyse_different_block_sizes() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_analyse_dct_modes() -> Result<()> {
+#[parameterized(
+    format = {
+        "vs.YUV420P8", "vs.YUV420P10", "vs.YUV420P16"
+    }
+)]
+fn test_analyse_dct_modes(format: &str) -> Result<()> {
     require_mvtools!();
 
     let dct_modes = [
@@ -224,7 +245,7 @@ fn test_analyse_dct_modes() -> Result<()> {
         let clip_config = TestClipConfig {
             width: 128,
             height: 96,
-            format: "vs.YUV420P8",
+            format,
             length: 10,
             content_type: ClipContentType::MovingBox {
                 speed_x: 1,
@@ -258,14 +279,20 @@ fn test_analyse_dct_modes() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_analyse_divide_extra_original() -> Result<()> {
+#[parameterized(
+    format = {
+        "vs.YUV420P8", "vs.YUV420P10", "vs.YUV420P16"
+    },
+)]
+#[ignore = "This test is flaky because of a bug in the C plugin that leaves the MVs at the end \
+            uninitialized causing them to have random values."]
+fn test_analyse_divide_extra_original(format: &str) -> Result<()> {
     require_mvtools!();
 
     let clip_config = TestClipConfig {
         width: 320,
         height: 240,
-        format: "vs.YUV420P8",
+        format,
         length: 20,
         content_type: ClipContentType::MovingBox {
             speed_x: 2,
@@ -306,14 +333,20 @@ fn test_analyse_divide_extra_original() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_analyse_divide_extra_median() -> Result<()> {
+#[parameterized(
+    format = {
+        "vs.YUV420P8", "vs.YUV420P10", "vs.YUV420P16"
+    }
+)]
+#[ignore = "This test is flaky because of a bug in the C plugin that leaves the MVs at the end \
+            uninitialized causing them to have random values."]
+fn test_analyse_divide_extra_median(format: &str) -> Result<()> {
     require_mvtools!();
 
     let clip_config = TestClipConfig {
         width: 320,
         height: 240,
-        format: "vs.YUV420P8",
+        format,
         length: 20,
         content_type: ClipContentType::MovingBox {
             speed_x: 2,
@@ -348,50 +381,6 @@ fn test_analyse_divide_extra_median() -> Result<()> {
         // Compare MVAnalysisData
         let c_analysis = c_props.get_data("MVTools_MVAnalysisData")?;
         let r_analysis = r_props.get_data("MVTools_MVAnalysisData")?;
-        compare_analysis_data(c_analysis, r_analysis, n);
-    }
-
-    Ok(())
-}
-
-#[test]
-fn test_analyse_16bit() -> Result<()> {
-    require_mvtools!();
-
-    let clip_config = TestClipConfig {
-        width: 320,
-        height: 240,
-        format: "vs.YUV420P16",
-        length: 10,
-        content_type: ClipContentType::MovingBox {
-            speed_x: 2,
-            speed_y: 1,
-        },
-    };
-
-    let super_params = FilterParams::default();
-    let analyse_params = FilterParams::default();
-
-    let script = generate_comparison_script(&clip_config, &super_params, Some(&analyse_params));
-
-    let env = Environment::from_script(&script)?;
-    let (c_node, _) = env.get_output(0)?;
-    let (r_node, _) = env.get_output(1)?;
-
-    for n in 0..clip_config.length {
-        let c_frame = c_node.get_frame(n)?;
-        let r_frame = r_node.get_frame(n)?;
-
-        let c_props = c_frame.props();
-        let r_props = r_frame.props();
-        let c_vectors = c_props.get_data("MVTools_vectors")?;
-        let r_vectors = r_props.get_data("MVTools_vectors")?;
-        compare_vectors_data(c_vectors, r_vectors, n);
-
-        // Verify analysis data
-        let c_analysis = c_props.get_data("MVTools_MVAnalysisData")?;
-        let r_analysis = r_props.get_data("MVTools_MVAnalysisData")?;
-
         compare_analysis_data(c_analysis, r_analysis, n);
     }
 
