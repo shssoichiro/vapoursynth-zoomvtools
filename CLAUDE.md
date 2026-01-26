@@ -88,6 +88,20 @@ cargo bench --features bench --bench <benchmark_name>
 
 Available benchmarks: `average`, `pad`, `reduce`, `refine`, `util`
 
+### Comparative Benchmarks (vs C MVTools)
+
+`scripts/benchmark.py` uses `hyperfine` to compare zoomv (Rust) against mv (C) filter performance. Requires `hyperfine`, `vspipe`, and C MVTools installed.
+
+```bash
+# Run all Super parameter sets at both bit depths
+python scripts/benchmark.py super
+
+# Run a specific test at a specific bit depth
+python scripts/benchmark.py super --test pel4 --bits 8
+```
+
+New filters can be added to the `FILTERS` dict in the script with a `generate_script` function and `tests` dict.
+
 ## Architecture
 
 ### VapourSynth Plugin Structure

@@ -1,0 +1,154 @@
+
+=== Super: default (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     362.2 ms ±   5.3 ms    [User: 574.8 ms, System: 129.0 ms]
+  Range (min … max):   356.3 ms … 371.3 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     361.2 ms ±   5.7 ms    [User: 567.4 ms, System: 132.8 ms]
+  Range (min … max):   351.9 ms … 370.9 ms    10 runs
+ 
+Summary
+  Rust (zoomv.Super) ran
+    1.00 ± 0.02 times faster than C (mv.Super)
+
+=== Super: pel1 (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     353.1 ms ±   5.2 ms    [User: 531.3 ms, System: 119.7 ms]
+  Range (min … max):   342.7 ms … 360.6 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     351.8 ms ±   4.9 ms    [User: 523.7 ms, System: 125.6 ms]
+  Range (min … max):   345.9 ms … 361.2 ms    10 runs
+ 
+Summary
+  Rust (zoomv.Super) ran
+    1.00 ± 0.02 times faster than C (mv.Super)
+
+=== Super: pel4 (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     416.6 ms ±   4.4 ms    [User: 854.7 ms, System: 224.6 ms]
+  Range (min … max):   408.1 ms … 422.3 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     414.7 ms ±   4.3 ms    [User: 856.2 ms, System: 228.0 ms]
+  Range (min … max):   408.5 ms … 420.7 ms    10 runs
+ 
+Summary
+  Rust (zoomv.Super) ran
+    1.00 ± 0.01 times faster than C (mv.Super)
+
+=== Super: sharp_bilinear (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     358.0 ms ±   2.8 ms    [User: 558.0 ms, System: 130.1 ms]
+  Range (min … max):   353.6 ms … 363.6 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     357.9 ms ±   3.6 ms    [User: 556.0 ms, System: 132.0 ms]
+  Range (min … max):   353.3 ms … 363.1 ms    10 runs
+ 
+Summary
+  Rust (zoomv.Super) ran
+    1.00 ± 0.01 times faster than C (mv.Super)
+
+=== Super: sharp_bicubic (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     366.5 ms ±   4.6 ms    [User: 630.5 ms, System: 126.3 ms]
+  Range (min … max):   361.5 ms … 374.2 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     357.2 ms ±   3.2 ms    [User: 572.9 ms, System: 125.0 ms]
+  Range (min … max):   353.4 ms … 363.0 ms    10 runs
+ 
+Summary
+  Rust (zoomv.Super) ran
+    1.03 ± 0.02 times faster than C (mv.Super)
+
+=== Super: sharp_wiener (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     358.6 ms ±   3.2 ms    [User: 573.8 ms, System: 129.2 ms]
+  Range (min … max):   355.0 ms … 364.8 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     360.3 ms ±   2.5 ms    [User: 571.7 ms, System: 129.5 ms]
+  Range (min … max):   357.2 ms … 364.7 ms    10 runs
+ 
+Summary
+  C (mv.Super) ran
+    1.00 ± 0.01 times faster than Rust (zoomv.Super)
+
+=== Super: rfilter_average (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     359.9 ms ±   3.9 ms    [User: 567.0 ms, System: 130.5 ms]
+  Range (min … max):   355.1 ms … 366.2 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     359.3 ms ±   4.7 ms    [User: 565.1 ms, System: 127.7 ms]
+  Range (min … max):   352.5 ms … 367.6 ms    10 runs
+ 
+Summary
+  Rust (zoomv.Super) ran
+    1.00 ± 0.02 times faster than C (mv.Super)
+
+=== Super: rfilter_cubic (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     362.9 ms ±  10.0 ms    [User: 585.0 ms, System: 126.1 ms]
+  Range (min … max):   355.7 ms … 389.3 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     362.2 ms ±   5.2 ms    [User: 590.4 ms, System: 132.9 ms]
+  Range (min … max):   355.5 ms … 373.5 ms    10 runs
+ 
+Summary
+  Rust (zoomv.Super) ran
+    1.00 ± 0.03 times faster than C (mv.Super)
+
+=== Super: no_chroma (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     356.7 ms ±   3.1 ms    [User: 553.6 ms, System: 129.0 ms]
+  Range (min … max):   352.1 ms … 362.1 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     357.1 ms ±   3.5 ms    [User: 554.8 ms, System: 127.1 ms]
+  Range (min … max):   352.9 ms … 363.4 ms    10 runs
+ 
+Summary
+  C (mv.Super) ran
+    1.00 ± 0.01 times faster than Rust (zoomv.Super)
+
+=== Super: small_pad (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     356.5 ms ±   3.6 ms    [User: 557.6 ms, System: 126.4 ms]
+  Range (min … max):   350.8 ms … 362.5 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     358.4 ms ±   6.0 ms    [User: 560.5 ms, System: 123.9 ms]
+  Range (min … max):   348.7 ms … 366.7 ms    10 runs
+ 
+Summary
+  C (mv.Super) ran
+    1.01 ± 0.02 times faster than Rust (zoomv.Super)
+
+=== Super: large_pad (8-bit) ===
+
+Benchmark 1: C (mv.Super)
+  Time (mean ± σ):     364.2 ms ±   3.7 ms    [User: 602.3 ms, System: 137.5 ms]
+  Range (min … max):   360.6 ms … 370.3 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Super)
+  Time (mean ± σ):     365.1 ms ±   5.9 ms    [User: 603.0 ms, System: 133.8 ms]
+  Range (min … max):   359.1 ms … 377.7 ms    10 runs
+ 
+Summary
+  C (mv.Super) ran
+    1.00 ± 0.02 times faster than Rust (zoomv.Super)

@@ -11,3 +11,4 @@ lcov.info
 flamegraph.svg
 perf.data*
 *.profraw
+*.ffindex
