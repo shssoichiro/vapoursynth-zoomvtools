@@ -22,7 +22,20 @@ Zoomy MV tools, written in Rust.
 - [x] Analyse
   - [x] Equivalent output to C
   - [ ] Similar performance to C
-
-## TODO
-
-All the others.
+- [ ] Recalculate
+- [ ] Compensate
+- [ ] Degrain1
+- [ ] Degrain2
+- [ ] Degrain3
+- [ ] Mask
+- [ ] Finest
+- [ ] Flow
+- [ ] FlowBlur
+- [ ] FlowInter
+- [ ] FlowFPS
+- [ ] BlockFPS
+- [ ] SCDetection
+- [ ] DepanAnalyse
+- [ ] DepanEstimate
+- [ ] DepanCompensate
+- [ ] DepanStabilise
