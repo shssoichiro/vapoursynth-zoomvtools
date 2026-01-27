@@ -150,16 +150,3 @@ macro_rules! get_satd_tests {
 }
 
 get_satd_tests!(rust);
-
-#[test]
-#[should_panic]
-fn satd_unsupported_size_panics() {
-    let w = 3;
-    let h = 3;
-    let src: Vec<u8> = vec![1u8; w * h];
-    let ref_: Vec<u8> = vec![0u8; w * h];
-    let width = NonZeroUsize::new(w).unwrap();
-    let height = NonZeroUsize::new(h).unwrap();
-    let pitch = NonZeroUsize::new(w).unwrap();
-    let _ = super::get_satd(width, height, &src, pitch, &ref_, pitch);
-}

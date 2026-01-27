@@ -1,9 +1,13 @@
+#[cfg(target_arch = "x86_64")]
+mod avx2;
 mod rust;
 
 #[cfg(test)]
 mod tests;
 
 use std::num::NonZeroUsize;
+
+use cfg_if::cfg_if;
 
 use crate::util::Pixel;
 
@@ -40,11 +44,6 @@ use crate::util::Pixel;
 /// Panics if the `(width, height)` combination is not in the supported list above.
 /// The function will call `unreachable!()` for unsupported block sizes.
 ///
-/// # Performance
-/// The use of const generics allows the compiler to unroll loops and optimize
-/// memory access patterns for each specific block size, providing better
-/// performance than a generic implementation.
-///
 /// # Example
 /// ```rust,ignore
 /// use std::num::NonZeroUsize;
@@ -64,5 +63,16 @@ pub fn luma_sum<T: Pixel>(
     src: &[T],
     src_pitch: NonZeroUsize,
 ) -> u64 {
+    cfg_if! {
+        if #[cfg(all(target_arch = "x86_64", not(feature = "no_simd")))] {
+            if crate::util::has_avx2() {
+                // SAFETY: We check for AVX2 first
+                unsafe {
+                    return avx2::luma_sum(width, height, src, src_pitch);
+                }
+            }
+        }
+    }
+
     rust::luma_sum(width, height, src, src_pitch)
 }

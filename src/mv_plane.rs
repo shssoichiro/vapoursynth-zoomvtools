@@ -291,7 +291,7 @@ impl MVPlane {
             _ => unreachable!("Invalid offset ordering"),
         };
 
-        average2(src1_slice, src2_slice, dest_slice, pitch, width, height);
+        average2(dest_slice, src1_slice, src2_slice, pitch, width, height);
     }
 
     pub fn refine<T: Pixel>(&mut self, method: SubpelMethod, plane: &mut [T]) {

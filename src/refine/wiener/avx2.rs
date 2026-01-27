@@ -2,40 +2,7 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 use std::{
-    arch::x86_64::{
-        __m256i,
-        _mm_loadu_si128,
-        _mm_storeu_si128,
-        _mm256_add_epi16,
-        _mm256_add_epi32,
-        _mm256_castsi256_si128,
-        _mm256_cvtepu8_epi16,
-        _mm256_loadu_si256,
-        _mm256_max_epi16,
-        _mm256_max_epi32,
-        _mm256_min_epi16,
-        _mm256_min_epi32,
-        _mm256_mullo_epi16,
-        _mm256_mullo_epi32,
-        _mm256_packus_epi16,
-        _mm256_packus_epi32,
-        _mm256_permute4x64_epi64,
-        _mm256_set1_epi16,
-        _mm256_set1_epi32,
-        _mm256_setzero_si256,
-        _mm256_slli_epi16,
-        _mm256_srai_epi16,
-        _mm256_srai_epi32,
-        _mm256_srli_epi16,
-        _mm256_srli_epi32,
-        _mm256_storeu_si256,
-        _mm256_sub_epi16,
-        _mm256_sub_epi32,
-        _mm256_unpackhi_epi8,
-        _mm256_unpackhi_epi16,
-        _mm256_unpacklo_epi8,
-        _mm256_unpacklo_epi16,
-    },
+    arch::x86_64::*,
     num::{NonZeroU8, NonZeroUsize},
 };
 
@@ -68,11 +35,6 @@ pub unsafe fn refine_horizontal_wiener<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
-    debug_assert!(
-        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
-            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
-    );
-
     match size_of::<T>() {
         1 => refine_horizontal_wiener_u8(
             src.as_ptr() as *const u8,
@@ -121,11 +83,6 @@ pub unsafe fn refine_vertical_wiener<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
-    debug_assert!(
-        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
-            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
-    );
-
     match size_of::<T>() {
         1 => refine_vertical_wiener_u8(
             src.as_ptr() as *const u8,

@@ -22,9 +22,9 @@ pub fn bench_average2_8bit(c: &mut Criterion) {
 
         b.iter(|| {
             average2(
+                black_box(&mut dest),
                 black_box(&src1),
                 black_box(&src2),
-                black_box(&mut dest),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),
@@ -50,9 +50,9 @@ pub fn bench_average2_16bit(c: &mut Criterion) {
 
         b.iter(|| {
             average2(
+                black_box(&mut dest),
                 black_box(&src1),
                 black_box(&src2),
-                black_box(&mut dest),
                 black_box(resolution),
                 black_box(resolution),
                 black_box(resolution),

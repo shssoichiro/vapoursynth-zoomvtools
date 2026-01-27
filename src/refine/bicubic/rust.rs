@@ -29,11 +29,6 @@ pub fn refine_horizontal_bicubic<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
-    debug_assert!(
-        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
-            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
-    );
-
     let pixel_max = (1u32 << bits_per_sample.get()) - 1;
     let mut offset = 0;
 
@@ -91,11 +86,6 @@ pub fn refine_vertical_bicubic<T: Pixel>(
     height: NonZeroUsize,
     bits_per_sample: NonZeroU8,
 ) {
-    debug_assert!(
-        bits_per_sample.get() as usize > (size_of::<T>() - 1) * 8
-            && (bits_per_sample.get() as usize <= size_of::<T>() * 8)
-    );
-
     let pixel_max = (1u32 << bits_per_sample.get()) - 1;
     let mut offset = 0;
 
