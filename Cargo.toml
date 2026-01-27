@@ -32,6 +32,21 @@ harness = false
 name = "util"
 required-features = ["bench"]
 
+[[bench]]
+harness = false
+name = "luma"
+required-features = ["bench"]
+
+[[bench]]
+harness = false
+name = "sad"
+required-features = ["bench"]
+
+[[bench]]
+harness = false
+name = "satd"
+required-features = ["bench"]
+
 [dependencies]
 anyhow = "1.0.98"
 bitflags = "2.9.1"
