@@ -30,6 +30,26 @@ clip_zoom.set_output(1)
 """
 
 
+def generate_analyse_script(source_path, params):
+    params_str = ", ".join(f"{k}={v}" for k, v in params.items())
+    return f"""\
+import vapoursynth as vs
+
+core = vs.core
+
+clip = core.ffms2.Source(source="{source_path}")
+
+# Use C mv.Super for both paths to keep the Super step consistent
+clip_super = clip.mv.Super()
+
+clip_mv = clip_super.mv.Analyse({params_str})
+clip_zoom = clip_super.zoomv.Analyse({params_str})
+
+clip_mv.set_output(0)
+clip_zoom.set_output(1)
+"""
+
+
 FILTERS = {
     "super": {
         "generate_script": generate_super_script,
@@ -45,6 +65,26 @@ FILTERS = {
             "no_chroma": {"chroma": 0},
             "small_pad": {"hpad": 4, "vpad": 4},
             "large_pad": {"hpad": 32, "vpad": 32},
+        },
+    },
+    "analyse": {
+        "generate_script": generate_analyse_script,
+        "tests": {
+            "default": {},
+            "blk4": {"blksize": 4},
+            "blk16": {"blksize": 16},
+            "blk32": {"blksize": 32},
+            "search_exhaustive": {"search": 3, "searchparam": 4},
+            "search_umh": {"search": 5},
+            "search_hex2_wide": {"search": 4, "searchparam": 4},
+            "dct_satd": {"dct": 5},
+            "overlap": {"blksize": 16, "overlap": 4},
+            "overlap_heavy": {"blksize": 16, "overlap": 8},
+            "no_chroma": {"chroma": 0},
+            "divide_original": {"divide": 1},
+            "divide_median": {"divide": 2},
+            "trymany": {"trymany": 1},
+            "heavy": {"blksize": 4, "search": 3, "searchparam": 4, "trymany": 1},
         },
     },
 }

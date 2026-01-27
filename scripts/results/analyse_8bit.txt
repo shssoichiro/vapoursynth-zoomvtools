@@ -1,0 +1,210 @@
+
+=== Analyse: default (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     407.0 ms ±   5.1 ms    [User: 929.4 ms, System: 161.1 ms]
+  Range (min … max):   399.7 ms … 414.4 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     492.5 ms ±   4.7 ms    [User: 1630.2 ms, System: 157.2 ms]
+  Range (min … max):   484.7 ms … 501.4 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.21 ± 0.02 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: blk4 (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     495.9 ms ±   3.2 ms    [User: 1628.0 ms, System: 156.0 ms]
+  Range (min … max):   490.9 ms … 500.7 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     674.6 ms ±   5.4 ms    [User: 3081.2 ms, System: 147.6 ms]
+  Range (min … max):   664.8 ms … 679.1 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.36 ± 0.01 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: blk16 (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     386.1 ms ±   6.5 ms    [User: 730.7 ms, System: 161.9 ms]
+  Range (min … max):   377.5 ms … 396.7 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     430.6 ms ±   6.1 ms    [User: 1065.8 ms, System: 169.6 ms]
+  Range (min … max):   424.7 ms … 442.3 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.12 ± 0.02 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: blk32 (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     374.7 ms ±   5.4 ms    [User: 669.9 ms, System: 156.5 ms]
+  Range (min … max):   367.9 ms … 386.3 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     402.2 ms ±   2.7 ms    [User: 878.9 ms, System: 170.5 ms]
+  Range (min … max):   398.7 ms … 408.1 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.07 ± 0.02 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: search_exhaustive (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     421.0 ms ±   4.0 ms    [User: 1045.5 ms, System: 161.6 ms]
+  Range (min … max):   413.9 ms … 427.5 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     556.6 ms ±   8.9 ms    [User: 2142.6 ms, System: 153.4 ms]
+  Range (min … max):   544.2 ms … 571.7 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.32 ± 0.02 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: search_umh (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     428.1 ms ±   6.2 ms    [User: 1055.7 ms, System: 157.6 ms]
+  Range (min … max):   419.2 ms … 440.5 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     541.5 ms ±   6.6 ms    [User: 2029.3 ms, System: 148.2 ms]
+  Range (min … max):   536.9 ms … 558.9 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.27 ± 0.02 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: search_hex2_wide (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     415.3 ms ±   7.8 ms    [User: 995.3 ms, System: 157.2 ms]
+  Range (min … max):   408.2 ms … 435.4 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     528.2 ms ±   5.4 ms    [User: 1911.1 ms, System: 153.5 ms]
+  Range (min … max):   523.5 ms … 542.7 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.27 ± 0.03 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: dct_satd (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     418.0 ms ±   3.5 ms    [User: 1021.9 ms, System: 157.7 ms]
+  Range (min … max):   413.6 ms … 423.9 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     489.7 ms ±   3.6 ms    [User: 1610.2 ms, System: 152.1 ms]
+  Range (min … max):   482.6 ms … 492.7 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.17 ± 0.01 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: overlap (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     388.2 ms ±   4.0 ms    [User: 779.4 ms, System: 164.4 ms]
+  Range (min … max):   381.2 ms … 393.9 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     454.9 ms ±   4.0 ms    [User: 1323.6 ms, System: 157.0 ms]
+  Range (min … max):   448.6 ms … 462.5 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.17 ± 0.02 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: overlap_heavy (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     407.6 ms ±   2.8 ms    [User: 950.8 ms, System: 156.9 ms]
+  Range (min … max):   402.7 ms … 412.2 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     554.6 ms ±   5.8 ms    [User: 2134.0 ms, System: 150.5 ms]
+  Range (min … max):   545.6 ms … 562.2 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.36 ± 0.02 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: no_chroma (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     391.0 ms ±   3.0 ms    [User: 819.8 ms, System: 161.6 ms]
+  Range (min … max):   386.9 ms … 395.0 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     463.1 ms ±   5.3 ms    [User: 1363.9 ms, System: 160.5 ms]
+  Range (min … max):   455.3 ms … 472.6 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.18 ± 0.02 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: divide_original (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     410.0 ms ±   5.5 ms    [User: 948.2 ms, System: 158.5 ms]
+  Range (min … max):   400.3 ms … 420.2 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     494.8 ms ±   5.1 ms    [User: 1653.6 ms, System: 151.8 ms]
+  Range (min … max):   488.2 ms … 502.8 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.21 ± 0.02 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: divide_median (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     413.0 ms ±   4.6 ms    [User: 964.5 ms, System: 154.8 ms]
+  Range (min … max):   402.9 ms … 418.4 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     497.6 ms ±   4.6 ms    [User: 1660.0 ms, System: 156.5 ms]
+  Range (min … max):   490.2 ms … 503.0 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.20 ± 0.02 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: trymany (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     436.1 ms ±   6.9 ms    [User: 1145.9 ms, System: 158.0 ms]
+  Range (min … max):   429.6 ms … 450.0 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):     622.8 ms ±   5.8 ms    [User: 2666.2 ms, System: 145.1 ms]
+  Range (min … max):   613.7 ms … 631.7 ms    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    1.43 ± 0.03 times faster than Rust (zoomv.Analyse)
+
+=== Analyse: heavy (8-bit) ===
+
+Benchmark 1: C (mv.Analyse)
+  Time (mean ± σ):     806.7 ms ±  13.0 ms    [User: 4116.3 ms, System: 146.6 ms]
+  Range (min … max):   796.4 ms … 841.3 ms    10 runs
+ 
+Benchmark 2: Rust (zoomv.Analyse)
+  Time (mean ± σ):      1.725 s ±  0.008 s    [User: 11.329 s, System: 0.161 s]
+  Range (min … max):    1.711 s …  1.737 s    10 runs
+ 
+Summary
+  C (mv.Analyse) ran
+    2.14 ± 0.04 times faster than Rust (zoomv.Analyse)
