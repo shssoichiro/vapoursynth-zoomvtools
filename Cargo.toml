@@ -60,5 +60,6 @@ e2e = []
 no_simd = []
 
 [profile.release]
+debug = "full"
 lto = "thin"
 codegen-units = 1

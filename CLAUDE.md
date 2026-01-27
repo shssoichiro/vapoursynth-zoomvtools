@@ -179,9 +179,19 @@ Tests are co-located with modules:
 - Integration tests use `#[macro_use] mod tests` in `src/tests.rs`
 - End-to-end tests require the C version of the plugin to be installed, and intend to verify our results are equivalent to theirs
 
-Use parameterized tests via the `parameterized` crate to simplify validating functions that have many possible values to test, and to validate the most commonly processed image formats, which are "vs.YUV420P8", "vs.YUV420P10", and "vs.YUV420P16".
+Use parameterized tests via the `parameterized` crate to simplify validating functions that have many possible values to test, and to validate the most commonly processed image formats, which are "vs.YUV420P8", "vs.YUV420P10", and "vs.YUV420P16". However, do NOT use `parameterized` inside `paste!`-based test macros — `parameterized` generates submodules that break `verify_asm!`'s `super::rust::` path resolution. Use `for` loops over const arrays instead.
 
 The `parameterized` crate uses named parameter columns (not tuples). For multi-dimensional parameters, use separate columns that get zipped: `#[parameterized(w = { 4, 8 }, h = { 4, 8 })] fn test(w: usize, h: usize)` — not `width_height = { (4, 4), (8, 8) }`.
+
+### SIMD-Ready Test Macros
+
+Performance-critical functions use `paste!`-based test macros with `verify_asm!` (defined in `src/tests.rs`) to enable automatic Rust-vs-SIMD comparison. Reference pattern: `src/refine/bicubic/tests.rs`.
+
+- **Dest-first functions** (write to `&mut dest`): `verify_asm!($module, func(&mut dest, ...))` — clones dest, runs both, compares
+- **Return-value functions** (return a result): `verify_asm!(ret $module, func(...))` — runs both, compares return values
+- Macros are invoked per module: `my_tests!(rust);` and `#[cfg(target_feature = "avx2")] my_tests!(avx2);`
+- `should_panic` tests stay outside the macro (they test dispatch, not implementation)
+- Internal `rust::` module functions must use dest-first arg order to match `verify_asm!`'s dest pattern
 
 ### Motion Search Implementation Details
 

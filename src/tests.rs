@@ -25,6 +25,21 @@ clip.set_output()
 }
 
 macro_rules! verify_asm {
+    (ret $module:ident, $func:ident($($args:expr),* $(,)?)) => {{
+        #[allow(unused_unsafe)]
+        if stringify!($module) != "rust" {
+            let rust_result = super::rust::$func($($args),*);
+            let simd_result = unsafe { super::$module::$func($($args),*) };
+            assert_eq!(rust_result, simd_result,
+                "Mismatch between Rust and {} in {}",
+                stringify!($module),
+                stringify!($func)
+            );
+            simd_result
+        } else {
+            super::$module::$func($($args),*)
+        }
+    }};
     ($module:ident, $func:ident($dest:expr, $($args:expr),* $(,)?)) => {{
         #[allow(unused_unsafe)]
         if stringify!($module) != "rust" {
