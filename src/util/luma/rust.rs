@@ -3,7 +3,7 @@ use std::num::NonZeroUsize;
 use crate::util::Pixel;
 
 #[must_use]
-pub fn luma_sum<T: Pixel>(
+pub(super) fn luma_sum<T: Pixel>(
     width: NonZeroUsize,
     height: NonZeroUsize,
     src: &[T],

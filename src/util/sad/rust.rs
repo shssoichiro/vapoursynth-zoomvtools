@@ -3,7 +3,7 @@ use std::num::NonZeroUsize;
 use crate::util::Pixel;
 
 #[must_use]
-pub fn get_sad<T: Pixel>(
+pub(super) fn get_sad<T: Pixel>(
     width: NonZeroUsize,
     height: NonZeroUsize,
     src: &[T],

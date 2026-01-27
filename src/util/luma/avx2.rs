@@ -7,7 +7,7 @@ use crate::util::Pixel;
 
 #[must_use]
 #[target_feature(enable = "avx2")]
-pub unsafe fn luma_sum<T: Pixel>(
+pub(super) unsafe fn luma_sum<T: Pixel>(
     width: NonZeroUsize,
     height: NonZeroUsize,
     src: &[T],
@@ -50,7 +50,7 @@ pub unsafe fn luma_sum<T: Pixel>(
 
 #[must_use]
 #[target_feature(enable = "avx2")]
-pub unsafe fn luma_sum_u8<const WIDTH: usize, const HEIGHT: usize>(
+unsafe fn luma_sum_u8<const WIDTH: usize, const HEIGHT: usize>(
     src: *const u8,
     src_pitch: NonZeroUsize,
 ) -> u64 {
@@ -103,7 +103,7 @@ pub unsafe fn luma_sum_u8<const WIDTH: usize, const HEIGHT: usize>(
 
 #[must_use]
 #[target_feature(enable = "avx2")]
-pub unsafe fn luma_sum_u16<const WIDTH: usize, const HEIGHT: usize>(
+unsafe fn luma_sum_u16<const WIDTH: usize, const HEIGHT: usize>(
     src: *const u16,
     src_pitch: NonZeroUsize,
 ) -> u64 {

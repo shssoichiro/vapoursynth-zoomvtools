@@ -9,7 +9,7 @@ use num_traits::{One, PrimInt, WrappingAdd};
 use crate::util::Pixel;
 
 #[must_use]
-pub fn get_satd<T: Pixel>(
+pub(super) fn get_satd<T: Pixel>(
     width: NonZeroUsize,
     height: NonZeroUsize,
     src: &[T],
